@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d0d0d">
+<title>BJJ Log — prototipo</title>
+<style>
+:root{
+  color-scheme:dark;
+  --plane:#0d0d0d; --surface:#1a1a19; --surface-2:#232322;
+  --ink:#fff; --ink-2:#c3c2b7; --muted:#898781;
+  --border:rgba(255,255,255,.10); --grid:#2c2c2a;
+  --yo:#3987e5; --yo-soft:rgba(57,135,229,.16);
+  --op:#d95926; --op-soft:rgba(217,89,38,.16);
+  --good:#0ca30c; --warn:#fab219;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--plane);color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;overscroll-behavior:none}
+.phone{max-width:430px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;
+  background:var(--plane);position:relative}
+/* ---- barra superior ---- */
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:14px 16px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;
+  background:var(--plane);z-index:5}
+.top .t1{font-size:15px;font-weight:640}
+.top .t2{font-size:11.5px;color:var(--muted);margin-top:1px}
+.sync{font-size:11px;border:1px solid var(--border);border-radius:999px;padding:4px 9px;
+  color:var(--ink-2);white-space:nowrap;cursor:pointer;background:var(--surface)}
+.sync.off{color:var(--warn);border-color:rgba(250,178,25,.4)}
+.sync.ok{color:var(--good);border-color:rgba(12,163,12,.35)}
+/* ---- metricas de friccion ---- */
+.meter{display:flex;gap:8px;padding:10px 16px 0}
+.meter > div{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:8px 10px}
+.meter .v{font-size:19px;font-weight:640;font-variant-numeric:tabular-nums}
+.meter .l{font-size:10.5px;color:var(--muted);margin-top:1px}
+/* ---- cuerpo ---- */
+main{flex:1;padding:14px 16px 24px}
+h2.sec{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--muted);margin:18px 0 9px}
+h2.sec:first-child{margin-top:4px}
+summary.sec{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:18px 0 9px}
+details[open] summary.sec{margin-bottom:9px}
+.state{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  padding:14px 16px;margin-bottom:4px}
+.state .lbl{font-size:11px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase}
+.state .pos{font-size:21px;font-weight:650;margin-top:3px;line-height:1.15}
+.state .rol{font-size:13px;color:var(--ink-2);margin-top:3px}
+.state .rol b{color:var(--ink)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+button.act{font:inherit;font-size:15px;font-weight:560;color:var(--ink);text-align:left;
+  background:var(--surface);border:1px solid var(--border);border-radius:13px;
+  padding:15px 14px;min-height:56px;cursor:pointer;line-height:1.2;transition:transform .06s;
+  display:flex;flex-direction:column;justify-content:center}
+button.act:active{transform:scale(.97)}
+button.act.yo{background:var(--yo-soft);border-color:rgba(57,135,229,.35)}
+button.act.op{background:var(--op-soft);border-color:rgba(217,89,38,.32)}
+button.act .k{display:block;font-size:10.5px;color:var(--muted);font-weight:500;margin-bottom:3px;
+  letter-spacing:.05em;text-transform:uppercase}
+button.act.wide{grid-column:1/-1;min-height:52px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+button.chip{font:inherit;font-size:14px;color:var(--ink);background:var(--surface-2);
+  border:1px solid var(--border);border-radius:999px;padding:11px 15px;cursor:pointer}
+button.chip:active{transform:scale(.96)}
+button.chip.sel{background:var(--yo);border-color:var(--yo);color:#fff}
+button.chip small{color:var(--muted);margin-left:5px;font-size:11.5px}
+button.chip.sel small{color:rgba(255,255,255,.75)}
+button.chip.ok{background:var(--good);border-color:var(--good);color:#fff;font-weight:600}
+button.chip.no{background:transparent;border-color:var(--border);color:var(--ink-2)}
+.back{font:inherit;font-size:13px;color:var(--muted);background:none;border:none;
+  padding:8px 0;cursor:pointer}
+/* ---- timeline ---- */
+.tl{display:flex;flex-direction:column;gap:6px}
+.ev{display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;padding:9px 11px;font-size:13px}
+.ev .dot{width:7px;height:7px;border-radius:50%;flex:none}
+.ev .tx{flex:1;line-height:1.3}
+.ev .tx small{display:block;color:var(--muted);font-size:11px;margin-top:1px}
+.ev .x{color:var(--muted);font-size:16px;background:none;border:none;cursor:pointer;padding:2px 4px}
+.ev.fail{opacity:.6}
+.empty{color:var(--muted);font-size:13px;padding:6px 2px}
+/* ---- pie ---- */
+.foot{position:sticky;bottom:0;background:linear-gradient(transparent,var(--plane) 22%);
+  padding:16px;display:flex;gap:9px}
+button.primary{flex:1;font:inherit;font-size:15px;font-weight:600;color:#fff;background:var(--yo);
+  border:none;border-radius:13px;padding:15px;cursor:pointer}
+button.ghost{font:inherit;font-size:14px;color:var(--ink-2);background:var(--surface);
+  border:1px solid var(--border);border-radius:13px;padding:15px 16px;cursor:pointer}
+pre{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;
+  font-size:11px;color:var(--ink-2);overflow-x:auto;line-height:1.45}
+.hint{font-size:12px;color:var(--muted);line-height:1.5;margin:10px 2px 0}
+.badge{display:inline-block;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:3px 9px}
+</style></head>
+<body><div class="phone">
+
+<div class="top">
+  <div><div class="t1" id="topT">BJJ Log</div><div class="t2" id="topS">prototipo clicable</div></div>
+  <button class="sync ok" id="sync" title="Toca para simular pérdida de conexión">✓ sincronizado</button>
+</div>
+
+<div class="meter">
+  <div><div class="v" id="mTaps">0</div><div class="l">toques</div></div>
+  <div><div class="v" id="mTime">0s</div><div class="l">tiempo</div></div>
+  <div><div class="v" id="mEv">0</div><div class="l">eventos</div></div>
+</div>
+
+<main id="app"></main>
+
+<div class="foot" id="foot"></div>
+</div>
+
+<script>
+/* ============================================================
+   Diccionario reducido — mismos codigos que el enum de Postgres
+   ============================================================ */
+const NOM = {
+  de_pie:'De pie', clinch:'Clinch',
+  guardia_cerrada:'Guardia cerrada', guardia_abierta:'Guardia abierta',
+  media_guardia:'Media guardia', mariposa:'Mariposa', de_la_riva:'De la Riva',
+  x_guard:'X-guard', single_leg_x:'Single leg X', guardia_sentada:'Guardia sentada',
+  cincuenta_cincuenta:'50/50', arana:'Araña', lasso:'Lasso', collar_manga:'Collar y manga',
+  de_la_riva_inversa:'DLR inversa',
+  montada:'Montada', cien_kilos:'Cien kilos', kesa_gatame:'Kesa gatame',
+  norte_sur:'Norte-sur', rodilla_en_barriga:'Rodilla en barriga',
+  espalda:'Espalda', tortuga:'Tortuga', scramble:'Scramble', otra:'Otra'
+};
+const GUARDIAS_RAPIDAS = ['guardia_cerrada','media_guardia','mariposa','de_la_riva','guardia_abierta'];
+const GUARDIAS_TODAS = ['guardia_cerrada','media_guardia','mariposa','de_la_riva','guardia_abierta',
+  'x_guard','single_leg_x','guardia_sentada','cincuenta_cincuenta','arana','lasso',
+  'collar_manga','de_la_riva_inversa'];
+const DOMINANTES = ['cien_kilos','montada','espalda','norte_sur','rodilla_en_barriga','kesa_gatame','tortuga'];
+const esGuardia = p => GUARDIAS_TODAS.includes(p);
+
+/* sumisiones plausibles segun donde estas: esto es lo que evita el scroll */
+const SUBS = {
+  montada:      [['armbar','codo'],['cruzada','cuello'],['americana','hombro'],['ezekiel','cuello']],
+  cien_kilos:   [['kimura','hombro'],['americana','hombro'],['katagatame','cuello']],
+  espalda:      [['mata_leao','cuello'],['bow_and_arrow','cuello'],['ezekiel','cuello']],
+  norte_sur:    [['north_south_choke','cuello'],['kimura','hombro']],
+  rodilla_en_barriga:[['cruzada','cuello'],['armbar','codo']],
+  kesa_gatame:  [['americana','hombro'],['katagatame','cuello']],
+  tortuga:      [['mata_leao','cuello'],['darce','cuello']],
+  _guardia_abajo:[['triangulo','cuello'],['omoplata','hombro'],['armbar','codo'],
+                  ['kimura','hombro'],['guillotina','cuello']],
+  _guardia_arriba:[['guillotina','cuello'],['darce','cuello'],['katagatame','cuello']],
+  _piernas:     [['heel_hook','rodilla'],['straight_ankle','tobillo_pie'],
+                 ['toe_hold','tobillo_pie'],['kneebar','rodilla']]
+};
+const TEC_NOM = {armbar:'Armbar',cruzada:'Cruzada',americana:'Americana',ezekiel:'Ezekiel',
+  kimura:'Kimura',katagatame:'Kata gatame',mata_leao:'Mata leão',bow_and_arrow:'Bow & arrow',
+  north_south_choke:'Norte-sur',triangulo:'Triángulo',omoplata:'Omoplata',guillotina:'Guillotina',
+  darce:"D'arce",puxada:'Tira guardia',heel_hook:'Heel hook',straight_ankle:'Ankle lock',toe_hold:'Toe hold',
+  kneebar:'Kneebar'};
+const OBJ_NOM = {cuello:'cuello',hombro:'hombro',codo:'codo',rodilla:'rodilla',
+  tobillo_pie:'tobillo/pie',muneca:'muñeca'};
+
+function subsPara(pos, rol){
+  if (SUBS[pos]) return SUBS[pos];
+  if (['single_leg_x','cincuenta_cincuenta','x_guard'].includes(pos)) return SUBS._piernas;
+  if (esGuardia(pos)) return rol === 'abajo' ? SUBS._guardia_abajo : SUBS._guardia_arriba;
+  return SUBS._guardia_abajo;
+}
+
+/* ============================================================
+   Estado
+   ============================================================ */
+let S = {
+  pantalla:'inicio', pos:'de_pie', rol:'neutral',
+  eventos:[], taps:0, t0:null, oponente:null, sub:null, online:true, cola:0,
+  modo:'propio',      // 'propio' | 'observador'  (el coach registra mirando)
+  pA:'Felipe',        // en modo observador: quien es "yo" en los datos
+  tRoll:null          // reloj del roll (el observador registra en vivo)
+};
+const obs = () => S.modo === 'observador';
+const NA  = () => obs() ? S.pA : 'Yo';           // etiqueta del actor 'yo'
+const NB  = () => S.oponente || 'Oponente';      // etiqueta del actor 'oponente'
+const minutoActual = () => S.tRoll ? Math.floor((Date.now() - S.tRoll) / 60000) : null;
+const OPONENTES = ['Pablo','Sergi','Nuria','Marc','Toni','Jordi','Dani'];
+
+const $ = id => document.getElementById(id);
+const app = $('app'), foot = $('foot');
+
+function tap(){ S.taps++; if (!S.t0) S.t0 = Date.now(); }
+function metrics(){
+  $('mTaps').textContent = S.taps;
+  $('mEv').textContent = S.eventos.length;
+  $('mTime').textContent = S.t0 ? Math.round((Date.now() - S.t0) / 1000) + 's' : '0s';
+}
+setInterval(metrics, 250);
+
+function encolar(){
+  S.cola++;
+  const el = $('sync');
+  if (!S.online){ el.className = 'sync off'; el.textContent = `● ${S.cola} en cola`; return; }
+  el.className = 'sync'; el.textContent = `↑ enviando…`;
+  setTimeout(() => { if (!S.online) return; S.cola = 0;
+    el.className = 'sync ok'; el.textContent = '✓ sincronizado'; }, 550);
+}
+$('sync').onclick = () => {
+  S.online = !S.online;
+  const el = $('sync');
+  if (!S.online){ el.className = 'sync off'; el.textContent = `● ${S.cola} en cola`; }
+  else { el.className = 'sync'; el.textContent = '↑ enviando…';
+    setTimeout(() => { S.cola = 0; el.className = 'sync ok'; el.textContent = '✓ sincronizado'; }, 700); }
+};
+
+function addEv(o){
+  S.eventos.push(Object.assign({t:Date.now(), minuto:minutoActual()}, o));
+  encolar();
+}
+
+/* ============================================================
+   Acciones plausibles segun el estado — el corazon del diseño
+   ============================================================ */
+function acciones(){
+  const {pos, rol} = S;
+  // [clave, etiqueta cuando logueas lo tuyo, etiqueta cuando observas a otros]
+  let a;
+  if (rol === 'neutral')
+    a = {yo:[['derribo','Derribo','Derriba'],['puxada','Tiro guardia','Tira guardia']],
+         op:[['op_derribo','Me derriba','Derriba'],['op_puxada','Tira guardia','Tira guardia']]};
+  else if (esGuardia(pos) && rol === 'abajo')
+    a = {yo:[['barrida','Barrida','Barrida'],['sumision','Sumisión','Sumisión'],
+             ['toma_espalda','Tomo espalda','Toma espalda']],
+         op:[['op_pase','Me pasa','Pasa la guardia'],['op_sumision','Me somete','Somete']]};
+  else if (esGuardia(pos) && rol === 'arriba')
+    a = {yo:[['pase','Paso guardia','Pasa la guardia'],['sumision','Sumisión','Sumisión']],
+         op:[['op_barrida','Me barre','Barrida'],['op_sumision','Me somete','Somete'],
+             ['op_espalda','Toma mi espalda','Toma la espalda']]};
+  else if (rol === 'arriba')
+    a = {yo:[['sumision','Sumisión','Sumisión'],['mejora','Mejoro posición','Mejora posición']],
+         op:[['op_escape','Escapa','Escapa']]};
+  else
+    a = {yo:[['escape','Escapo','Escapa']],
+         op:[['op_sumision','Me somete','Somete'],['op_mejora','Mejora posición','Mejora posición']]};
+  const pick = l => l.map(([k, p, o]) => [k, obs() ? o : p]);
+  return {yo:pick(a.yo), op:pick(a.op)};
+}
+
+/* ============================================================
+   Render
+   ============================================================ */
+function render(){
+  metrics();
+  if (S.pantalla === 'inicio') return pInicio();
+  if (S.pantalla === 'observadorA') return pObservadorA();
+  if (S.pantalla === 'oponente') return pOponente();
+  if (S.pantalla === 'roll') return pRoll();
+  if (S.pantalla === 'minimo') return pMinimo();
+  if (S.pantalla === 'fin') return pFin();
+}
+
+function pInicio(){
+  $('topT').textContent = 'Entreno de hoy';
+  $('topS').textContent = 'Gi · sparring · Academia BCN';
+  app.innerHTML = `
+    <div class="state"><div class="lbl">Sesión abierta</div>
+      <div class="pos">Domingo 26 jul</div>
+      <div class="rol">Gi · sparring · energía <b>4/5</b> · 2 rolls registrados</div></div>
+    <p class="hint">La sesión se abre una vez al llegar. A partir de ahí, cada roll empieza
+    con un solo toque. <b>👁 Observar</b> es el modo para el coach: registra el roll de otros
+    dos en vivo y cada uno recibe sus datos.</p>
+    <h2 class="sec">Rolls de hoy</h2>
+    <div class="tl">
+      <div class="ev"><span class="dot" style="background:var(--yo)"></span>
+        <span class="tx">vs Pablo · sumisión a favor<small>3 eventos · armbar desde montada</small></span></div>
+      <div class="ev"><span class="dot" style="background:var(--op)"></span>
+        <span class="tx">vs Jordi · sumisión en contra<small>4 eventos · mata leão desde espalda</small></span></div>
+    </div>`;
+  foot.innerHTML = `<button class="primary" id="b1">+ Nuevo roll</button>
+    <button class="ghost" id="b2" title="Registrar el roll de otros dos">👁 Observar</button>`;
+  $('b1').onclick = () => { tap(); S.modo = 'propio'; S.pA = 'Felipe';
+    S.pantalla = 'oponente'; render(); };
+  $('b2').onclick = () => { tap(); S.modo = 'observador'; S.pantalla = 'observadorA'; render(); };
+}
+
+function pObservadorA(){
+  $('topT').textContent = 'Modo observador';
+  $('topS').textContent = '¿Quién rueda?';
+  app.innerHTML = `<h2 class="sec">Primer practicante</h2><div class="chips">` +
+    ['Felipe'].concat(OPONENTES).map(o => `<button class="chip" data-o="${o}">${o}</button>`).join('') +
+    `</div>
+    <p class="hint">Tú solo miras. El roll se guarda para los dos: uno lo verá como ataque y
+    el otro como defensa, sin que ninguno tenga que tocar el móvil.</p>`;
+  app.querySelectorAll('[data-o]').forEach(b => b.onclick = () => {
+    tap(); S.pA = b.dataset.o; S.pantalla = 'oponente'; render();
+  });
+  foot.innerHTML = `<button class="ghost" id="bk">← Atrás</button>`;
+  $('bk').onclick = () => { S.modo = 'propio'; S.pantalla = 'inicio'; render(); };
+}
+
+function pOponente(){
+  $('topT').textContent = obs() ? 'Modo observador' : 'Nuevo roll';
+  $('topS').textContent = obs() ? `${S.pA} contra…` : '¿Con quién?';
+  const lista = obs() ? ['Felipe'].concat(OPONENTES).filter(o => o !== S.pA) : OPONENTES;
+  app.innerHTML = `<h2 class="sec">${obs() ? 'Segundo practicante' : 'Compañero'}</h2><div class="chips">` +
+    lista.map((o,i) => `<button class="chip" data-o="${o}">${o}${!obs() && i<2 ? ' <small>reciente</small>' : ''}</button>`).join('') +
+    `<button class="chip">+ Nuevo</button></div>
+    <p class="hint">${obs() ? 'En cuanto elijas, arranca el cronómetro del roll.'
+      : 'Ordenados por frecuencia: los dos primeros cubren la mitad de los rolls.'}</p>`;
+  app.querySelectorAll('[data-o]').forEach(b => b.onclick = () => {
+    tap(); S.oponente = b.dataset.o;
+    S.pos = 'de_pie'; S.rol = 'neutral'; S.eventos = [];
+    S.tRoll = obs() ? Date.now() : null;
+    S.pantalla = 'roll'; render();
+  });
+  foot.innerHTML = `<button class="ghost" id="bk">← Atrás</button>`;
+  $('bk').onclick = () => { S.pantalla = obs() ? 'observadorA' : 'inicio'; render(); };
+}
+
+function pRoll(){
+  $('topT').textContent = obs() ? `${S.pA} vs ${S.oponente}` : 'vs ' + S.oponente;
+  $('topS').textContent = obs() ? 'registrando en vivo' : 'toca lo que va pasando';
+  const a = acciones();
+  const rolTx = S.rol === 'neutral' ? 'nadie controla todavía'
+    : (obs() ? `<b>${S.rol === 'arriba' ? S.pA : S.oponente}</b> arriba`
+             : `estás <b>${S.rol}</b>`);
+  app.innerHTML = `
+    <div class="state"><div class="lbl">Posición actual${obs() ? ' · <span id="clk">0:00</span>' : ''}</div>
+      <div class="pos">${NOM[S.pos]}</div><div class="rol">${rolTx}</div></div>
+    ${S.sub ? subUI() : `
+      <h2 class="sec">${NA()}</h2><div class="grid">
+        ${a.yo.map(([k,l]) => `<button class="act yo" data-a="${k}">${obs() ? '' : '<span class="k">yo</span>'}${l}</button>`).join('')}
+      </div>
+      <h2 class="sec">${NB()}</h2><div class="grid">
+        ${a.op.map(([k,l]) => `<button class="act op" data-a="${k}">${obs() ? '' : '<span class="k">él</span>'}${l}</button>`).join('')}
+      </div>`}
+    <h2 class="sec">Eventos del roll (${S.eventos.length})</h2>
+    <div class="tl">${S.eventos.length ? S.eventos.map((e,i) => evHTML(e,i)).join('')
+      : '<div class="empty">Nada todavía. Toca una acción arriba.</div>'}</div>`;
+  app.querySelectorAll('[data-a]').forEach(b => b.onclick = () => accion(b.dataset.a));
+  app.querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
+    tap(); S.eventos.splice(+b.dataset.del, 1); render();
+  });
+  bindSub();
+  if (obs() && $('clk')) {
+    clearInterval(window._clk);
+    const pinta = () => { const el = $('clk'); if (!el) return clearInterval(window._clk);
+      const t = Math.floor((Date.now() - S.tRoll) / 1000);
+      el.textContent = Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
+    pinta(); window._clk = setInterval(pinta, 1000);
+  }
+  foot.innerHTML = `<button class="primary" id="fin">Fin del roll</button>
+    <button class="ghost" id="min" title="Guardar sin detallar eventos">Solo resultado</button>`;
+  $('fin').onclick = () => { tap(); S.pantalla = 'fin'; render(); };
+  $('min').onclick = () => { tap(); S.pantalla = 'minimo'; render(); };
+}
+
+function evHTML(e, i){
+  const mio = e.actor === 'yo';
+  const tec = e.tecnica ? TEC_NOM[e.tecnica] : null;
+  let t = {sumision:'Sumisión', barrida:'Barrida', pase_guardia:'Pase de guardia',
+    derribo:'Derribo', toma_espalda:'Toma de espalda', escape:'Escape'}[e.tipo];
+  if (e.tecnica === 'puxada') t = 'Tira guardia';
+  return `<div class="ev ${e.completado === false ? 'fail' : ''}">
+    <span class="dot" style="background:var(--${mio ? 'yo' : 'op'})"></span>
+    <span class="tx">${mio ? NA() : NB()} · ${t}${e.completado === false ? ' (falló)' : ''}
+      <small>${NOM[e.posicion]} · ${e.rol}${tec ? ' · ' + tec + ' → ' + OBJ_NOM[e.objetivo] : ''}</small></span>
+    <button class="x" data-del="${i}">✕</button></div>`;
+}
+
+/* ---- sub-pasos: elegir guardia / posicion / tecnica ---- */
+function subUI(){
+  const s = S.sub;
+  if (s.tipo === 'guardia' || s.tipo === 'posicion'){
+    const lista = s.opciones;
+    return `<h2 class="sec">${s.titulo}</h2><div class="chips">` +
+      lista.map(p => `<button class="chip" data-p="${p}">${NOM[p]}</button>`).join('') +
+      (s.mas ? `<button class="chip" data-mas="1">Más…</button>` : '') + `</div>`;
+  }
+  if (s.tipo === 'tecnica'){
+    return `<h2 class="sec">${s.titulo}</h2><div class="chips">` +
+      s.opciones.map(([t,o]) => `<button class="chip" data-t="${t}" data-o="${o}">${TEC_NOM[t]}
+        <small>${OBJ_NOM[o]}</small></button>`).join('') + `</div>
+      <button class="back" data-cancel="1">← cancelar</button>`;
+  }
+  if (s.tipo === 'entro'){
+    return `<h2 class="sec">${TEC_NOM[s.tecnica]} — ¿entró?</h2><div class="chips">
+      <button class="chip ok" data-e="1">✓ Sí, fin del roll</button>
+      <button class="chip no" data-e="0">✗ Falló, seguimos</button></div>`;
+  }
+}
+function bindSub(){
+  app.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { tap(); S.sub.onPick(b.dataset.p); });
+  app.querySelectorAll('[data-mas]').forEach(b => b.onclick = () => {
+    tap(); S.sub.opciones = GUARDIAS_TODAS; S.sub.mas = false; render(); });
+  app.querySelectorAll('[data-t]').forEach(b => b.onclick = () => {
+    tap(); S.sub = {tipo:'entro', tecnica:b.dataset.t, objetivo:b.dataset.o,
+      actor:S.sub.actor, posicion:S.sub.posicion, rol:S.sub.rol}; render(); });
+  app.querySelectorAll('[data-e]').forEach(b => b.onclick = () => {
+    tap(); const s = S.sub;
+    addEv({actor:s.actor, tipo:'sumision', posicion:s.posicion, rol:s.rol,
+           objetivo:s.objetivo, tecnica:s.tecnica, completado:b.dataset.e === '1'});
+    S.sub = null;
+    if (b.dataset.e === '1'){ S.pantalla = 'fin'; }
+    render();
+  });
+  app.querySelectorAll('[data-cancel]').forEach(b => b.onclick = () => { tap(); S.sub = null; render(); });
+}
+
+function pedir(titulo, opciones, onPick, mas){
+  S.sub = {tipo:'posicion', titulo, opciones, onPick, mas}; render();
+}
+function pedirSub(actor, posicion, rol){
+  const quien = actor === 'yo' ? NA() : NB();
+  S.sub = {tipo:'tecnica',
+    titulo: obs() ? `¿Qué hizo ${quien}?` : (actor === 'yo' ? '¿Qué le hiciste?' : '¿Qué te hizo?'),
+    opciones: subsPara(posicion, rol), actor, posicion, rol};
+  render();
+}
+
+/* ============================================================
+   Transiciones
+   ============================================================ */
+function accion(k){
+  tap();
+  const P = S.pos, R = S.rol;
+  switch(k){
+    case 'derribo':
+      addEv({actor:'yo', tipo:'derribo', posicion:'de_pie', rol:'neutral', objetivo:'ninguno'});
+      return pedir(obs() ? `¿Dónde cae ${NB()}?` : '¿Dónde caes?', ['cien_kilos','norte_sur','media_guardia','guardia_cerrada'],
+        p => { S.pos = p; S.rol = 'arriba'; S.sub = null; render(); });
+    case 'op_derribo':
+      addEv({actor:'oponente', tipo:'derribo', posicion:'de_pie', rol:'neutral', objetivo:'ninguno'});
+      return pedir(obs() ? `¿Dónde cae ${S.pA}?` : '¿Dónde caes tú?', ['cien_kilos','montada','media_guardia','guardia_cerrada'],
+        p => { S.pos = p; S.rol = 'abajo'; S.sub = null; render(); });
+    case 'puxada':
+      addEv({actor:'yo', tipo:'derribo', posicion:'de_pie', rol:'neutral',
+             objetivo:'ninguno', tecnica:'puxada'});
+      return pedir(obs() ? `¿Qué guardia juega ${S.pA}?` : '¿Qué guardia?', GUARDIAS_RAPIDAS,
+        p => { S.pos = p; S.rol = 'abajo'; S.sub = null; render(); }, true);
+    case 'op_puxada':
+      addEv({actor:'oponente', tipo:'derribo', posicion:'de_pie', rol:'neutral',
+             objetivo:'ninguno', tecnica:'puxada'});
+      return pedir('¿Qué guardia juega?', GUARDIAS_RAPIDAS,
+        p => { S.pos = p; S.rol = 'arriba'; S.sub = null; render(); }, true);
+
+    case 'barrida':
+      addEv({actor:'yo', tipo:'barrida', posicion:P, rol:'abajo', objetivo:'ninguno'});
+      return pedir(obs() ? `¿Dónde acaba ${S.pA}?` : '¿Dónde acabas?', ['media_guardia','cien_kilos','montada','de_pie'],
+        p => { S.pos = p; S.rol = p === 'de_pie' ? 'neutral' : 'arriba'; S.sub = null; render(); });
+    case 'op_barrida':
+      addEv({actor:'oponente', tipo:'barrida', posicion:P, rol:'abajo', objetivo:'ninguno'});
+      return pedir(obs() ? `¿Dónde acaba ${S.pA}?` : '¿Dónde acabas tú?', ['media_guardia','cien_kilos','montada','de_pie'],
+        p => { S.pos = p; S.rol = p === 'de_pie' ? 'neutral' : 'abajo'; S.sub = null; render(); });
+
+    case 'pase':
+      addEv({actor:'yo', tipo:'pase_guardia', posicion:P, rol:'arriba', objetivo:'ninguno'});
+      return pedir(obs() ? `¿Dónde llega ${S.pA}?` : '¿Dónde llegas?', ['cien_kilos','montada','norte_sur','rodilla_en_barriga'],
+        p => { S.pos = p; S.rol = 'arriba'; S.sub = null; render(); });
+    case 'op_pase':
+      addEv({actor:'oponente', tipo:'pase_guardia', posicion:P, rol:'arriba', objetivo:'ninguno'});
+      return pedir(obs() ? `¿Dónde controla ${NB()}?` : '¿Dónde te controla?', ['cien_kilos','montada','norte_sur','rodilla_en_barriga'],
+        p => { S.pos = p; S.rol = 'abajo'; S.sub = null; render(); });
+
+    case 'toma_espalda':
+      addEv({actor:'yo', tipo:'toma_espalda', posicion:P, rol:R, objetivo:'ninguno'});
+      S.pos = 'espalda'; S.rol = 'arriba'; return render();
+    case 'op_espalda':
+      addEv({actor:'oponente', tipo:'toma_espalda', posicion:P, rol:R, objetivo:'ninguno'});
+      S.pos = 'espalda'; S.rol = 'abajo'; return render();
+
+    case 'mejora':
+      return pedir(obs() ? `¿A dónde pasa ${S.pA}?` : '¿A dónde pasas?', DOMINANTES.filter(p => p !== P),
+        p => { if (p === 'espalda')
+                 addEv({actor:'yo', tipo:'toma_espalda', posicion:P, rol:'arriba', objetivo:'ninguno'});
+               S.pos = p; S.rol = 'arriba'; S.sub = null; render(); });
+    case 'op_mejora':
+      return pedir('¿A dónde pasa él?', DOMINANTES.filter(p => p !== P),
+        p => { if (p === 'espalda')
+                 addEv({actor:'oponente', tipo:'toma_espalda', posicion:P, rol:'arriba', objetivo:'ninguno'});
+               S.pos = p; S.rol = 'abajo'; S.sub = null; render(); });
+
+    case 'escape':
+      addEv({actor:'yo', tipo:'escape', posicion:P, rol:'abajo', objetivo:'ninguno'});
+      return pedir(obs() ? `¿Dónde recupera ${S.pA}?` : '¿Dónde recuperas?', GUARDIAS_RAPIDAS.concat('de_pie'),
+        p => { S.pos = p; S.rol = p === 'de_pie' ? 'neutral' : 'abajo'; S.sub = null; render(); });
+    case 'op_escape':
+      addEv({actor:'oponente', tipo:'escape', posicion:P, rol:'abajo', objetivo:'ninguno'});
+      return pedir('¿Qué guardia recupera?', GUARDIAS_RAPIDAS.concat('de_pie'),
+        p => { S.pos = p; S.rol = p === 'de_pie' ? 'neutral' : 'arriba'; S.sub = null; render(); });
+
+    case 'sumision':    return pedirSub('yo', P, R === 'neutral' ? 'arriba' : R);
+    case 'op_sumision': return pedirSub('oponente', P, R === 'arriba' ? 'abajo' : 'arriba');
+  }
+}
+
+/* ---- modo minimo: el roll entero en 2 taps ---- */
+function pMinimo(){
+  $('topT').textContent = 'Solo resultado';
+  $('topS').textContent = 'vs ' + S.oponente;
+  app.innerHTML = `<h2 class="sec">¿Cómo acabó?</h2><div class="chips">
+      <button class="chip" data-r="favor">${obs() ? 'Ganó ' + S.pA : 'Le sometí'}</button>
+      <button class="chip" data-r="contra">${obs() ? 'Ganó ' + S.oponente : 'Me sometió'}</button>
+      <button class="chip" data-r="ninguna">Ninguno de los dos</button></div>
+    <p class="hint">Los días que no tengas cuerpo para detallar: el roll cuenta igual para el
+    head-to-head, el volumen y la evolución. Solo te quedas sin heatmap de ese roll.</p>`;
+  app.querySelectorAll('[data-r]').forEach(b => b.onclick = () => {
+    tap();
+    if (b.dataset.r !== 'ninguna')
+      addEv({actor: b.dataset.r === 'favor' ? 'yo' : 'oponente', tipo:'sumision',
+             posicion:'otra', rol:'neutral', objetivo:'ninguno', completado:true});
+    S.pantalla = 'fin'; render();
+  });
+  foot.innerHTML = `<button class="ghost" id="bk2">← Volver al roll</button>`;
+  $('bk2').onclick = () => { S.pantalla = 'roll'; render(); };
+}
+
+/* ============================================================
+   Resumen
+   ============================================================ */
+function pFin(){
+  $('topT').textContent = 'Roll guardado';
+  $('topS').textContent = 'vs ' + S.oponente;
+  const seg = S.t0 ? Math.round((Date.now() - S.t0) / 1000) : 0;
+  const ult = S.eventos.filter(e => e.tipo === 'sumision' && e.completado).slice(-1)[0];
+  const res = !ult ? 'sin sumisión' : (ult.actor === 'yo' ? 'sumisión a favor' : 'sumisión en contra');
+  const res_a = !ult ? 'sin_sumision' : (ult.actor === 'yo' ? 'sumision_favor' : 'sumision_contra');
+  const flip = r => r === 'sumision_favor' ? 'sumision_contra'
+                  : r === 'sumision_contra' ? 'sumision_favor' : r;
+  const evs = S.eventos.map(e => ({actor:e.actor, tipo:e.tipo, posicion:e.posicion, rol:e.rol,
+    objetivo:e.objetivo || 'ninguno', tecnica:e.tecnica || null,
+    completado:e.completado !== false, minuto:e.minuto}));
+  const grupo = 'roll_grupo_id compartido';
+  const payload = obs()
+    ? {origen:'observador', registrado_por:'Coach', roll_grupo_id:grupo,
+       rolls:[
+         {practicante:S.pA, oponente:S.oponente, resultado:res_a, eventos:evs},
+         {practicante:S.oponente, oponente:S.pA, resultado:flip(res_a),
+          // el espejo: SOLO cambia `actor`. posicion y rol describen al actor,
+          // que sigue siendo la misma persona fisica.
+          eventos:evs.map(e => ({...e, actor: e.actor === 'yo' ? 'oponente' : 'yo'}))}]}
+    : {roll:{oponente:S.oponente, resultado:res_a,
+             posicion_inicio:'de_pie', rol_inicio:'neutral'},
+       eventos:evs};
+  const resTx = obs() && ult ? `Ganó ${ult.actor === 'yo' ? S.pA : S.oponente}`
+                             : res[0].toUpperCase() + res.slice(1);
+  app.innerHTML = `
+    <div class="state"><div class="lbl">${obs() ? 'Roll observado' : 'Resultado'}</div>
+      <div class="pos">${resTx}</div>
+      <div class="rol">${S.eventos.length} eventos · <b>${S.taps} toques</b> · ${seg}s</div></div>
+    ${obs() ? `<p class="hint"><b>Se han guardado 2 rolls</b>, uno para ${S.pA} y otro para
+      ${S.oponente}, unidos por el mismo <code>roll_grupo_id</code>. Ninguno de los dos ha
+      tocado el móvil, y lo que para uno es ataque para el otro es defensa. Si alguno registra
+      el mismo roll por su cuenta, gana esta versión: el que mira ve cosas que tú no ves
+      —tu propia espalda, por ejemplo—.</p>`
+    : `<p class="hint">Un roll normal sale en <b>6–12 toques</b>. Sin teclado, sin scroll,
+      sin buscar en listas de 60 técnicas: en cada momento solo se ofrecen las acciones
+      posibles desde donde estás.</p>`}
+    <h2 class="sec">Eventos</h2>
+    <div class="tl">${S.eventos.length ? S.eventos.map((e,i) => evHTML(e,i)).join('')
+      : '<div class="empty">Roll sin eventos registrados — cuenta igual para el head-to-head.</div>'}</div>
+    <details><summary class="sec" style="cursor:pointer;list-style:revert">Lo que se guarda
+      <span class="badge">payload</span></summary>
+      <pre>${JSON.stringify(payload, null, 1)}</pre></details>
+    <p class="hint">Se escribe primero en el móvil (IndexedDB) y se sube a Supabase en cuanto
+    hay conexión. Toca la píldora de arriba para simular quedarte sin cobertura.</p>`;
+  clearInterval(window._clk);
+  foot.innerHTML = `<button class="primary" id="otro">+ Otro roll</button>
+    <button class="ghost" id="home">${obs() ? 'Salir' : 'Fin sesión'}</button>`;
+  $('otro').onclick = () => { tap(); S.eventos = []; S.pos = 'de_pie'; S.rol = 'neutral';
+    S.pantalla = obs() ? 'observadorA' : 'oponente'; render(); };
+  $('home').onclick = () => { clearInterval(window._clk); S.modo = 'propio'; S.pA = 'Felipe';
+    S.pantalla = 'inicio'; S.taps = 0; S.t0 = null; S.tRoll = null; S.eventos = []; render(); };
+}
+
+render();
+</script></body></html>
