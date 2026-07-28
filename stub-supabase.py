@@ -8,12 +8,19 @@ guarda en /tmp/capturado.json para luego replicarlo contra la base de verdad.
 Así se prueba la app entera y se comprueba que sus payloads los acepta el
 esquema real, sin poder llegar a la red.
 """
-import base64, json, re, threading, uuid
+import base64, json, os, re, threading, uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
 USER_ID = '55555555-5555-5555-5555-555555555555'
 PRACTICANTE_ID = '66666666-6666-6666-6666-666666666666'
+PABLO_ID = '77777777-7777-7777-7777-777777777777'
+NURIA_ID = '99999999-9999-9999-9999-999999999999'
+MARC_ID = '88888888-8888-8888-8888-888888888888'
+
+# Donde se deja lo capturado. En Windows '/tmp' no existe, asi que se puede
+# apuntar a otro sitio con la variable CAPTURA.
+SALIDA = os.environ.get('CAPTURA', '/tmp/capturado.json')
 
 TECNICAS = [
     {'id': '9f319790-39b0-4274-a946-80a580850791', 'slug': 'mata_leao'},
@@ -25,18 +32,30 @@ TECNICAS = [
     {'id': 'd6e80e7d-88e2-42a2-b490-2cb0bda56f58', 'slug': 'puxada'},
 ]
 
+def ficha(id_, nombre, usa_sistema, user_id=None):
+    return {
+        'id': id_, 'user_id': user_id, 'nombre': nombre, 'apodo': None,
+        'cinturon': 'blanca', 'grados': 0, 'peso_kg': None,
+        'academia': 'Academia BCN', 'usa_sistema': usa_sistema,
+        'creado_por': USER_ID, 'created_at': '2026-07-28T00:00:00Z',
+    }
+
+
 TABLAS = {
-    'practicantes': [{
-        'id': PRACTICANTE_ID, 'user_id': USER_ID, 'nombre': 'Felipe (e2e)',
-        'apodo': None, 'cinturon': 'blanca', 'grados': 0, 'peso_kg': None,
-        'academia': 'Academia BCN', 'usa_sistema': True, 'creado_por': USER_ID,
-        'created_at': '2026-07-28T00:00:00Z',
-    }],
+    # Cuatro fichas. Hacen falta dos con cuenta ADEMAS del que registra, para
+    # poder probar una observacion de verdad — un tercero mirando a otros dos —
+    # y un contacto sin cuenta para el camino en que no hay a quien espejar.
+    'practicantes': [
+        ficha(PRACTICANTE_ID, 'Felipe (e2e)', True, USER_ID),
+        ficha(PABLO_ID, 'Pablo (e2e)', True),
+        ficha(NURIA_ID, 'Nuria (e2e)', True),
+        ficha(MARC_ID, 'Marc (contacto)', False),
+    ],
     'tecnicas': TECNICAS,
     'sesiones': [], 'rolls': [], 'eventos': [],
 }
 
-CAPTURADO = {'sesiones': [], 'rolls': [], 'eventos': [], 'practicantes': []}
+CAPTURADO = {'sesiones': [], 'rolls': [], 'eventos': [], 'practicantes': [], 'rpc': []}
 LOCK = threading.Lock()
 
 
@@ -126,6 +145,28 @@ class H(BaseHTTPRequestHandler):
             return self.responder(200, SESION)
         if u.path.startswith('/auth/v1/otp'):
             return self.responder(200, {})
+
+        # Las RPC. El modo observador no escribe tablas: llama a
+        # registrar_roll_observado(), que en la base real hace sesion + roll +
+        # eventos + espejo en una transaccion. Aqui solo se captura la llamada
+        # tal cual, para poder replicarla despues contra Postgres de verdad.
+        m = re.match(r'^/rest/v1/rpc/(\w+)$', u.path)
+        if m:
+            fn, args = m.group(1), self.cuerpo()
+            with LOCK:
+                CAPTURADO.setdefault('rpc', []).append({'funcion': fn, 'args': args})
+                self.volcar()
+            if fn != 'registrar_roll_observado':
+                return self.responder(404, {'message': f'funcion {fn} desconocida'})
+            # Se imita lo justo: sin cuenta no hay espejo, igual que espejar_roll().
+            b = next((p for p in TABLAS['practicantes']
+                      if p['id'] == (args or {}).get('p_practicante_b')), None)
+            return self.responder(200, {
+                'roll_a': str(uuid.uuid4()),
+                'roll_b': str(uuid.uuid4()) if b and b['usa_sistema'] else None,
+                'creado': True,
+            })
+
         m = re.match(r'^/rest/v1/(\w+)$', u.path)
         if m:
             tabla = m.group(1)
@@ -139,9 +180,13 @@ class H(BaseHTTPRequestHandler):
                     destino[:] = [x for x in destino if x.get('id') != f.get('id')]
                     destino.append(f)
                     CAPTURADO.setdefault(tabla, []).append(f)
-                json.dump(CAPTURADO, open('/tmp/capturado.json', 'w'), indent=1)
+                self.volcar()
             return self.responder(201, filas)
         return self.responder(404, {'message': 'no'})
+
+    def volcar(self):
+        with open(SALIDA, 'w') as f:
+            json.dump(CAPTURADO, f, indent=1)
 
     def do_PATCH(self):
         u = urlparse(self.path)
