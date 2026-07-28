@@ -1,7 +1,7 @@
 # Traspaso — dónde estamos y qué falta
 
-**28 julio 2026.** Cierre de la fase construida en Cowork; a partir de aquí el
-trabajo sigue en VS Code con terminal.
+**29 julio 2026.** El trabajo ya está en VS Code con terminal. El login funciona
+de punta a punta y el modo observador está desplegado.
 
 ---
 
@@ -36,49 +36,56 @@ Postmark), que son cinco minutos de configuración y cero código.
 
 ## 2. Qué está hecho
 
-**Base de datos**: 8 tablas, 9 vistas, 12 enums, 11 políticas de RLS, 4
-funciones. 8 migraciones aplicadas, con copia en `db/`. Diccionario cargado: 24
+**Base de datos**: 8 tablas, 9 vistas, 12 enums, 11 políticas de RLS, 5
+funciones. 9 migraciones aplicadas, con copia en `db/`. Diccionario cargado: 24
 posiciones (13 marcadas `core_v1`) y 63 técnicas con alias.
 
 **App (Fase 1)**: entrada por magic link, pestaña de practicantes con alta y
 edición, y la pantalla de logging con la máquina de estados contextual. Escritura
 local-first: todo entra en IndexedDB y sale a Supabase cuando hay red.
 
-**Probado**: recorrido completo en navegador contra un stub local (entrar, dar de
-alta un compañero, registrar un roll de tres eventos, ver la cola vaciarse), y
-los payloads que genera la app replicados contra la base real, que los aceptó y
-los reflejó en `v_heatmap_ofensivo`.
+**Modo observador**: el botón 👁 Observar del entreno. Un tercero elige a dos
+practicantes y registra el roll en vivo, con cronómetro y con los nombres de los
+dos en vez de "yo/él". Al terminar se guardan **dos rolls** unidos por el mismo
+`roll_grupo_id`: lo que para uno es ataque, para el otro es defensa. Si el
+segundo no tiene cuenta, se guarda solo el lado del primero.
+
+**Probado**: el login, entrando de verdad desde el móvil. El logging propio, con
+recorrido en navegador y los payloads replicados contra la base real. Y el modo
+observador, con 16 comprobaciones SQL contra un Postgres local (idempotencia,
+espejado celda a celda, RLS con `set local role authenticated`, borrado por el
+dueño) más 21 comprobaciones recorriéndolo en un navegador de verdad.
 
 ---
 
 ## 3. Qué falta ahora mismo — por orden
 
-**a) Confirmar que el login funciona de punta a punta.** Es lo único que no se ha
-podido probar contra el Supabase real, porque los magic links llegan al correo de
-Felipe. Estado: se cambió el flujo de PKCE a implícito para arreglar el error
-`PKCE code verifier not found in storage`; **falta verificar que el commit con ese
-cambio esté en `main`** y que el login entre de verdad.
+**a) ~~Confirmar que el login funciona~~ — HECHO.** El flujo implícito está en
+`main` y desplegado; Felipe entró desde el móvil con un magic link.
 
-Comprobar en `src/lib/supabase.ts` que dice `flowType: 'implicit'`.
+**b) ~~URL Configuration de Supabase~~ — HECHO.** Site URL y redirect apuntando
+a `https://yujitsu-eight.vercel.app`.
 
-**b) En Supabase → Authentication → URL Configuration**, que estén:
+**c) Que entre Pablo** con su email. La ficha de practicante se crea sola con un
+trigger (`bjj_08`), con `usa_sistema = true`. A Pablo **no hay que darlo de alta
+a mano**: si lo creas como contacto y luego él se registra, acabáis con dos
+fichas suyas y el head-to-head partido en dos.
 
-```
-Site URL:       https://yujitsu-eight.vercel.app
-Redirect URLs:  https://yujitsu-eight.vercel.app/**
-```
-
-**c) Que entren Felipe y Pablo** con sus emails. La ficha de practicante se crea
-sola con un trigger (`bjj_08`), con `usa_sistema = true`. A Pablo **no hay que
-darlo de alta a mano**: si lo creas como contacto y luego él se registra, acabáis
-con dos fichas suyas y el head-to-head partido en dos.
+Hasta que Pablo no entre, el modo observador solo puede espejar a fichas con
+cuenta — hoy solo la de Felipe.
 
 **d) Decidir `transicion`.** Es un `ALTER TYPE bjj_tipo_evento ADD VALUE
 'transicion'`, no rompe nada, y desbloquea la puntuación estilo IBJJF. La
-decisión es de vocabulario, así que la toman Felipe y Pablo.
+decisión es de vocabulario, así que la toman Felipe y Pablo. **Ya se ha visto en
+datos reales**: en el primer roll de prueba, el oponente derribó y llegó a
+montada, y ese paso a montada no quedó registrado en ninguna parte.
 
-**e) Fase 2**: modo observador en la app, heatmaps y head-to-head, retos. Todo
-diseñado ya en `docs/`.
+**e) Lo que queda de Fase 2**: heatmaps y head-to-head en la app (los datos y las
+vistas ya están, falta la pantalla) y los retos. Diseñado en `docs/`.
+
+**f) Limpieza pendiente en producción**: hay una sesión vacía sin rolls y un
+contacto "Test Account", los dos de las pruebas del primer día. Nada roto, pero
+conviene barrerlos antes de que empiecen los datos de verdad.
 
 ---
 
@@ -108,9 +115,9 @@ en `v_rolls_unicos`; cambiarlo es una línea del `order by`.
 
 ---
 
-## 5. Los tres bugs que encontramos probando
+## 5. Los bugs y bloqueos que encontramos probando
 
-Se documentan porque los tres aparecieron **ejecutando**, no leyendo:
+Se documentan porque todos aparecieron **ejecutando**, no leyendo:
 
 1. **Borrar un practicante fallaba** con `violates foreign key constraint
    rolls_sesion_id_fkey`, por el choque entre el `CASCADE` de sesiones y el `SET
@@ -121,6 +128,18 @@ Se documentan porque los tres aparecieron **ejecutando**, no leyendo:
    imposible de construir hasta arreglarlo (`bjj_07`).
 
 3. **PKCE rompía el magic link** al pedirlo en un dispositivo y abrirlo en otro.
+
+4. **El modo observador no se podía construir solo con frontend.** La RLS impide
+   que un tercero escriba datos de otros: autenticado como el coach, crear la
+   sesión de otro practicante devuelve `42501: new row violates row-level
+   security policy for table "sesiones"`. Hizo falta `registrar_roll_observado()`
+   (`bjj_09`), SECURITY DEFINER, como puerta única de escritura.
+
+5. **El primer commit del arreglo del login nunca llegó a `main`.** El código
+   estaba bien en local, pero Vercel seguía sirviendo la versión con PKCE. Las
+   subidas por el navegador de GitHub habían dejado fuera carpetas enteras
+   (`db/`, `docs/`) y el arreglo se quedó sin commitear. Moraleja barata:
+   comprobar `git status` antes de dar por desplegado algo.
 
 ---
 

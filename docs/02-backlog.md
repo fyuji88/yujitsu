@@ -1,7 +1,38 @@
 # Backlog de producto
 
-**Actualizado: 28 julio 2026**
+**Actualizado: 29 julio 2026**
 Ideas registradas, con el diseño ya pensado para que no haya que redescubrirlo.
+
+---
+
+## 0 · ~~Modo observador~~ — HECHO (29 julio 2026)
+
+~~Un tercero registra en vivo el roll de otros dos, y cada uno recibe sus datos.~~
+
+Implementado y desplegado. La base ya lo soportaba desde `bjj_04`; lo que
+faltaba era la puerta de escritura, porque **la RLS impide que un tercero
+escriba datos de otros** — autenticado como el coach, crear la sesión de otro
+practicante falla con `42501: new row violates row-level security policy`.
+
+Se resolvió con `registrar_roll_observado()` (`bjj_09`, SECURITY DEFINER): una
+sola llamada que escribe sesión, roll, eventos y el espejo al compañero en una
+transacción. En la app es el botón **👁 Observar** de la pantalla de entreno.
+
+### Lo que queda pendiente de esto
+
+**Restringir a tu roster.** Hoy cualquier usuario autenticado puede meter rolls
+en el historial de cualquier practicante: la función se salta la RLS por
+diseño y no comprueba que el observador conozca de nada a los dos que registra.
+
+Con dos amigos y su coach es asumible — la función solo escribe, nunca lee datos
+ajenos, y el dueño puede borrar lo que le metan. Pero **el día que entre gente
+de la academia esto se queda corto**: hace falta exigir que A y B estén en el
+roster del observador, o que exista una relación previa entre ellos. Es una
+condición añadida al principio de la función, no un rediseño.
+
+**Rolls observados sin sumisión.** El roll observado siempre pasa por la
+pantalla de eventos. El "solo resultado" del prototipo (`pMinimo`) no está
+portado — para los días en que el coach solo quiere anotar quién ganó.
 
 ---
 
@@ -106,10 +137,15 @@ la gente de verdad.
 
 ## Orden que propongo
 
-1. **Auth + pestaña Practicantes** — bloquea todo lo demás; sin fichas no hay nada que loguear.
-2. **`transicion` en el enum** — decisión de vocabulario, y ahora es prerrequisito de los puntos.
-3. **PWA de logging** — el MVP de verdad.
-4. **Puntos estimados** — barato una vez existan las transiciones.
-5. **Sugerencias de técnicas** — cuando haya gente fuera de vosotros dos usándolo.
+1. ~~**Auth + pestaña Practicantes**~~ — hecho.
+2. ~~**PWA de logging**~~ — hecho, el MVP de verdad.
+3. ~~**Modo observador**~~ — hecho.
+4. **`transicion` en el enum** — decisión de vocabulario de Felipe y Pablo, y
+   prerrequisito de los puntos. Es lo siguiente que desbloquea algo.
+5. **Puntos estimados** — barato una vez existan las transiciones.
+6. **Heatmaps y head-to-head en la app** — los datos y las vistas ya están; falta
+   la pantalla.
+7. **Sugerencias de técnicas** — cuando haya gente fuera de vosotros dos usándolo.
 
-Duplicados y reclamar ficha entran cuando entre la primera persona de la academia.
+Duplicados, reclamar ficha y restringir el modo observador al roster entran todos
+a la vez: el día que entre la primera persona de la academia.
