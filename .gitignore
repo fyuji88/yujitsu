@@ -1,5 +1,11 @@
 node_modules
 .next
-.env.local
 *.tsbuildinfo
 next-env.d.ts
+
+# El enlace con el proyecto de Vercel, que crea `vercel link`.
+.vercel
+
+# Ninguna clave al repositorio, pero la plantilla si se versiona.
+.env*
+!.env.local.example
