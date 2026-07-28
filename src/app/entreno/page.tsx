@@ -3,12 +3,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Marco, type Sesion } from '@/components/Marco';
 import { supabase } from '@/lib/supabase';
-import { encolar, nuevoId } from '@/lib/db';
+import { encolar, encolarRollObservado, nuevoId } from '@/lib/db';
 import { vaciarCola } from '@/lib/sync';
 import {
-  accionesPosibles, aplicarAccion, esGuardia, GUARDIAS_TODAS, NOMBRE_OBJETIVO,
-  NOMBRE_POSICION, resultadoDe,
-  type EstadoRoll, type EventoBorrador, type Pendiente,
+  accionesPosibles, aplicarAccion, CONTEXTO_PROPIO, esGuardia, GUARDIAS_TODAS,
+  NOMBRE_OBJETIVO, NOMBRE_POSICION, resultadoDe,
+  type Contexto, type EstadoRoll, type EventoBorrador, type Modo, type Pendiente,
 } from '@/lib/bjj';
 import type {
   Modalidad, Posicion, PracticanteRow, TipoSesion,
@@ -27,6 +27,12 @@ interface SesionAbierta {
 
 const hoy = () => new Date().toISOString().slice(0, 10);
 
+/** mm:ss para el cronómetro del observador. */
+function reloj(desde: number, ahora: number) {
+  const s = Math.max(0, Math.floor((ahora - desde) / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
 export default function Entreno() {
   return <Marco titulo="Entreno">{(s) => <Flujo sesion={s} />}</Marco>;
 }
@@ -35,7 +41,13 @@ function Flujo({ sesion }: { sesion: Sesion }) {
   const [abierta, setAbierta] = useState<SesionAbierta | null>(null);
   const [roster, setRoster] = useState<PracticanteRow[]>([]);
   const [tecnicas, setTecnicas] = useState<Record<string, string>>({});
-  const [fase, setFase] = useState<'inicio' | 'oponente' | 'roll' | 'fin'>('inicio');
+  const [fase, setFase] = useState<'inicio' | 'observadorA' | 'oponente' | 'roll' | 'fin'>('inicio');
+
+  // Quién registra. En modo observador el roll no es de nadie de los que miran:
+  // `practA` es quien queda como `actor: 'yo'` en los datos.
+  const [modo, setModo] = useState<Modo>('propio');
+  const [practA, setPractA] = useState<PracticanteRow | null>(null);
+  const [modalidadObs, setModalidadObs] = useState<Modalidad>('gi');
 
   // roll en curso
   const [oponente, setOponente] = useState<PracticanteRow | null>(null);
@@ -46,11 +58,15 @@ function Flujo({ sesion }: { sesion: Sesion }) {
     { slug: string; objetivo: string; actor: 'yo' | 'oponente'; posicion: Posicion; rol: string } | null
   >(null);
 
+  // El observador registra en vivo: el reloj arranca al elegir al segundo.
+  const [tRoll, setTRoll] = useState<number | null>(null);
+  const [ahora, setAhora] = useState(() => Date.now());
+
   useEffect(() => {
     const guardada = localStorage.getItem(CLAVE_SESION);
     if (guardada) {
       const s = JSON.parse(guardada) as SesionAbierta;
-      if (s.fecha === hoy()) setAbierta(s);
+      if (s.fecha === hoy()) { setAbierta(s); setModalidadObs(s.modalidad); }
       else localStorage.removeItem(CLAVE_SESION);
     }
     const cache = localStorage.getItem(CLAVE_TECNICAS);
@@ -72,6 +88,31 @@ function Flujo({ sesion }: { sesion: Sesion }) {
     })();
   }, []);
 
+  // El reloj solo corre observando y dentro del roll.
+  useEffect(() => {
+    if (modo !== 'observador' || fase !== 'roll' || tRoll === null) return;
+    const id = setInterval(() => setAhora(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [modo, fase, tRoll]);
+
+  const observando = modo === 'observador';
+  const nombreA = observando ? (practA?.nombre ?? '') : 'Yo';
+  const nombreB = oponente?.nombre ?? 'Oponente';
+
+  const ctx: Contexto = observando && practA && oponente
+    ? { modo: 'observador', a: practA.nombre, b: oponente.nombre }
+    : CONTEXTO_PROPIO;
+
+  /** Minuto del roll, solo si hay cronómetro. Se acota igual que el check de la base. */
+  const minutoActual = useCallback(() => {
+    if (tRoll === null) return null;
+    return Math.min(60, Math.floor((Date.now() - tRoll) / 60000));
+  }, [tRoll]);
+
+  const agregar = useCallback((ev: EventoBorrador) => {
+    setEventos((e) => [...e, { ...ev, minuto: minutoActual() }]);
+  }, [minutoActual]);
+
   const abrirSesion = useCallback(async (modalidad: Modalidad, tipo: TipoSesion) => {
     const s: SesionAbierta = { id: nuevoId(), fecha: hoy(), modalidad, tipo, rolls: 0 };
     await encolar('sesiones', {
@@ -84,26 +125,49 @@ function Flujo({ sesion }: { sesion: Sesion }) {
     });
     localStorage.setItem(CLAVE_SESION, JSON.stringify(s));
     setAbierta(s);
+    setModalidadObs(modalidad);
     void vaciarCola();
   }, [sesion.practicante]);
 
-  function nuevoRoll() {
+  function limpiarRoll() {
     setOponente(null);
     setEstado({ pos: 'de_pie', rol: 'neutral' });
     setEventos([]);
     setPendiente(null);
     setSubPendiente(null);
+    setTRoll(null);
+  }
+
+  function nuevoRoll() {
+    limpiarRoll();
+    setModo('propio');
+    setPractA(null);
     setFase('oponente');
   }
 
+  function observar() {
+    limpiarRoll();
+    setModo('observador');
+    setPractA(null);
+    setFase('observadorA');
+  }
+
+  function salirDeObservador() {
+    limpiarRoll();
+    setModo('propio');
+    setPractA(null);
+    setFase('inicio');
+  }
+
   function accion(clave: Parameters<typeof aplicarAccion>[0]) {
-    const r = aplicarAccion(clave, estado);
-    if (r.evento) setEventos((e) => [...e, r.evento!]);
+    const r = aplicarAccion(clave, estado, ctx);
+    if (r.evento) agregar(r.evento);
     if (r.estado) setEstado(r.estado);
     setPendiente(r.pendiente ?? null);
   }
 
-  async function terminar() {
+  /** Tu propio roll: filas sueltas por la cola de siempre. */
+  async function terminarPropio() {
     if (!abierta || !oponente) return;
     const rollId = nuevoId();
     await encolar('rolls', {
@@ -129,6 +193,7 @@ function Flujo({ sesion }: { sesion: Sesion }) {
         objetivo: ev.objetivo,
         tecnica_id: ev.tecnicaSlug ? tecnicas[ev.tecnicaSlug] ?? null : null,
         completado: ev.completado,
+        minuto: ev.minuto ?? null,
       });
     }
     const s = { ...abierta, rolls: abierta.rolls + 1 };
@@ -138,9 +203,44 @@ function Flujo({ sesion }: { sesion: Sesion }) {
     void vaciarCola();
   }
 
+  /**
+   * Roll observado: una sola llamada a la RPC.
+   *
+   * No pasa por `encolar()` porque la RLS no deja escribir filas de otros; y
+   * no toca la sesión del observador, porque el roll no es suyo. La técnica
+   * viaja por slug: la resuelve Postgres.
+   */
+  async function terminarObservado() {
+    if (!practA || !oponente) return;
+    const seg = tRoll ? Math.round((Date.now() - tRoll) / 1000) : 0;
+    await encolarRollObservado({
+      p_grupo: nuevoId(),
+      p_practicante_a: practA.id,
+      p_practicante_b: oponente.id,
+      p_fecha: hoy(),
+      p_modalidad: modalidadObs,
+      p_duracion_min: Math.min(60, Math.max(0, Math.round(seg / 60))),
+      p_resultado: resultadoDe(eventos),
+      p_eventos: eventos.map((ev) => ({
+        actor: ev.actor,
+        tipo: ev.tipo,
+        posicion: ev.posicion,
+        rol: ev.rol,
+        objetivo: ev.objetivo,
+        tecnica_slug: ev.tecnicaSlug,
+        completado: ev.completado,
+        minuto: ev.minuto ?? null,
+      })),
+    });
+    setFase('fin');
+    void vaciarCola();
+  }
+
+  const terminar = () => (observando ? terminarObservado() : terminarPropio());
+
   // ---------------------------------------------------------------- pantallas
 
-  if (!abierta) {
+  if (!abierta && fase === 'inicio') {
     return (
       <>
         <h1>Nuevo entreno</h1>
@@ -151,43 +251,117 @@ function Flujo({ sesion }: { sesion: Sesion }) {
           <button className="chip" onClick={() => abrirSesion('nogi', 'sparring')}>No-gi</button>
           <button className="chip" onClick={() => abrirSesion('nogi', 'open_mat')}>Open mat</button>
         </div>
+        <h2 className="sec">O mira a otros</h2>
+        <div style={{ marginTop: 4 }}>
+          <button className="ghost" data-testid="observar" onClick={observar}>
+            👁 Observar
+          </button>
+        </div>
+        <p className="hint">
+          Para registrar el roll de otros dos sin entrenar tú. No hace falta abrir sesión:
+          el roll va a la de ellos, no a la tuya.
+        </p>
+      </>
+    );
+  }
+
+  if (fase === 'observadorA') {
+    return (
+      <>
+        <h1>Modo observador</h1>
+        <p className="hint">
+          Tú solo miras. El roll se guarda para los dos: uno lo verá como ataque y el otro
+          como defensa, sin que ninguno toque el móvil.
+        </p>
+        <h2 className="sec">Modalidad del roll</h2>
+        <div className="chips">
+          {(['gi', 'nogi'] as const).map((m) => (
+            <button key={m} className="chip" data-testid={`obs-mod-${m}`}
+              style={modalidadObs === m
+                ? { borderColor: 'var(--yo)', color: 'var(--yo)' } : undefined}
+              onClick={() => setModalidadObs(m)}>
+              {m === 'gi' ? 'Gi' : 'No-gi'}
+            </button>
+          ))}
+        </div>
+        <h2 className="sec" style={{ color: 'var(--yo)' }}>Primer practicante</h2>
+        <div className="chips">
+          {roster.map((p) => (
+            <button className="chip" key={p.id} data-testid={`obsA-${p.nombre}`}
+              onClick={() => { setPractA(p); setFase('oponente'); }}>
+              {p.nombre}{p.usa_sistema && <small>app</small>}
+            </button>
+          ))}
+        </div>
+        {roster.length < 2 && (
+          <p className="hint">
+            Hacen falta al menos dos fichas en el roster. Añádelas desde la pestaña Practicantes.
+          </p>
+        )}
+        <div style={{ marginTop: 18 }}>
+          <button className="ghost" onClick={salirDeObservador}>← Atrás</button>
+        </div>
       </>
     );
   }
 
   if (fase === 'oponente') {
+    const lista = observando
+      ? roster.filter((p) => p.id !== practA?.id)
+      : roster.filter((p) => p.id !== sesion.practicante.id);
     return (
       <>
-        <h2 className="sec">¿Con quién ruedas?</h2>
+        <h2 className="sec" style={observando ? { color: 'var(--op)' } : undefined}>
+          {observando ? `${nombreA} contra…` : '¿Con quién ruedas?'}
+        </h2>
         <div className="chips">
-          {roster.filter((p) => p.id !== sesion.practicante.id).map((p) => (
+          {lista.map((p) => (
             <button className="chip" key={p.id} data-testid={`op-${p.nombre}`}
-              onClick={() => { setOponente(p); setFase('roll'); }}>
+              onClick={() => {
+                setOponente(p);
+                setTRoll(observando ? Date.now() : null);
+                setAhora(Date.now());
+                setFase('roll');
+              }}>
               {p.nombre}{p.usa_sistema && <small>app</small>}
             </button>
           ))}
         </div>
-        {roster.length <= 1 && (
+        {!lista.length && (
           <p className="hint">
-            No tienes a nadie en el roster. Añade compañeros desde la pestaña Practicantes.
+            No tienes a nadie más en el roster. Añade compañeros desde la pestaña Practicantes.
           </p>
         )}
+        {observando && (
+          <p className="hint">En cuanto elijas, arranca el cronómetro del roll.</p>
+        )}
         <div style={{ marginTop: 18 }}>
-          <button className="ghost" onClick={() => setFase('inicio')}>← Atrás</button>
+          <button className="ghost"
+            onClick={() => setFase(observando ? 'observadorA' : 'inicio')}>← Atrás</button>
         </div>
       </>
     );
   }
 
-  if (fase === 'roll' && oponente) {
-    const a = accionesPosibles(estado);
+  if (fase === 'roll' && oponente && (!observando || practA)) {
+    const a = accionesPosibles(estado, modo);
+    const quienArriba = estado.rol === 'arriba' ? nombreA : nombreB;
     return (
       <>
         <div className="state">
-          <div className="lbl">Posición actual</div>
+          <div className="lbl">
+            Posición actual
+            {observando && tRoll !== null && (
+              <> · <span data-testid="crono">{reloj(tRoll, ahora)}</span></>
+            )}
+          </div>
           <div className="pos">{NOMBRE_POSICION[estado.pos]}</div>
           <div className="rol">
-            {estado.rol === 'neutral' ? 'nadie controla todavía' : <>estás <b>{estado.rol}</b></>}
+            {estado.rol === 'neutral'
+              ? 'nadie controla todavía'
+              : observando
+                ? <><b>{quienArriba}</b> arriba</>
+                : <>estás <b>{estado.rol}</b></>}
           </div>
         </div>
 
@@ -219,21 +393,21 @@ function Flujo({ sesion }: { sesion: Sesion }) {
                 <h2 className="sec">¿Entró?</h2>
                 <div className="chips">
                   <button className="chip ok" data-testid="entro-si" onClick={() => {
-                    setEventos((e) => [...e, {
+                    agregar({
                       actor: subPendiente.actor, tipo: 'sumision',
                       posicion: subPendiente.posicion, rol: subPendiente.rol as EstadoRoll['rol'],
                       objetivo: subPendiente.objetivo as EventoBorrador['objetivo'],
                       tecnicaSlug: subPendiente.slug, completado: true,
-                    }]);
+                    });
                     setSubPendiente(null);
                   }}>✓ Sí, fin del roll</button>
                   <button className="chip no" onClick={() => {
-                    setEventos((e) => [...e, {
+                    agregar({
                       actor: subPendiente.actor, tipo: 'sumision',
                       posicion: subPendiente.posicion, rol: subPendiente.rol as EstadoRoll['rol'],
                       objetivo: subPendiente.objetivo as EventoBorrador['objetivo'],
                       tecnicaSlug: subPendiente.slug, completado: false,
-                    }]);
+                    });
                     setSubPendiente(null);
                   }}>✗ Falló, seguimos</button>
                 </div>
@@ -241,21 +415,25 @@ function Flujo({ sesion }: { sesion: Sesion }) {
             )
             : (
               <>
-                <h2 className="sec">Yo</h2>
+                <h2 className="sec" style={observando ? { color: 'var(--yo)' } : undefined}>
+                  {nombreA}
+                </h2>
                 <div className="grid">
                   {a.yo.map((x) => (
                     <button className="act yo" key={x.clave} data-testid={x.clave}
                       onClick={() => accion(x.clave)}>
-                      <span className="k">yo</span>{x.etiqueta}
+                      {!observando && <span className="k">yo</span>}{x.etiqueta}
                     </button>
                   ))}
                 </div>
-                <h2 className="sec">{oponente.nombre}</h2>
+                <h2 className="sec" style={observando ? { color: 'var(--op)' } : undefined}>
+                  {nombreB}
+                </h2>
                 <div className="grid">
                   {a.op.map((x) => (
                     <button className="act op" key={x.clave} data-testid={x.clave}
                       onClick={() => accion(x.clave)}>
-                      <span className="k">él</span>{x.etiqueta}
+                      {!observando && <span className="k">él</span>}{x.etiqueta}
                     </button>
                   ))}
                 </div>
@@ -263,7 +441,7 @@ function Flujo({ sesion }: { sesion: Sesion }) {
             )}
 
         <h2 className="sec">Eventos ({eventos.length})</h2>
-        <Timeline eventos={eventos} oponente={oponente.nombre}
+        <Timeline eventos={eventos} nombreA={nombreA} nombreB={nombreB}
           onBorrar={(i) => setEventos((e) => e.filter((_, j) => j !== i))} />
 
         <div style={{ display: 'flex', gap: 9, marginTop: 20 }}>
@@ -277,22 +455,54 @@ function Flujo({ sesion }: { sesion: Sesion }) {
 
   if (fase === 'fin') {
     const res = resultadoDe(eventos);
-    const txt = res === 'sumision_favor' ? 'Sumisión a favor'
-      : res === 'sumision_contra' ? 'Sumisión en contra' : 'Sin sumisión';
+    const txt = observando
+      ? (res === 'sumision_favor' ? `Ganó ${nombreA}`
+        : res === 'sumision_contra' ? `Ganó ${nombreB}` : 'Sin sumisión')
+      : (res === 'sumision_favor' ? 'Sumisión a favor'
+        : res === 'sumision_contra' ? 'Sumisión en contra' : 'Sin sumisión');
+    const espeja = observando && oponente?.usa_sistema;
     return (
       <>
         <div className="state">
-          <div className="lbl">Roll guardado</div>
+          <div className="lbl">{observando ? 'Roll observado' : 'Roll guardado'}</div>
           <div className="pos" data-testid="resultado">{txt}</div>
-          <div className="rol">{eventos.length} eventos · vs {oponente?.nombre}</div>
+          <div className="rol">
+            {eventos.length} eventos · {observando ? `${nombreA} vs ${nombreB}` : `vs ${nombreB}`}
+          </div>
         </div>
-        <p className="hint">
-          Se ha guardado en el móvil y sale hacia Supabase en cuanto haya red.
-          Mira la píldora de arriba.
-        </p>
+
+        {observando ? (
+          <>
+            <p className="hint" data-testid="resumen-observado">
+              {espeja
+                ? <>Se han guardado <b>dos rolls</b>, uno para {nombreA} y otro para {nombreB},
+                    unidos por el mismo <code>roll_grupo_id</code>. Ninguno de los dos ha tocado
+                    el móvil, y lo que para uno es ataque para el otro es defensa.</>
+                : <>Se ha guardado <b>un roll</b>, el de {nombreA}. {nombreB} no usa la app,
+                    así que no hay a quién espejárselo: cuando se dé de alta, este roll seguirá
+                    contando como suyo en el head-to-head de {nombreA}.</>}
+            </p>
+            <p className="hint">
+              Si alguno de los dos registra este mismo roll por su cuenta, <b>gana esta
+              versión</b>: el que mira ve cosas que tú no ves — tu propia espalda, y las
+              sumisiones que intentaste y fallaste.
+            </p>
+          </>
+        ) : (
+          <p className="hint">
+            Se ha guardado en el móvil y sale hacia Supabase en cuanto haya red.
+            Mira la píldora de arriba.
+          </p>
+        )}
+
         <div style={{ display: 'flex', gap: 9, marginTop: 18 }}>
-          <button className="primary" onClick={nuevoRoll}>+ Otro roll</button>
-          <button className="ghost" onClick={() => setFase('inicio')}>Fin sesión</button>
+          <button className="primary" data-testid="otro-roll" onClick={() => {
+            limpiarRoll();
+            setFase(observando ? 'observadorA' : 'oponente');
+          }}>+ Otro roll</button>
+          <button className="ghost" onClick={salirDeObservador}>
+            {observando ? 'Salir' : 'Fin sesión'}
+          </button>
         </div>
       </>
     );
@@ -302,16 +512,20 @@ function Flujo({ sesion }: { sesion: Sesion }) {
     <>
       <div className="state">
         <div className="lbl">Sesión abierta</div>
-        <div className="pos">{abierta.modalidad === 'gi' ? 'Gi' : 'No-gi'}</div>
-        <div className="rol">{abierta.rolls} rolls registrados hoy</div>
+        <div className="pos">{abierta?.modalidad === 'gi' ? 'Gi' : 'No-gi'}</div>
+        <div className="rol">{abierta?.rolls ?? 0} rolls registrados hoy</div>
       </div>
-      <div style={{ marginTop: 18 }}>
+      <div style={{ display: 'flex', gap: 9, marginTop: 18 }}>
         <button className="primary" data-testid="nuevo-roll" onClick={nuevoRoll}>
           + Nuevo roll
+        </button>
+        <button className="ghost" data-testid="observar" onClick={observar}>
+          👁 Observar
         </button>
       </div>
       <p className="hint">
         La sesión se cierra sola a medianoche. Si mañana entrenas otra vez, se abre una nueva.
+        <b> 👁 Observar</b> es para registrar el roll de otros dos: cada uno recibe sus datos.
       </p>
     </>
   );
@@ -357,8 +571,8 @@ function Pregunta(
 }
 
 function Timeline(
-  { eventos, oponente, onBorrar }:
-  { eventos: EventoBorrador[]; oponente: string; onBorrar: (i: number) => void },
+  { eventos, nombreA, nombreB, onBorrar }:
+  { eventos: EventoBorrador[]; nombreA: string; nombreB: string; onBorrar: (i: number) => void },
 ) {
   const NOMBRE_TIPO: Record<EventoBorrador['tipo'], string> = {
     sumision: 'Sumisión', barrida: 'Barrida', pase_guardia: 'Pase de guardia',
@@ -375,11 +589,12 @@ function Timeline(
             background: e.actor === 'yo' ? 'var(--yo)' : 'var(--op)',
           }} />
           <span className="tx">
-            {e.actor === 'yo' ? 'Yo' : oponente} · {
+            {e.actor === 'yo' ? nombreA : nombreB} · {
               e.tecnicaSlug === 'puxada' ? 'Tira guardia' : NOMBRE_TIPO[e.tipo]
             }{e.completado ? '' : ' (falló)'}
             <small>
               {NOMBRE_POSICION[e.posicion]} · {e.rol}
+              {e.minuto != null ? ` · min ${e.minuto}` : ''}
               {e.tecnicaSlug && e.tipo === 'sumision'
                 ? ` · ${e.tecnicaSlug.replace(/_/g, ' ')} → ${NOMBRE_OBJETIVO[e.objetivo]}`
                 : ''}

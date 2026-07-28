@@ -13,15 +13,32 @@
  * rechaza por clave primaria en vez de duplicarla.
  */
 import Dexie, { type Table } from 'dexie';
-import type { EventoInsert, RollInsert, SesionInsert } from './database.types';
+import type {
+  ArgsRollObservado, EventoInsert, RollInsert, SesionInsert,
+} from './database.types';
 
 export type TablaRemota = 'sesiones' | 'rolls' | 'eventos';
 
+/**
+ * Dónde va cada cosa al vaciar la cola.
+ *
+ * Las tres tablas se suben con `upsert`. `roll_observado` no es una tabla: es
+ * una llamada a la RPC `registrar_roll_observado()`, porque la RLS no deja
+ * escribir filas de otros y hace falta pasar por una función SECURITY DEFINER.
+ * Comparte cola con el resto para que valga lo mismo de siempre: se registra
+ * sin cobertura y sale solo cuando hay red.
+ */
+export type DestinoCola = TablaRemota | 'roll_observado';
+
 export interface EnvioPendiente {
-  /** id de la fila: el mismo que va a Postgres, para que el reintento sea idempotente */
+  /**
+   * Clave de idempotencia. Para las tablas es el id de la fila; para el roll
+   * observado, el `roll_grupo_id`. En los dos casos lo genera el cliente, que
+   * es lo que hace que reintentar tras perder cobertura no duplique nada.
+   */
   id: string;
-  tabla: TablaRemota;
-  fila: SesionInsert | RollInsert | EventoInsert;
+  tabla: DestinoCola;
+  fila: SesionInsert | RollInsert | EventoInsert | ArgsRollObservado;
   creado: number;
   intentos: number;
   ultimoError?: string;
@@ -46,6 +63,21 @@ export const nuevoId = () => crypto.randomUUID();
 export async function encolar(tabla: TablaRemota, fila: SesionInsert | RollInsert | EventoInsert) {
   await local.outbox.put({
     id: fila.id, tabla, fila, creado: Date.now(), intentos: 0,
+  });
+}
+
+/**
+ * Encola un roll observado entero: sesión, roll, eventos y el espejo al
+ * compañero, todo en una llamada.
+ *
+ * Va aparte de `encolar()` porque no es una fila sino una RPC, y porque la
+ * unidad de reintento es distinta: aquí el roll entero se manda o no se manda,
+ * no hay medio roll. La clave es `p_grupo`, así que reenviarlo es inofensivo —
+ * la función lo reconoce y devuelve lo que ya había.
+ */
+export async function encolarRollObservado(args: ArgsRollObservado) {
+  await local.outbox.put({
+    id: args.p_grupo, tabla: 'roll_observado', fila: args, creado: Date.now(), intentos: 0,
   });
 }
 

@@ -8,10 +8,15 @@
  * clave foránea — y como el envío es en orden de creación, eso se respeta solo,
  * pero lo hacemos explícito por tabla para no depender de la suerte.
  */
-import { local, pendientes, type EnvioPendiente, type TablaRemota } from './db';
+import {
+  local, pendientes, type DestinoCola, type EnvioPendiente, type TablaRemota,
+} from './db';
 import { supabase } from './supabase';
+import type { ArgsRollObservado } from './database.types';
 
-const ORDEN: TablaRemota[] = ['sesiones', 'rolls', 'eventos'];
+// Los rolls observados van al final: no dependen de nada de lo anterior (la
+// RPC se crea su propia sesión), y así un fallo suyo no bloquea lo tuyo.
+const ORDEN: DestinoCola[] = ['sesiones', 'rolls', 'eventos', 'roll_observado'];
 
 export interface EstadoSync {
   enCola: number;
@@ -34,6 +39,42 @@ export function observarSync(f: Escucha) {
   return () => escuchas.delete(f);
 }
 
+/**
+ * Las tres tablas de siempre, en lote.
+ *
+ * upsert en vez de insert: reenviar una fila ya enviada no es un error, es
+ * exactamente lo que queremos que pase tras perder la conexión.
+ */
+async function enviarFilas(
+  tabla: TablaRemota, lote: EnvioPendiente[],
+): Promise<string | null> {
+  const { error } = await supabase()
+    .from(tabla)
+    .upsert(lote.map((p) => p.fila), { onConflict: 'id' });
+  if (error) return error.message;
+
+  await local.outbox.bulkDelete(lote.map((p) => p.id));
+  return null;
+}
+
+/**
+ * Los rolls observados, de uno en uno: cada uno es una llamada a la RPC, no
+ * una fila, y escribe sesión + roll + eventos + espejo en una transacción.
+ *
+ * Se van borrando de la cola según entran, para que un fallo a la mitad no
+ * arrastre a los que ya pasaron. Reenviarlos tampoco haría daño: `p_grupo` es
+ * la clave de idempotencia y la función reconoce el reintento.
+ */
+async function enviarObservados(lote: EnvioPendiente[]): Promise<string | null> {
+  for (const p of lote) {
+    const { error } = await supabase()
+      .rpc('registrar_roll_observado', p.fila as ArgsRollObservado);
+    if (error) return error.message;
+    await local.outbox.delete(p.id);
+  }
+  return null;
+}
+
 let enMarcha = false;
 
 export async function vaciarCola(): Promise<void> {
@@ -47,36 +88,34 @@ export async function vaciarCola(): Promise<void> {
 
   try {
     const cola = await pendientes();
-    const porTabla = new Map<TablaRemota, EnvioPendiente[]>();
+    const porTabla = new Map<DestinoCola, EnvioPendiente[]>();
     for (const p of cola) {
       const l = porTabla.get(p.tabla) ?? [];
       l.push(p);
       porTabla.set(p.tabla, l);
     }
 
-    for (const tabla of ORDEN) {
-      const lote = porTabla.get(tabla);
+    for (const destino of ORDEN) {
+      const lote = porTabla.get(destino);
       if (!lote?.length) continue;
 
-      // upsert en vez de insert: reenviar una fila ya enviada no es un error,
-      // es exactamente lo que queremos que pase tras perder la conexión.
-      const { error } = await supabase()
-        .from(tabla)
-        .upsert(lote.map((p) => p.fila), { onConflict: 'id' });
+      const fallo = destino === 'roll_observado'
+        ? await enviarObservados(lote)
+        : await enviarFilas(destino, lote);
 
-      if (error) {
+      if (fallo) {
         await local.transaction('rw', local.outbox, async () => {
           for (const p of lote) {
-            await local.outbox.update(p.id, {
-              intentos: p.intentos + 1, ultimoError: error.message,
-            });
+            if (await local.outbox.get(p.id)) {
+              await local.outbox.update(p.id, {
+                intentos: p.intentos + 1, ultimoError: fallo,
+              });
+            }
           }
         });
-        emitir({ error: error.message, enviando: false, enCola: await local.outbox.count() });
+        emitir({ error: fallo, enviando: false, enCola: await local.outbox.count() });
         return;
       }
-
-      await local.outbox.bulkDelete(lote.map((p) => p.id));
     }
 
     emitir({ enviando: false, error: null, enCola: await local.outbox.count() });

@@ -96,6 +96,44 @@ export interface EventoInsert {
   notas?: string | null;
 }
 
+/**
+ * Un evento tal y como viaja a la RPC del modo observador.
+ *
+ * La técnica va por **slug**, no por id: el diccionario se resuelve dentro de
+ * Postgres. Así el observador no depende de tener la caché de técnicas al día,
+ * y un slug que no exista no tira el evento — entra con `tecnica_id` null y
+ * sigue alimentando el heatmap por posición y objetivo.
+ */
+export interface EventoObservado {
+  actor: Actor;
+  tipo: TipoEvento;
+  posicion: Posicion;
+  rol: Rol;
+  objetivo: Objetivo;
+  tecnica_slug: string | null;
+  completado: boolean;
+  minuto: number | null;
+}
+
+/**
+ * Argumentos de `registrar_roll_observado()`.
+ *
+ * Los nombres son literalmente los de los parámetros en Postgres: PostgREST
+ * los empareja por nombre, así que renombrar uno aquí rompe la llamada.
+ * `p_grupo` es el `roll_grupo_id`, generado en el cliente — es la clave de
+ * idempotencia que hace que reintentar no duplique el roll.
+ */
+export interface ArgsRollObservado {
+  p_grupo: string;
+  p_practicante_a: string;
+  p_practicante_b: string;
+  p_fecha: string;
+  p_modalidad: Modalidad;
+  p_duracion_min: number | null;
+  p_resultado: ResultadoRoll;
+  p_eventos: EventoObservado[];
+}
+
 export interface TecnicaRow {
   id: string;
   slug: string;

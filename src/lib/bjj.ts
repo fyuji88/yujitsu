@@ -95,37 +95,75 @@ export interface EstadoRoll {
   rol: Rol;
 }
 
+/**
+ * Quién está registrando. Cambia las palabras, nunca la máquina de estados.
+ *
+ * `propio`     — logueas tu roll: "Me pasa", "Escapo", "¿Dónde caes?".
+ * `observador` — miras a otros dos: "Pasa la guardia", "Escapa", "¿Dónde cae
+ *                Pablo?". Ahí "yo" y "él" no significan nada, y hay que decir
+ *                nombres o el coach se pierde sobre quién está tocando.
+ */
+export type Modo = 'propio' | 'observador';
+
+/**
+ * Los dos que ruedan, por nombre.
+ *
+ * `a` es quien queda como `actor: 'yo'` en los datos y `b` como
+ * `actor: 'oponente'`. En modo propio, A eres tú.
+ */
+export interface Contexto {
+  modo: Modo;
+  a: string;
+  b: string;
+}
+
+export const CONTEXTO_PROPIO: Contexto = { modo: 'propio', a: 'Yo', b: 'Él' };
+
 /** Qué puede pasar desde donde estás. El resto de la app cuelga de esto. */
-export function accionesPosibles(e: EstadoRoll): { yo: Accion[]; op: Accion[] } {
-  const a = (clave: ClaveAccion, etiqueta: string): Accion => ({ clave, etiqueta });
+export function accionesPosibles(
+  e: EstadoRoll, modo: Modo = 'propio',
+): { yo: Accion[]; op: Accion[] } {
+  // Cada acción lleva dos etiquetas: la de loguear lo tuyo y la de observar.
+  const a = (clave: ClaveAccion, propio: string, observando: string): Accion =>
+    ({ clave, etiqueta: modo === 'observador' ? observando : propio });
 
   if (e.rol === 'neutral') {
     return {
-      yo: [a('derribo', 'Derribo'), a('puxada', 'Tiro guardia')],
-      op: [a('op_derribo', 'Me derriba'), a('op_puxada', 'Tira guardia')],
+      yo: [a('derribo', 'Derribo', 'Derriba'),
+           a('puxada', 'Tiro guardia', 'Tira guardia')],
+      op: [a('op_derribo', 'Me derriba', 'Derriba'),
+           a('op_puxada', 'Tira guardia', 'Tira guardia')],
     };
   }
   if (esGuardia(e.pos) && e.rol === 'abajo') {
     return {
-      yo: [a('barrida', 'Barrida'), a('sumision', 'Sumisión'), a('toma_espalda', 'Tomo espalda')],
-      op: [a('op_pase', 'Me pasa'), a('op_sumision', 'Me somete')],
+      yo: [a('barrida', 'Barrida', 'Barrida'),
+           a('sumision', 'Sumisión', 'Sumisión'),
+           a('toma_espalda', 'Tomo espalda', 'Toma espalda')],
+      op: [a('op_pase', 'Me pasa', 'Pasa la guardia'),
+           a('op_sumision', 'Me somete', 'Somete')],
     };
   }
   if (esGuardia(e.pos) && e.rol === 'arriba') {
     return {
-      yo: [a('pase', 'Paso guardia'), a('sumision', 'Sumisión')],
-      op: [a('op_barrida', 'Me barre'), a('op_sumision', 'Me somete'), a('op_espalda', 'Toma mi espalda')],
+      yo: [a('pase', 'Paso guardia', 'Pasa la guardia'),
+           a('sumision', 'Sumisión', 'Sumisión')],
+      op: [a('op_barrida', 'Me barre', 'Barrida'),
+           a('op_sumision', 'Me somete', 'Somete'),
+           a('op_espalda', 'Toma mi espalda', 'Toma la espalda')],
     };
   }
   if (e.rol === 'arriba') {
     return {
-      yo: [a('sumision', 'Sumisión'), a('mejora', 'Mejoro posición')],
-      op: [a('op_escape', 'Escapa')],
+      yo: [a('sumision', 'Sumisión', 'Sumisión'),
+           a('mejora', 'Mejoro posición', 'Mejora posición')],
+      op: [a('op_escape', 'Escapa', 'Escapa')],
     };
   }
   return {
-    yo: [a('escape', 'Escapo')],
-    op: [a('op_sumision', 'Me somete'), a('op_mejora', 'Mejora posición')],
+    yo: [a('escape', 'Escapo', 'Escapa')],
+    op: [a('op_sumision', 'Me somete', 'Somete'),
+         a('op_mejora', 'Mejora posición', 'Mejora posición')],
   };
 }
 
@@ -139,6 +177,12 @@ export interface EventoBorrador {
   objetivo: Objetivo;
   tecnicaSlug: string | null;
   completado: boolean;
+  /**
+   * Minuto del roll. Solo lo rellena el observador, que registra en vivo con
+   * el cronómetro corriendo; loguear lo tuyo se hace de memoria al acabar y
+   * ahí el minuto sería inventado. Aquí no hay reloj: lo pone la pantalla.
+   */
+  minuto?: number | null;
 }
 
 /** Un paso pendiente: la app tiene que preguntar algo antes de cerrar el evento. */
@@ -159,19 +203,26 @@ export interface ResultadoAccion {
 
 const otro = (r: Rol): Rol => (r === 'arriba' ? 'abajo' : r === 'abajo' ? 'arriba' : 'neutral');
 
-export function aplicarAccion(clave: ClaveAccion, e: EstadoRoll): ResultadoAccion {
+export function aplicarAccion(
+  clave: ClaveAccion, e: EstadoRoll, ctx: Contexto = CONTEXTO_PROPIO,
+): ResultadoAccion {
   const ev = (
     actor: 'yo' | 'oponente', tipo: TipoEvento, posicion: Posicion, rol: Rol,
   ): EventoBorrador => ({
     actor, tipo, posicion, rol, objetivo: 'ninguno', tecnicaSlug: null, completado: true,
   });
 
+  // Las preguntas intermedias también cambian de voz: observando no hay "tú",
+  // hay dos nombres, y sin ellos no se sabe de quién se está hablando.
+  const t = (propio: string, observando: string) =>
+    (ctx.modo === 'observador' ? observando : propio);
+
   switch (clave) {
     case 'derribo':
       return {
         evento: ev('yo', 'derribo', 'de_pie', 'neutral'),
         pendiente: {
-          tipo: 'posicion', titulo: '¿Dónde caes?',
+          tipo: 'posicion', titulo: t('¿Dónde caes?', `¿Dónde cae ${ctx.b}?`),
           opciones: ['cien_kilos', 'norte_sur', 'media_guardia', 'guardia_cerrada'],
           siguiente: (p) => ({ pos: p, rol: 'arriba' }),
         },
@@ -180,7 +231,7 @@ export function aplicarAccion(clave: ClaveAccion, e: EstadoRoll): ResultadoAccio
       return {
         evento: ev('oponente', 'derribo', 'de_pie', 'neutral'),
         pendiente: {
-          tipo: 'posicion', titulo: '¿Dónde caes tú?',
+          tipo: 'posicion', titulo: t('¿Dónde caes tú?', `¿Dónde cae ${ctx.a}?`),
           opciones: ['cien_kilos', 'montada', 'media_guardia', 'guardia_cerrada'],
           siguiente: (p) => ({ pos: p, rol: 'abajo' }),
         },
@@ -189,7 +240,8 @@ export function aplicarAccion(clave: ClaveAccion, e: EstadoRoll): ResultadoAccio
       return {
         evento: { ...ev('yo', 'derribo', 'de_pie', 'neutral'), tecnicaSlug: 'puxada' },
         pendiente: {
-          tipo: 'posicion', titulo: '¿Qué guardia?', opciones: GUARDIAS_RAPIDAS, mas: true,
+          tipo: 'posicion', titulo: t('¿Qué guardia?', `¿Qué guardia juega ${ctx.a}?`),
+          opciones: GUARDIAS_RAPIDAS, mas: true,
           siguiente: (p) => ({ pos: p, rol: 'abajo' }),
         },
       };
@@ -197,7 +249,8 @@ export function aplicarAccion(clave: ClaveAccion, e: EstadoRoll): ResultadoAccio
       return {
         evento: { ...ev('oponente', 'derribo', 'de_pie', 'neutral'), tecnicaSlug: 'puxada' },
         pendiente: {
-          tipo: 'posicion', titulo: '¿Qué guardia juega?', opciones: GUARDIAS_RAPIDAS, mas: true,
+          tipo: 'posicion', titulo: t('¿Qué guardia juega?', `¿Qué guardia juega ${ctx.b}?`),
+          opciones: GUARDIAS_RAPIDAS, mas: true,
           siguiente: (p) => ({ pos: p, rol: 'arriba' }),
         },
       };
@@ -206,7 +259,7 @@ export function aplicarAccion(clave: ClaveAccion, e: EstadoRoll): ResultadoAccio
       return {
         evento: ev('yo', 'barrida', e.pos, 'abajo'),
         pendiente: {
-          tipo: 'posicion', titulo: '¿Dónde acabas?',
+          tipo: 'posicion', titulo: t('¿Dónde acabas?', `¿Dónde acaba ${ctx.a}?`),
           opciones: ['media_guardia', 'cien_kilos', 'montada', 'de_pie'],
           siguiente: (p) => ({ pos: p, rol: p === 'de_pie' ? 'neutral' : 'arriba' }),
         },
@@ -215,7 +268,7 @@ export function aplicarAccion(clave: ClaveAccion, e: EstadoRoll): ResultadoAccio
       return {
         evento: ev('oponente', 'barrida', e.pos, 'abajo'),
         pendiente: {
-          tipo: 'posicion', titulo: '¿Dónde acabas tú?',
+          tipo: 'posicion', titulo: t('¿Dónde acabas tú?', `¿Dónde acaba ${ctx.a}?`),
           opciones: ['media_guardia', 'cien_kilos', 'montada', 'de_pie'],
           siguiente: (p) => ({ pos: p, rol: p === 'de_pie' ? 'neutral' : 'abajo' }),
         },
@@ -225,7 +278,7 @@ export function aplicarAccion(clave: ClaveAccion, e: EstadoRoll): ResultadoAccio
       return {
         evento: ev('yo', 'pase_guardia', e.pos, 'arriba'),
         pendiente: {
-          tipo: 'posicion', titulo: '¿Dónde llegas?',
+          tipo: 'posicion', titulo: t('¿Dónde llegas?', `¿Dónde llega ${ctx.a}?`),
           opciones: ['cien_kilos', 'montada', 'norte_sur', 'rodilla_en_barriga'],
           siguiente: (p) => ({ pos: p, rol: 'arriba' }),
         },
@@ -234,7 +287,7 @@ export function aplicarAccion(clave: ClaveAccion, e: EstadoRoll): ResultadoAccio
       return {
         evento: ev('oponente', 'pase_guardia', e.pos, 'arriba'),
         pendiente: {
-          tipo: 'posicion', titulo: '¿Dónde te controla?',
+          tipo: 'posicion', titulo: t('¿Dónde te controla?', `¿Dónde controla ${ctx.b}?`),
           opciones: ['cien_kilos', 'montada', 'norte_sur', 'rodilla_en_barriga'],
           siguiente: (p) => ({ pos: p, rol: 'abajo' }),
         },
@@ -256,7 +309,7 @@ export function aplicarAccion(clave: ClaveAccion, e: EstadoRoll): ResultadoAccio
     case 'mejora':
       return {
         pendiente: {
-          tipo: 'posicion', titulo: '¿A dónde pasas?',
+          tipo: 'posicion', titulo: t('¿A dónde pasas?', `¿A dónde pasa ${ctx.a}?`),
           opciones: DOMINANTES.filter((p) => p !== e.pos),
           siguiente: (p) => ({ pos: p, rol: 'arriba' }),
         },
@@ -264,7 +317,7 @@ export function aplicarAccion(clave: ClaveAccion, e: EstadoRoll): ResultadoAccio
     case 'op_mejora':
       return {
         pendiente: {
-          tipo: 'posicion', titulo: '¿A dónde pasa él?',
+          tipo: 'posicion', titulo: t('¿A dónde pasa él?', `¿A dónde pasa ${ctx.b}?`),
           opciones: DOMINANTES.filter((p) => p !== e.pos),
           siguiente: (p) => ({ pos: p, rol: 'abajo' }),
         },
@@ -274,7 +327,7 @@ export function aplicarAccion(clave: ClaveAccion, e: EstadoRoll): ResultadoAccio
       return {
         evento: ev('yo', 'escape', e.pos, 'abajo'),
         pendiente: {
-          tipo: 'posicion', titulo: '¿Dónde recuperas?',
+          tipo: 'posicion', titulo: t('¿Dónde recuperas?', `¿Dónde recupera ${ctx.a}?`),
           opciones: [...GUARDIAS_RAPIDAS, 'de_pie'],
           siguiente: (p) => ({ pos: p, rol: p === 'de_pie' ? 'neutral' : 'abajo' }),
         },
@@ -283,7 +336,7 @@ export function aplicarAccion(clave: ClaveAccion, e: EstadoRoll): ResultadoAccio
       return {
         evento: ev('oponente', 'escape', e.pos, 'abajo'),
         pendiente: {
-          tipo: 'posicion', titulo: '¿Qué guardia recupera?',
+          tipo: 'posicion', titulo: t('¿Qué guardia recupera?', `¿Qué guardia recupera ${ctx.b}?`),
           opciones: [...GUARDIAS_RAPIDAS, 'de_pie'],
           siguiente: (p) => ({ pos: p, rol: p === 'de_pie' ? 'neutral' : 'arriba' }),
         },
@@ -298,7 +351,9 @@ export function aplicarAccion(clave: ClaveAccion, e: EstadoRoll): ResultadoAccio
       return {
         pendiente: {
           tipo: 'tecnica',
-          titulo: actor === 'yo' ? '¿Qué le hiciste?' : '¿Qué te hizo?',
+          titulo: actor === 'yo'
+            ? t('¿Qué le hiciste?', `¿Qué hizo ${ctx.a}?`)
+            : t('¿Qué te hizo?', `¿Qué hizo ${ctx.b}?`),
           actor, posicion: e.pos, rol, opciones: sumisionesPara(e.pos, rol),
         },
       };
