@@ -10,7 +10,6 @@
     "test:puntos": "tsc --ignoreConfig src/lib/__tests__/puntos.test.ts --outDir .test-tmp --module node18 --target ES2022 --strict --skipLibCheck --esModuleInterop --types node && node .test-tmp/__tests__/puntos.test.js"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.9",
     "dexie": "^4.4.4",
     "next": "^16.2.12",
