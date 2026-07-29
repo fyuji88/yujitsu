@@ -20,6 +20,9 @@ Migraciones aplicadas en producción, en orden:
 | 20260729003705 | bjj_11_marcador_ibjjf | `07_…` (PARTE 2) |
 | 20260729010142 | bjj_12_search_path_de_las_funciones | integrado en `07` |
 | 20260729060000 | bjj_13_analisis_y_lectura_comun | `08_analisis.sql` |
+| 20260729070000 | bjj_14_grupos_y_miembros | `09_grupos.sql` |
+| 20260729070100 | bjj_15_lectura_por_grupo | `10_lectura_por_grupo.sql` |
+| 20260729070200 | bjj_16_quedadas_e_inscripciones | `11_quedadas.sql` |
 
 `07_transicion_y_puntos.sql` son **dos migraciones en un fichero**: Postgres deja
 añadir un valor a un enum dentro de una transacción pero no usarlo en esa misma
@@ -107,3 +110,49 @@ rollback;
 
 Sin el `set local role`, la sesión sigue siendo superusuario y **se salta la RLS
 entera**: es el error que hace que un test de permisos verde no signifique nada.
+
+---
+
+## Copias de seguridad
+
+**El plan gratuito de Supabase no hace copias.** Ni diarias ni de ningún tipo:
+si la base se corrompe o alguien ejecuta un `truncate` mal, no hay marcha
+atrás. Mientras no había datos daba igual; ya no.
+
+Un volcado completo cabe de sobra en cualquier sitio — la base entera ocupa
+12 MB y lo nuestro son 832 kB. Con el `pg_dump` de los binarios portables
+(`C:\Users\eshayf00\pgsql\bin`, ver más arriba) es una línea:
+
+```bash
+CADENA="postgresql://postgres:CONTRASEÑA@HOST:5432/postgres"
+
+# Todo: esquema, datos, funciones y políticas.
+pg_dump "$CADENA" --no-owner --no-privileges -f respaldo-$(date +%F).sql
+
+# Solo los datos, para reponer sobre un esquema que ya existe.
+pg_dump "$CADENA" --data-only --no-owner -f datos-$(date +%F).sql
+```
+
+La cadena de conexión sale del panel: **Project Settings → Database →
+Connection string → URI**. Lleva la contraseña de la base dentro, así que el
+fichero resultante **no va al repositorio** — `.gitignore` ya excluye `.env*`,
+pero un `.sql` con datos reales no está cubierto: guárdalo fuera del proyecto.
+
+Para reponer sobre una base vacía:
+
+```bash
+psql "$CADENA" -v ON_ERROR_STOP=1 -f respaldo-2026-07-29.sql
+```
+
+**La versión de `pg_dump` tiene que ser igual o más nueva que el servidor.**
+Producción va con PostgreSQL 17.6 y los binarios locales son 17.6: compatible.
+Si algún día el servidor sube de versión, actualiza los binarios antes de
+volcar, o `pg_dump` se niega.
+
+### Cuándo deja de bastar con esto
+
+Un volcado a mano depende de que alguien se acuerde. Lo que compra el plan Pro
+(25 $/mes) son **copias diarias automáticas con 7 días de recuperación a un
+punto en el tiempo**, y que el proyecto no se pause tras una semana sin
+actividad. El disparador no es quedarse sin espacio —a este ritmo eso son
+décadas— sino el momento en que perder los datos duela.
