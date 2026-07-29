@@ -39,10 +39,21 @@ midiendo contraste · avatares de cinturón en SVG · `npm run test:contraste`.
   sobre el hueso da 2,81.
 - El análisis pierde su interruptor propio y su paleta paralela: un solo tema.
 
+**Iconos:** hechos, con el logo de Gullo ya en `public/logo-gullo.png`.
+`scripts/iconos.mjs` recorta el blanco, genera 192/512, el enmascarable al 68 %
+—el logo lleva la "G" asomando por encima del círculo y al tamaño normal esa
+punta se perdería al recortar Android— y el `apple-touch-icon`, que iOS exige
+aparte porque ignora el manifest. El PNG traía un marco gris de 1px que dejaba
+el recorte sin efecto; se detecta porque el dibujo toca los cuatro bordes a la
+vez, que es cosa de marcos y no de logos. Subida la caché del service worker a
+`bjj-v2`: si no, quien ya tenga la app instalada se queda con los iconos viejos.
+
 **Sabido roto:**
-- **Los iconos del manifest siguen siendo los provisionales.** Falta el logo en
-  fichero; con él son diez minutos. El manifest ya lleva el nombre y los colores.
 - No hay pantalla para elegir el acento del grupo: hoy se cambia por SQL.
+- **Sin splash propio en iOS.** Android lo compone con `background_color` y el
+  icono; iOS querría `apple-touch-startup-image` en una docena de tamaños.
+- El service worker solo cachea `/`, `/entreno` y `/practicantes`: análisis,
+  grupo y quedadas no abren sin red. Es anterior a esta tanda.
 - Los recorridos en navegador siguen viviendo en el scratchpad, no en el
   repositorio: meterlos exigiría `playwright-core` como dependencia y esa
   decisión no la he tomado yo.

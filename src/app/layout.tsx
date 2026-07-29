@@ -7,6 +7,16 @@ export const metadata: Metadata = {
   description: 'Diario de rolls y análisis de juego',
   manifest: '/manifest.webmanifest',
   appleWebApp: { capable: true, statusBarStyle: 'default', title: 'yujitsu' },
+  /* iOS ignora el manifest para el icono de la pantalla de inicio: se lo tiene
+     que decir el `apple-touch-icon`. Y lo quiere con fondo, no transparente,
+     porque no le pone ninguno detrás. */
+  icons: {
+    icon: [
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
 };
 
 export const viewport: Viewport = {

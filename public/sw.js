@@ -1,6 +1,9 @@
 // Service worker mínimo: cachea el esqueleto para que la app abra sin red.
 // Los datos NO se cachean aquí — de eso se encarga IndexedDB (ver src/lib/db.ts).
-const CACHE = 'bjj-v1';
+// Subir el número al cambiar el esqueleto o el manifest: `activate` borra las
+// cachés que no coincidan, y sin eso quien ya tenga la app instalada se queda
+// con el manifest viejo — y con los iconos viejos — hasta que la reinstale.
+const CACHE = 'bjj-v2';
 const ESQUELETO = ['/', '/entreno', '/practicantes', '/manifest.webmanifest'];
 
 self.addEventListener('install', (e) => {

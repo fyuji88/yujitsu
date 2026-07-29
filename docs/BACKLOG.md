@@ -111,19 +111,19 @@ Paleta de Gullo medida del logo: verde **`#458c50`**, hueso `#f1f0ee`, naranja
 | | Iniciativa |
 |---|---|
 | 🔴 **Alta** | **Plantilla de tarjeta compartible** con la marca del grupo. Cosmética y motor de crecimiento a la vez, y por eso es la única alta de este grupo. |
-| 🟡 Media | **Tokens en una sola fuente de verdad + tema por grupo** (solo el acento). Cimiento de todo lo demás y base de los informes con marca de academia. Prompt escrito. |
-| 🟡 Media | **Tema claro por defecto**, con el oscuro como variante elegida, no derivada. |
-| 🟡 Media | **Avatares de cinturón**: aro, barra y grados. El negro con su barra roja, el blanco con filo. Foto opcional encima, después. |
-| 🟡 Media | **Un solo verde**: fundir `--good:#0ca30c` con el de marca. |
-| 🟡 Media | **Botones verdes con texto oscuro** (blanco sobre el verde da 4,1 y no pasa AA) y verde aclarado `#55a562` para texto pequeño. |
+| ~~🟡 Media~~ | ~~**Tokens en una sola fuente de verdad + tema por grupo**~~ — **hecho** (`bjj_20`). Tres familias en `globals.css`: `--marca-*` tematizable, `--dato-*` y estado nunca. El grupo elige un color y la app deriva el resto midiendo contraste. |
+| ~~🟡 Media~~ | ~~**Tema claro por defecto**~~ — **hecho**. El oscuro es paleta propia, no derivada. El sistema no decide: guardada → claro. |
+| ~~🟡 Media~~ | ~~**Avatares de cinturón**~~ — **hecho**. `src/components/Avatar.tsx`, SVG generado. La foto opcional sigue pendiente y va en su bloque. |
+| ~~🟡 Media~~ | ~~**Un solo verde**~~ — **hecho**. `--good:#0ca30c` fundido con el de marca, y `npm run test:contraste` falla si aparece un segundo verde. |
+| ~~🟡 Media~~ | ~~**Botones verdes con texto oscuro**~~ — **hecho**, y medido: la tinta acabó en `#050d06`, porque el `#0b1a0e` de la referencia da 4,38 y tampoco pasaba. |
 | 🟡 Media | **Pictogramas de las 24 posiciones.** Lo que hace que parezca hecha por alguien que entrena, y arregla la legibilidad del heatmap en móvil. |
 | 🟡 Media | **Modo tatami**: brillo y contraste altos, objetivos grandes, todo en la mitad inferior, usable con una mano y dedos sudados. |
 | 🟡 Media | **Estados vacíos con carácter.** Son las primeras pantallas que ve cualquiera y hoy no existen. |
 | 🟡 Media | **Onboarding de tres pantallas** y diseño explícito del arranque en frío: qué ves el día uno y el día tres. |
-| 🟡 Media | **Auditoría de accesibilidad**: contraste AA en toda la app y objetivos táctiles de 44px. |
+| 🟡 Media | **Auditoría de accesibilidad** — **medio hecho**: `npm run test:contraste` cubre los 34 pares de tokens y el recorrido comprueba los 44px de lo que se toca rodando. Falta el resto: lectores de pantalla, orden de foco y textos alternativos fuera de los avatares. |
 | 🟢 Baja | **Confirmación sin mirar**: vibración corta y micro-animación al registrar. |
-| 🟢 Baja | **Icono, splash y manifest** con la marca del grupo. Hoy provisionales. |
-| 🟢 Baja | **Tipografía de display** parecida al wordmark de Gullo, y escala tipográfica declarada. |
+| ~~🟢 Baja~~ | ~~**Icono y manifest**~~ — **hecho** con el logo de Gullo: 192, 512, enmascarable al 68 % y `apple-touch-icon`. Se regeneran con `scripts/iconos.mjs`. Queda el **splash de iOS**, que pide `apple-touch-startup-image` en una docena de tamaños; en Android ya sale del `background_color` y el icono. |
+| 🟢 Baja | **Tipografía de display** parecida al wordmark de Gullo. La **escala tipográfica ya está declarada** (seis pasos, `--txt-1` … `--txt-6`), igual que la de espaciado de 4px, los radios y las sombras. |
 
 # 7 · Datos y ciencia de datos
 
@@ -186,6 +186,19 @@ también manual** · la entidad se llama `grupos` · arquetipos **en inglés**, 
 ---
 
 ## ✅ Hecho
+
+**Tema Gullo y sistema de diseño** · tokens en tres familias con el claro como
+base y el oscuro como paleta propia · tema por grupo con un solo acento, del que
+se deriva todo lo demás midiendo contraste · avatares de cinturón en SVG ·
+iconos de la PWA desde el logo · `npm run test:contraste`, que falla por debajo
+de AA y si el verde se cuela en los datos.
+
+**Bloque social** · grupos con roles y código de unión · lectura por grupo ·
+quedadas con plazas y lista de espera · feed con reacciones · informe congelado
+de la quedada con ranking y títulos · enfoques contrastados con los datos.
+
+**Semilla de demo** determinista y solo local, con roster de Dragon Ball, para
+que los recorridos en navegador tengan datos con forma que comprobar.
 
 Auth por magic link · pestaña de practicantes con altas y edición · PWA de logging
 con máquina de estados · escritura local-first con cola · modo observador con
