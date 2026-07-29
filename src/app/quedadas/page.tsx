@@ -22,6 +22,16 @@ import type {
 
 interface Ficha { id: string; nombre: string }
 
+interface Informe {
+  quedada: { titulo: string; fecha: string; lugar: string | null };
+  asistentes: number;
+  rolls: number;
+  ranking: { id: string; nombre: string; cinturon: string; rolls: number;
+             media: number; favor: number; contra: number }[];
+  titulos: { titulo: string; quien: string; porque: string;
+             valor: number | null }[];
+}
+
 export default function Quedadas() {
   return <Marco titulo="Quedadas">{(s) => <Panel sesion={s} />}</Marco>;
 }
@@ -41,6 +51,7 @@ function Panel({ sesion }: { sesion: Sesion }) {
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [creando, setCreando] = useState(false);
+  const [informe, setInforme] = useState<{ quedada: string; datos: Informe } | null>(null);
 
   const cargar = useCallback(async () => {
     const sb = supabase();
@@ -131,13 +142,29 @@ function Panel({ sesion }: { sesion: Sesion }) {
     void cargar();
   }
 
+  /**
+   * Cerrar calcula el informe y lo CONGELA. No se hace con un update del
+   * estado: el informe se guarda tal como estaba esa tarde, para que corregir
+   * un roll el martes no cambie lo que ya se compartió el domingo.
+   */
   async function cerrar(qid: string) {
     setOcupado(true); setError(null);
-    const { error } = await supabase().from('quedadas')
-      .update({ estado: 'cerrada' }).eq('id', qid);
+    const { data, error } = await supabase().rpc('cerrar_quedada', { p_quedada: qid });
     setOcupado(false);
     if (error) { setError(error.message); return; }
+    setInforme({ quedada: qid, datos: data as Informe });
+    setAviso('Quedada cerrada y informe publicado.');
     void cargar();
+  }
+
+  async function verInforme(qid: string) {
+    setOcupado(true); setError(null);
+    const { data } = await supabase().from('quedada_informes')
+      .select('datos').eq('quedada_id', qid);
+    setOcupado(false);
+    const fila = (data ?? [])[0] as { datos: Informe } | undefined;
+    if (!fila) { setError('Esa quedada todavía no tiene informe.'); return; }
+    setInforme({ quedada: qid, datos: fila.datos });
   }
 
   if (cargando) return <p className="empty">Cargando…</p>;
@@ -285,14 +312,21 @@ function Panel({ sesion }: { sesion: Sesion }) {
             {q.titulo}
             <small>{q.fecha} · {apuntados(q.id).length} apuntados</small>
           </span>
-          <span className="pill">{q.estado === 'cerrada' ? 'cerrada' : 'pasada'}</span>
+          {q.estado === 'cerrada' ? (
+            <button className="ghost" disabled={ocupado}
+              data-testid={`informe-${q.id}`}
+              style={{ padding: '7px 11px', fontSize: 12 }}
+              onClick={() => void verInforme(q.id)}>Ver informe</button>
+          ) : soyAdminDe(q.grupo_id) ? (
+            <button className="ghost" disabled={ocupado}
+              data-testid={`cerrar-${q.id}`}
+              style={{ padding: '7px 11px', fontSize: 12 }}
+              onClick={() => void cerrar(q.id)}>Cerrar y publicar</button>
+          ) : <span className="pill">pasada</span>}
         </div>
       ))}
-      {pasadas.length > 0 && (
-        <p className="hint">
-          El informe de cada quedada —ranking y títulos— llega en el siguiente bloque.
-        </p>
-      )}
+
+      {informe && <VistaInforme datos={informe.datos} onCerrar={() => setInforme(null)} />}
 
       {grupos.length > 0 && !proximas.length && !pasadas.length && (
         <p className="hint" data-testid="sin-quedadas">
@@ -382,5 +416,75 @@ function Formulario(
           disabled={ocupado || !grupo || titulo.trim().length < 2}>Crear</button>
       </div>
     </form>
+  );
+}
+
+/**
+ * El informe de una quedada.
+ *
+ * Se pinta lo que se guardó al cerrarla, no un cálculo nuevo: si alguien
+ * corrige un roll el martes, esto sigue diciendo lo que pasó el domingo.
+ *
+ * El ranking va por puntos estimados por roll y no por sumisiones, porque
+ * premia a quien domina aunque no finalice — que es lo que se quería medir.
+ */
+function VistaInforme(
+  { datos, onCerrar }: { datos: Informe; onCerrar: () => void },
+) {
+  return (
+    <div data-testid="informe" style={{
+      background: 'var(--surface)', border: '1px solid var(--border)',
+      borderRadius: 13, padding: 14, marginTop: 14,
+    }}>
+      <div style={{ fontSize: 16, fontWeight: 620 }}>{datos.quedada.titulo}</div>
+      <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 3 }}>
+        {datos.quedada.fecha} · {datos.asistentes} asistentes · {datos.rolls} rolls
+      </div>
+
+      <h2 className="sec">Títulos de la tarde</h2>
+      <div className="tl">
+        {datos.titulos.map((t) => (
+          <div className="fila" key={t.titulo}>
+            <span className="n">
+              <b style={{ letterSpacing: '.03em' }}>{t.titulo}</b>
+              <small>{t.quien} · {t.porque}</small>
+            </span>
+          </div>
+        ))}
+      </div>
+      <p className="hint">
+        Cada uno se lleva exactamente uno, por lo que más le separa de la media
+        del grupo esa tarde. Nadie se queda sin título.
+      </p>
+
+      <h2 className="sec">Ranking</h2>
+      {datos.ranking.length ? (
+        <div className="tl">
+          {datos.ranking.map((r, i) => (
+            <div className="fila" key={r.id}>
+              <span className="n">
+                {i + 1}. {r.nombre}
+                <small>{r.rolls} rolls · {r.favor} a favor · {r.contra} en contra</small>
+              </span>
+              <span className="pill" style={{
+                color: r.media >= 0 ? 'var(--good)' : 'var(--bad)',
+              }}>
+                {r.media > 0 ? '+' : ''}{r.media}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="empty">Nadie llegó a dos rolls, que es el mínimo para entrar.</p>
+      )}
+      <p className="hint">
+        Puntos estimados por roll, no sumisiones: cuenta quién dominó aunque no
+        finalizara.
+      </p>
+
+      <div style={{ marginTop: 12 }}>
+        <button className="ghost" onClick={onCerrar} data-testid="cerrar-informe">Cerrar</button>
+      </div>
+    </div>
   );
 }
