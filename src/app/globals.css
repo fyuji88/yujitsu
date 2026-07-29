@@ -145,6 +145,97 @@ nav.tabs a.on{color:var(--ink);background:var(--surface)}
 .tanteo .b{color:var(--op)}
 .tanteo .sep{color:var(--muted);font-size:20px}
 
+/* ============================================================
+   Pantalla de análisis.
+
+   Va con sus propias variables, calcadas de docs/BJJ-Analisis-DEMO.html, y no
+   con las del resto de la app: es el único sitio con modo claro. El resto de
+   la app es oscura y no se toca. Por defecto hereda el oscuro; `data-viz=claro`
+   la pasa a claro sin afectar a nada más.
+   ============================================================ */
+.viz{
+  --v-surface:#1a1a19; --v-plane:#0d0d0d;
+  --v-ink:#fff; --v-ink2:#c3c2b7; --v-muted:#898781;
+  --v-grid:#2c2c2a; --v-axis:#383835; --v-borde:rgba(255,255,255,.10);
+  --v-s1:#3987e5; --v-s2:#d95926;
+  --v-pos:#3987e5; --v-neg:#d03b3b; --v-mid:#383835;
+  background:var(--v-plane);color:var(--v-ink);
+  margin:-14px -16px -24px;padding:14px 16px 24px;min-height:60vh;
+}
+.viz[data-viz="claro"]{
+  color-scheme:light;
+  --v-surface:#fcfcfb; --v-plane:#f9f9f7;
+  --v-ink:#0b0b0b; --v-ink2:#52514e; --v-muted:#898781;
+  --v-grid:#e1e0d9; --v-axis:#c3c2b7; --v-borde:rgba(11,11,11,.10);
+  --v-s1:#2a78d6; --v-s2:#eb6834;
+  --v-pos:#2a78d6; --v-neg:#d03b3b; --v-mid:#f0efec;
+}
+
+.viz .tarjeta{background:var(--v-surface);border:1px solid var(--v-borde);
+  border-radius:12px;padding:14px;margin-top:12px}
+.viz .tarjeta h2{font-size:14px;font-weight:620;margin:0 0 2px;color:var(--v-ink);
+  text-transform:none;letter-spacing:0}
+.viz .tarjeta p.cap{font-size:12px;color:var(--v-ink2);margin:0 0 12px;line-height:1.4}
+
+.viz .kpis{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
+.viz .kpi{background:var(--v-surface);border:1px solid var(--v-borde);
+  border-radius:12px;padding:11px 13px}
+.viz .kpi .v{font-size:23px;font-weight:640;letter-spacing:-.01em;
+  font-variant-numeric:tabular-nums}
+.viz .kpi .l{font-size:11.5px;color:var(--v-ink2);margin-top:1px;line-height:1.25}
+
+/* El heatmap se sale de 390px por diseño: se prefiere que la celda siga
+   siendo legible y que ruede en horizontal, con la columna de posiciones
+   pegada. Encoger las etiquetas hasta que quepan las haría ilegibles. */
+.viz .hmbox{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.viz table.hm{border-collapse:separate;border-spacing:2px}
+.viz table.hm th{font-size:10px;font-weight:500;color:var(--v-muted);padding:0}
+.viz table.hm th.rowh{text-align:right;padding-right:7px;white-space:nowrap;
+  font-size:11px;color:var(--v-ink2);position:sticky;left:0;
+  background:var(--v-surface);z-index:1;max-width:104px;overflow:hidden;
+  text-overflow:ellipsis}
+.viz table.hm th.colh{height:66px;vertical-align:bottom;padding-bottom:5px}
+.viz table.hm th.colh span{display:inline-block;writing-mode:vertical-rl;
+  transform:rotate(180deg)}
+.viz td.cell{width:29px;min-width:29px;height:25px;border-radius:4px;text-align:center;
+  font-size:11px;font-variant-numeric:tabular-nums;background:var(--v-mid);
+  padding:0;border:none;font-family:inherit}
+.viz td.cell.tocable{cursor:pointer}
+.viz td.cell.zero{background:transparent;box-shadow:inset 0 0 0 1px var(--v-grid)}
+.viz .escala{display:flex;align-items:center;gap:5px;margin-top:12px;
+  font-size:11px;color:var(--v-muted)}
+.viz .escala i{display:block;width:15px;height:9px;border-radius:2px}
+
+.viz .bars{display:flex;flex-direction:column;gap:8px}
+.viz .brow{display:grid;grid-template-columns:98px 1fr 40px;align-items:center;
+  gap:8px;font-size:12px}
+.viz .brow .nm{color:var(--v-ink2);text-align:right;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.viz .track{position:relative;height:16px}
+.viz .track .mid{position:absolute;top:-2px;bottom:-2px;width:1px;background:var(--v-axis)}
+.viz .track .fill{position:absolute;top:2px;height:12px;border-radius:4px}
+.viz .brow .val{font-variant-numeric:tabular-nums;font-size:12px;color:var(--v-ink)}
+
+.viz .leyenda{display:flex;gap:14px;align-items:center;font-size:12px;
+  color:var(--v-ink2);margin-bottom:10px}
+.viz .leyenda b{display:inline-block;width:10px;height:10px;border-radius:3px;
+  margin-right:5px;vertical-align:-1px}
+
+.viz table.tv{width:100%;border-collapse:collapse;font-size:12px;
+  font-variant-numeric:tabular-nums}
+.viz table.tv th,.viz table.tv td{text-align:left;padding:5px 8px 5px 0;
+  border-bottom:1px solid var(--v-grid)}
+.viz table.tv th{color:var(--v-muted);font-weight:500}
+
+.viz .nota{font-size:11.5px;color:var(--v-ink2);line-height:1.5;margin-top:12px}
+.viz .filtros{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.viz button.f{font:inherit;font-size:12.5px;color:var(--v-ink2);
+  background:var(--v-surface);border:1px solid var(--v-borde);border-radius:999px;
+  padding:7px 12px;cursor:pointer}
+.viz button.f[aria-pressed="true"]{color:var(--v-s1);border-color:var(--v-s1)}
+.viz select.f{font:inherit;font-size:14px;color:var(--v-ink);background:var(--v-surface);
+  border:1px solid var(--v-borde);border-radius:11px;padding:10px 11px;width:100%}
+
 .fila{display:flex;align-items:center;gap:10px;background:var(--surface);
   border:1px solid var(--border);border-radius:11px;padding:11px 13px;font-size:14px}
 .fila .n{flex:1}

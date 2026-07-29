@@ -150,6 +150,7 @@ export function Marco(
 
       <nav className="tabs">
         <Link href="/entreno" className={ruta === '/entreno' ? 'on' : ''}>Entreno</Link>
+        <Link href="/analisis" className={ruta === '/analisis' ? 'on' : ''}>Análisis</Link>
         <Link href="/practicantes" className={ruta === '/practicantes' ? 'on' : ''}>Practicantes</Link>
       </nav>
     </div>
