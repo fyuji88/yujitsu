@@ -8,9 +8,41 @@ guarda en /tmp/capturado.json para luego replicarlo contra la base de verdad.
 Así se prueba la app entera y se comprueba que sus payloads los acepta el
 esquema real, sin poder llegar a la red.
 """
-import base64, json, os, re, threading, uuid
+import base64, json, os, re, subprocess, threading, uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
+
+# Puente opcional a un Postgres de verdad, para la pantalla de analisis.
+#
+# Las tablas de mentira de aqui abajo bastan para el logging, pero el analisis
+# necesita las vistas, las funciones de agregacion y volumen de datos: con tres
+# filas inventadas no se ve si el heatmap esta bien. Con estas dos variables el
+# stub deja de fingir y consulta la base:
+#
+#   PSQL=/ruta/a/psql  PGURL="postgresql://postgres@127.0.0.1:55432/bjj" \
+#   CAPTURA=./capturado.json python stub-supabase.py
+#
+# Solo lectura y solo para lo que la pantalla de analisis necesita.
+PSQL = os.environ.get('PSQL')
+PGURL = os.environ.get('PGURL')
+TABLAS_PUENTE = ('practicantes', 'tecnicas')
+RPC_PUENTE = ('analisis', 'analisis_rolls_celda')
+
+
+def consultar(sql):
+    """Devuelve el resultado de una consulta que produce un solo json."""
+    r = subprocess.run([PSQL, PGURL, '-At', '-c', sql],
+                       capture_output=True, text=True, timeout=30)
+    if r.returncode != 0:
+        raise RuntimeError(r.stderr.strip() or 'psql fallo')
+    return json.loads(r.stdout.strip() or 'null')
+
+
+def literal(v):
+    """Literal SQL seguro para lo poco que se pasa desde el navegador."""
+    if v is None:
+        return 'null'
+    return "'" + str(v).replace("'", "''") + "'"
 
 USER_ID = '55555555-5555-5555-5555-555555555555'
 PRACTICANTE_ID = '66666666-6666-6666-6666-666666666666'
@@ -142,8 +174,16 @@ class H(BaseHTTPRequestHandler):
             return self.responder(200, USUARIO)
         m = re.match(r'^/rest/v1/(\w+)$', u.path)
         if m:
+            tabla = m.group(1)
+            if PGURL and tabla in TABLAS_PUENTE:
+                try:
+                    filas = consultar(
+                        f"select coalesce(json_agg(t), '[]'::json) from {tabla} t")
+                    return self.responder(200, filtrar(filas, parse_qs(u.query)))
+                except Exception as e:            # noqa: BLE001
+                    return self.responder(400, {'message': str(e)})
             with LOCK:
-                return self.responder(200, filtrar(TABLAS.get(m.group(1), []),
+                return self.responder(200, filtrar(TABLAS.get(tabla, []),
                                                    parse_qs(u.query)))
         return self.responder(404, {'message': 'no'})
 
@@ -214,6 +254,26 @@ class H(BaseHTTPRequestHandler):
             with LOCK:
                 CAPTURADO.setdefault('rpc', []).append({'funcion': fn, 'args': args})
                 self.volcar()
+
+            if PGURL and fn in RPC_PUENTE:
+                a = args or {}
+                try:
+                    if fn == 'analisis':
+                        sql = (f"select analisis({literal(a.get('p_autor'))}::uuid, "
+                               f"{literal(a.get('p_modalidad'))}, "
+                               f"{literal(a.get('p_desde'))}::date)")
+                    else:
+                        sql = (
+                            "select coalesce(json_agg(t), '[]'::json) from "
+                            f"analisis_rolls_celda({literal(a.get('p_autor'))}::uuid, "
+                            f"{literal(a.get('p_actor'))}::bjj_actor, "
+                            f"{literal(a.get('p_posicion'))}::bjj_posicion, "
+                            f"{literal(a.get('p_objetivo'))}::bjj_objetivo, "
+                            f"{literal(a.get('p_modalidad'))}, "
+                            f"{literal(a.get('p_desde'))}::date) t")
+                    return self.responder(200, consultar(sql))
+                except Exception as e:            # noqa: BLE001
+                    return self.responder(400, {'message': str(e)})
             if fn != 'registrar_roll_observado':
                 return self.responder(404, {'message': f'funcion {fn} desconocida'})
             # Se imita lo justo: sin cuenta no hay espejo, igual que espejar_roll().
