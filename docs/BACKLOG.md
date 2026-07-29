@@ -122,7 +122,7 @@ Paleta de Gullo medida del logo: verde **`#458c50`**, hueso `#f1f0ee`, naranja
 | 🟡 Media | **Onboarding de tres pantallas** y diseño explícito del arranque en frío: qué ves el día uno y el día tres. |
 | 🟡 Media | **Auditoría de accesibilidad** — **medio hecho**: `npm run test:contraste` cubre los 34 pares de tokens y el recorrido comprueba los 44px de lo que se toca rodando. Falta el resto: lectores de pantalla, orden de foco y textos alternativos fuera de los avatares. |
 | 🟢 Baja | **Confirmación sin mirar**: vibración corta y micro-animación al registrar. |
-| ~~🟢 Baja~~ | ~~**Icono y manifest**~~ — **hecho** con el logo de Gullo: 192, 512, enmascarable al 68 % y `apple-touch-icon`. Se regeneran con `scripts/iconos.mjs`. Queda el **splash de iOS**, que pide `apple-touch-startup-image` en una docena de tamaños; en Android ya sale del `background_color` y el icono. |
+| ~~🟢 Baja~~ | ~~**Icono, splash y manifest**~~ — **hecho** con el logo de Gullo: 192, 512, enmascarable al 68 %, `apple-touch-icon` y once splash de iPhone. Se regeneran con `scripts/iconos.mjs`, que también escribe la lista de `src/lib/splash.ts`. Sin iPad, a propósito. |
 | 🟢 Baja | **Tipografía de display** parecida al wordmark de Gullo. La **escala tipográfica ya está declarada** (seis pasos, `--txt-1` … `--txt-6`), igual que la de espaciado de 4px, los radios y las sombras. |
 
 # 7 · Datos y ciencia de datos

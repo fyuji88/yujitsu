@@ -1,12 +1,20 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { SCRIPT_TEMA } from '@/lib/tema';
+import { PANTALLAS_DE_ARRANQUE } from '@/lib/splash';
 
 export const metadata: Metadata = {
   title: 'yujitsu',
   description: 'Diario de rolls y análisis de juego',
   manifest: '/manifest.webmanifest',
-  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'yujitsu' },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'yujitsu',
+    /* Las genera `scripts/iconos.mjs` junto con los PNG, para que la lista y
+       los ficheros no puedan separarse. */
+    startupImage: PANTALLAS_DE_ARRANQUE,
+  },
   /* iOS ignora el manifest para el icono de la pantalla de inicio: se lo tiene
      que decir el `apple-touch-icon`. Y lo quiere con fondo, no transparente,
      porque no le pone ninguno detrás. */

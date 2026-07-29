@@ -48,12 +48,25 @@ el recorte sin efecto; se detecta porque el dibujo toca los cuatro bordes a la
 vez, que es cosa de marcos y no de logos. Subida la caché del service worker a
 `bjj-v2`: si no, quien ya tenga la app instalada se queda con los iconos viejos.
 
+**Splash de iOS:** hecho, once imágenes verticales de iPhone. iOS exige el
+tamaño EXACTO del dispositivo —si no cuadra al píxel, descarta y enseña blanco—
+así que la lista de `apple-touch-startup-image` la **genera el mismo script**
+que los PNG, en `src/lib/splash.ts`: once entradas con medidas al píxel
+mantenidas a mano son once oportunidades de que dejen de coincidir. Solo
+iPhone; el iPad son ocho ficheros más para un caso que hoy no existe.
+
+**Playwright entra al repositorio.** `playwright-core` como dependencia de
+desarrollo y los cuatro recorridos en `pruebas/`, con `npm run test:navegador`
+(70 comprobaciones). Estaban en un scratchpad fuera del repo, o sea que no
+existían para nadie más.
+
 **Sabido roto:**
 - No hay pantalla para elegir el acento del grupo: hoy se cambia por SQL.
-- **Sin splash propio en iOS.** Android lo compone con `background_color` y el
-  icono; iOS querría `apple-touch-startup-image` en una docena de tamaños.
 - El service worker solo cachea `/`, `/entreno` y `/practicantes`: análisis,
   grupo y quedadas no abren sin red. Es anterior a esta tanda.
+- Los recorridos usan `channel: 'msedge'`: en una máquina sin Edge hay que
+  cambiarlo o instalar el Chromium de Playwright.
+- Sin splash de iPad, a propósito.
 - Los recorridos en navegador siguen viviendo en el scratchpad, no en el
   repositorio: meterlos exigiría `playwright-core` como dependencia y esa
   decisión no la he tomado yo.

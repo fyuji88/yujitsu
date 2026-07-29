@@ -290,6 +290,9 @@ src/app/quedadas           próximas y pasadas, plazas, informe
 db/                        el esquema SQL, igual que lo desplegado
 db/pruebas/                los tests en SQL, uno por bloque
 db/pruebas/semilla-demo.sql  el juego de datos de prueba, SOLO local
+pruebas/                   los recorridos en navegador (npm run test:navegador)
+scripts/contraste.mjs      mide los contrastes; falla por debajo de AA
+scripts/iconos.mjs         genera iconos y splash desde public/logo-gullo.png
 docs/                      decisiones de producto y backlog
 ```
 
@@ -425,6 +428,12 @@ El proyecto tiene poca red de seguridad automática, así que:
   desde la imitación en memoria, que se parece bastante a "no hay datos". Si un
   recorrido enseña vacíos que no te cuadran, mira ahí antes que en la app.
 
+- `npm run test:navegador` recorre la app entera a 390px en los dos temas: el
+  tema, el análisis contra la semilla, la rampa del heatmap y los enfoques. Son
+  70 comprobaciones y **es lo único que ve lo que el typecheck no puede** — la
+  máquina de estados, los objetivos táctiles, la RLS de verdad. Necesita el
+  stub y el servidor de desarrollo levantados; si faltan, se planta y dice
+  cómo, en vez de fallar con un error raro veinte segundos después.
 - `npm run test:contraste` mide los contrastes de los tokens y falla por debajo
   de AA. También falla si el verde de marca se cuela en un heatmap, una barra o
   una leyenda, y si aparece un segundo verde en la hoja. Los valores los lee de

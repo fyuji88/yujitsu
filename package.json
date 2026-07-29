@@ -8,7 +8,8 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test:puntos": "tsc --ignoreConfig src/lib/__tests__/puntos.test.ts --outDir .test-tmp --module node18 --target ES2022 --strict --skipLibCheck --esModuleInterop --types node && node .test-tmp/__tests__/puntos.test.js",
-    "test:contraste": "node scripts/contraste.mjs"
+    "test:contraste": "node scripts/contraste.mjs",
+    "test:navegador": "node pruebas/todos.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.9",
@@ -22,6 +23,7 @@
     "@types/node": "^26.1.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "playwright-core": "^1.62.0",
     "typescript": "^6.0.3"
   }
 }

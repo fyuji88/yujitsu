@@ -12,3 +12,6 @@ next-env.d.ts
 
 # Salida temporal de `npm run test:puntos`.
 .test-tmp
+
+# Perfiles del navegador y capturas de `npm run test:navegador`.
+.pruebas

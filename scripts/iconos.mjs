@@ -5,9 +5,8 @@
  *   node scripts/iconos.mjs otro.png
  *
  * Es de un solo uso: se ejecuta cuando cambia el logo y los PNG resultantes se
- * commitean. Por eso no entra en `package.json` ni añade dependencias — usa el
- * mismo `playwright-core` de los recorridos en navegador, que es lo que hay a
- * mano en este portátil sin permisos de administrador.
+ * commitean, asi que no esta en `package.json`. Usa el mismo `playwright-core`
+ * que los recorridos en navegador.
  *
  * Lo que hace, y el porqué de cada cosa:
  *
@@ -24,16 +23,10 @@
  *    círculo, así que con el tamaño normal esa punta se perdería.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 
-// `playwright-core` no es dependencia del proyecto: vive en el juego de
-// herramientas de pruebas. Con ESM no vale `NODE_PATH`, así que se admite una
-// ruta explícita. Si algún día playwright entra en el package.json, esto sigue
-// funcionando sin tocar nada.
-//   PLAYWRIGHT=/ruta/a/node_modules/playwright-core node scripts/iconos.mjs
-const { chromium } = await import(
-  process.env.PLAYWRIGHT ? pathToFileURL(process.env.PLAYWRIGHT).href : 'playwright-core');
+import { chromium } from 'playwright-core';
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ORIGEN = resolve(process.argv[2] ?? join(RAIZ, 'public/logo-gullo.png'));
@@ -41,16 +34,57 @@ const HUESO = '#f1f0ee';
 
 /** Lo que se genera. `escala` es la fracción del lienzo que ocupa el logo. */
 const PIEZAS = [
-  { fichero: 'icon-192.png', lado: 192, escala: 0.84, fondo: HUESO },
-  { fichero: 'icon-512.png', lado: 512, escala: 0.84, fondo: HUESO },
+  { fichero: 'icon-192.png', ancho: 192, alto: 192, escala: 0.84, fondo: HUESO },
+  { fichero: 'icon-512.png', ancho: 512, alto: 512, escala: 0.84, fondo: HUESO },
   // 68 %: el logo entero, punta de la G incluida, dentro del 80 % que Android
   // promete no recortar, y con margen para que no roce.
-  { fichero: 'icon-maskable-512.png', lado: 512, escala: 0.68, fondo: HUESO },
-  { fichero: 'apple-touch-icon.png', lado: 180, escala: 0.84, fondo: HUESO },
+  { fichero: 'icon-maskable-512.png', ancho: 512, alto: 512, escala: 0.68, fondo: HUESO },
+  { fichero: 'apple-touch-icon.png', ancho: 180, alto: 180, escala: 0.84, fondo: HUESO },
   // Y el logo suelto, recortado y con transparencia, para las tarjetas
   // compartibles y para donde haga falta la marca sin fondo.
-  { fichero: 'logo-gullo-recortado.png', lado: 1024, escala: 1, fondo: null },
+  { fichero: 'logo-gullo-recortado.png', ancho: 1024, alto: 1024, escala: 1, fondo: null },
 ];
+
+/**
+ * Las pantallas de arranque de iOS.
+ *
+ * Android compone el splash solo, con `background_color` y el icono del
+ * manifest. iOS no: o le das una imagen del tamaño EXACTO del dispositivo, o
+ * enseña una pantalla en blanco mientras abre. Y "del tamaño exacto" es
+ * literal — si no cuadra al píxel, la descarta y vuelve al blanco.
+ *
+ * Solo vertical: el manifest fija `orientation: portrait`, así que la mitad de
+ * las combinaciones no hacen falta. Y solo iPhone: la app es de 430px de ancho
+ * y en un iPad se instalaría igual, pero cubrir tabletas son ocho ficheros más
+ * para un caso que hoy no existe. Cuando pase, se añaden aquí.
+ *
+ * `dw`/`dh` son los puntos que reporta el navegador y `dpr` la densidad: es lo
+ * que va en el `media`, no los píxeles.
+ */
+const PANTALLAS = [
+  { dw: 375, dh: 667, dpr: 2, modelos: 'SE 2ª/3ª, 6, 7, 8' },
+  { dw: 414, dh: 736, dpr: 3, modelos: '8 Plus' },
+  { dw: 375, dh: 812, dpr: 3, modelos: 'X, XS, 11 Pro, 12 mini, 13 mini' },
+  { dw: 414, dh: 896, dpr: 2, modelos: 'XR, 11' },
+  { dw: 414, dh: 896, dpr: 3, modelos: 'XS Max, 11 Pro Max' },
+  { dw: 390, dh: 844, dpr: 3, modelos: '12, 13, 14' },
+  { dw: 393, dh: 852, dpr: 3, modelos: '14 Pro, 15, 16' },
+  { dw: 402, dh: 874, dpr: 3, modelos: '16 Pro' },
+  { dw: 428, dh: 926, dpr: 3, modelos: '12/13 Pro Max, 14 Plus' },
+  { dw: 430, dh: 932, dpr: 3, modelos: '14 Pro Max, 15 Pro Max, 16 Plus' },
+  { dw: 440, dh: 956, dpr: 3, modelos: '16 Pro Max' },
+];
+
+for (const p of PANTALLAS) {
+  const ancho = p.dw * p.dpr, alto = p.dh * p.dpr;
+  PIEZAS.push({
+    fichero: `splash-${ancho}x${alto}.png`,
+    ancho, alto,
+    // Un cuarto del ancho: en una pantalla alta, un logo grande parece un
+    // error de escala. La marca se reconoce igual y el arranque no grita.
+    escala: 0.42, base: 'ancho', fondo: HUESO,
+  });
+}
 
 const b64 = readFileSync(ORIGEN).toString('base64');
 
@@ -120,17 +154,21 @@ const salidas = await page.evaluate(async ({ b64, piezas }) => {
 
   for (const p of piezas) {
     const o = document.createElement('canvas');
-    o.width = p.lado; o.height = p.lado;
+    o.width = p.ancho; o.height = p.alto;
     const og = o.getContext('2d');
-    if (p.fondo) { og.fillStyle = p.fondo; og.fillRect(0, 0, p.lado, p.lado); }
+    if (p.fondo) { og.fillStyle = p.fondo; og.fillRect(0, 0, p.ancho, p.alto); }
 
+    // En un lienzo cuadrado se escala contra el lado menor —da igual cuál—;
+    // en uno alto, como los splash, contra el ANCHO, o `escala` acabaría
+    // midiendo respecto a una altura de 2800px y el logo saldría enorme.
+    const referencia = p.base === 'ancho' ? p.ancho : Math.min(p.ancho, p.alto);
     // Se escala por el lado mayor del contenido, así el logo nunca se deforma
     // ni se sale por el lado más largo.
-    const k = (p.lado * p.escala) / Math.max(ancho, alto);
+    const k = (referencia * p.escala) / Math.max(ancho, alto);
     const w = ancho * k, h = alto * k;
     og.imageSmoothingQuality = 'high';
     og.drawImage(c, x0, y0, ancho, alto,
-                 (p.lado - w) / 2, (p.lado - h) / 2, w, h);
+                 (p.ancho - w) / 2, (p.alto - h) / 2, w, h);
     salidas[p.fichero] = o.toDataURL('image/png');
   }
   return { salidas, recorte: { x0, y0, ancho, alto, original: c.width,
@@ -142,6 +180,34 @@ for (const [nombre, uri] of Object.entries(salidas.salidas)) {
   writeFileSync(destino, Buffer.from(uri.split(',')[1], 'base64'));
   console.log(`  ${nombre}`);
 }
+// La lista de `apple-touch-startup-image` la escribe este script, no una
+// persona: son once entradas con medidas al píxel, y mantenerlas a mano al
+// lado de los PNG es garantía de que un día dejen de coincidir y iOS enseñe el
+// blanco sin que nadie sepa por qué.
+const ts = [
+  '/* GENERADO POR scripts/iconos.mjs — no editar a mano. */',
+  '',
+  '/**',
+  ' * Las pantallas de arranque de iOS.',
+  ' *',
+  ' * Android compone el splash con `background_color` y el icono del manifest.',
+  ' * iOS exige una imagen del tamaño EXACTO del dispositivo: si no cuadra al',
+  ' * píxel la descarta y enseña una pantalla en blanco mientras abre.',
+  ' */',
+  'export const PANTALLAS_DE_ARRANQUE = [',
+  ...PANTALLAS.map((p) => {
+    const w = p.dw * p.dpr, h = p.dh * p.dpr;
+    return `  { url: '/splash-${w}x${h}.png',\n`
+      + `    media: '(device-width: ${p.dw}px) and (device-height: ${p.dh}px) '\n`
+      + `      + 'and (-webkit-device-pixel-ratio: ${p.dpr}) and (orientation: portrait)' },`
+      + `   // ${p.modelos}`;
+  }),
+  '];',
+  '',
+].join('\n');
+writeFileSync(join(RAIZ, 'src/lib/splash.ts'), ts);
+console.log('  src/lib/splash.ts');
+
 const r = salidas.recorte;
 console.log(`\n  Marco pelado: ${r.marco}px por lado`);
 console.log(`  Logo recortado: ${r.ancho}x${r.alto} de ${r.original}x${r.original}`
