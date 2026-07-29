@@ -78,10 +78,17 @@ la pestaña es que la ventana es estrecha).
 | **Confirm signup** | terminar un alta | `{{ .Token }}` |
 | **Reset Password** | contraseña nueva | `{{ .Token }}` y `{{ .ConfirmationURL }}` |
 
-**b) Activar la protección de contraseñas filtradas.** Ahora que hay
-contraseñas, el aviso del linter de Supabase pasa a tener sentido: comprueba
-contra HaveIBeenPwned que la contraseña elegida no esté en una filtración
-conocida. Está en los ajustes de contraseñas de Authentication.
+**b) ~~Activar la protección de contraseñas filtradas~~ — NO SE PUEDE.**
+Comprobado en el panel: es de plan Pro, y estáis en el gratuito. El linter de
+Supabase va a seguir avisando de ello; **no es que se nos haya olvidado**.
+
+Lo único que filtra hoy las contraseñas malas es el mínimo de 8 caracteres, en
+la pantalla de entrada y en los ajustes de Authentication. Es poco: no impide
+elegir `12345678`. Si preocupa, se puede comprobar contra HaveIBeenPwned desde
+el cliente —su API pública es gratis y funciona por k-anonimato, mandando solo
+5 caracteres del hash—, que da la misma protección real para este caso: aquí el
+riesgo es elegir una contraseña obvia, no que alguien se salte su propia
+comprobación.
 
 **b) ~~URL Configuration de Supabase~~ — HECHO.** Site URL y redirect apuntando
 a `https://yujitsu-eight.vercel.app`.

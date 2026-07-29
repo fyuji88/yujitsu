@@ -64,6 +64,11 @@ de otros dos y cada uno recibe sus datos. Es el botón 👁 Observar del entreno
 dos y un cronómetro con pausa. En modo propio no hay marcador en vivo —si estás
 rodando no lo miras—: el tanteo sale en el resumen, con el desglose.
 
+**Pantalla de análisis.** Heatmaps ofensivo y defensivo, saldo por guardia,
+fuertes y débiles, head-to-head, evolución semanal y técnicas. Con selector de
+practicante, filtro gi/nogi y ventana temporal. El diseño aprobado es
+`docs/BJJ-Analisis-DEMO.html`; la pantalla es su puerto a React.
+
 - Supabase: proyecto `idzlxkxeadrcolcnmoeo`, org `yujitsu`, eu-west-1, plan gratuito
 - Vercel: `yujitsu-eight.vercel.app`, plan Hobby
 - GitHub: `fyuji88/yujitsu`, privado, rama `main`
@@ -121,6 +126,34 @@ cosas que son del usuario y no del dispositivo:
   la cola se atasca sin explicar por qué.
 
 La caché de técnicas sí se queda: el diccionario es igual para todos.
+
+**La lectura de sesiones, rolls y eventos está abierta a cualquier
+autenticado.** Es lo que hace posible el selector de practicante del análisis, y
+está decidido a sabiendas (`bjj_13`): un roll es de dos, así que buena parte de
+los datos de cada uno ya eran visibles para el otro. **La escritura no se
+tocó**: cada uno escribe lo suyo, y los terceros solo por
+`registrar_roll_observado()`. Si tocas políticas, mantén esa separación —
+abrirla al escribir sí sería un fallo grave.
+
+Ojo: eso abre también las **tablas crudas** por PostgREST, no solo las vistas.
+Con dos amigos es aceptable; con gente de la academia dentro, no.
+
+**El análisis no agrega en React.** Todo sale ya sumado de `analisis()` en
+Postgres, que existe porque las vistas `v_heatmap_*` agregan sin conservar
+`modalidad` ni `fecha` y por eso no dan el filtro gi/nogi. Si hace falta un
+corte nuevo, se añade en SQL. Lo único que calcula la pantalla es el máximo de
+la rampa de color, que es dibujo y no dato.
+
+**Mezclar gi y no-gi en el mismo heatmap dibuja un juego que no existe.** En gi
+hay agarres y estrangulaciones de solapa que en no-gi no existen, y en no-gi hay
+una rama entera de ataques a las piernas. Por eso el filtro está arriba y no
+escondido.
+
+**En modo claro la rampa del heatmap va de claro a oscuro; en oscuro, al
+revés.** El extremo "cerca de cero" tiene que ser el que se funde con el fondo.
+Sin invertirla, los valores bajos son los que más brillan y el heatmap miente.
+El color del número de dentro se calcula por luminancia de esa celda, no por
+índice de la rampa.
 
 **Los puntos se derivan, nunca se guardan.** No hay columna `puntos` en `rolls`
 ni en `eventos`, y no la añadas: el tanteo es una función de la lista de
@@ -234,6 +267,12 @@ autenticado. Está así a propósito y el porqué está escrito al principio de
 —dejaría de funcionar el modo observador entero— ni le quites el permiso a
 `authenticated`. Lo que sí falta algún día es exigir que los dos practicantes
 estén en tu roster; está en el backlog.
+
+**El linter también avisa de las contraseñas filtradas, y ese no se puede
+cerrar.** La comprobación contra HaveIBeenPwned es de plan Pro y el proyecto
+está en el gratuito. Comprobado en el panel, no supuesto. Lo único que filtra
+hoy es el mínimo de 8 caracteres. No persigas ese aviso creyendo que es un
+descuido.
 
 **Un test de RLS como superusuario no prueba nada.** `postgres` se salta la RLS,
 así que todo pasa. Hay que hacer `set local role authenticated` y poner el claim

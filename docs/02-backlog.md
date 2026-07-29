@@ -145,6 +145,40 @@ También da un H2H mucho más rico contra los cinturones altos, donde casi nunca
 
 ---
 
+## 2 ter · ~~Pantalla de análisis~~ — HECHA (29 julio 2026)
+
+~~Heatmaps, head-to-head y evolución dentro de la app.~~
+
+Puerto de `docs/BJJ-Analisis-DEMO.html` a React, leyendo de Supabase. Con
+selector de practicante, filtro gi/no-gi y ventana temporal.
+
+**Hizo falta SQL, al contrario de lo que parecía.** Las vistas
+`v_heatmap_ofensivo` y compañía agregan con `group by autor_id, posicion,
+objetivo…`, y ahí se pierden `modalidad` y `fecha`: con ellas el filtro gi/no-gi
+es imposible. `analisis()` (`bjj_13`) rehace la agregación sobre `v_eventos`,
+que sí las conserva, y devuelve la pantalla entera en un jsonb.
+
+**Y hubo que abrir la lectura** de sesiones, rolls y eventos a cualquier
+autenticado, o el selector devolvería tablas vacías. La escritura no se tocó.
+
+### Lo que queda pendiente de esto
+
+**Cerrar la lectura cuando entre gente de la academia.** Hoy cualquier
+autenticado lee los datos de cualquiera, y además las tablas crudas por
+PostgREST. La versión futura es un `perfil_publico` por practicante, o
+visibilidad limitada a la gente con la que has rodado. Se cierra con una
+migración y nadie pierde nada — por eso se abrió sin miedo.
+
+**Comparar dos practicantes lado a lado.** El selector enseña a uno cada vez, a
+propósito. Comparar bien —mismos ejes, misma escala de color, misma ventana—
+es un problema de diseño entero: dos heatmaps con escalas distintas invitan a
+conclusiones falsas, y hacerlo mal es peor que no hacerlo.
+
+**Los puntos IBJJF no están en esta pantalla.** El marcador vive en el logging.
+Llevarlos al análisis —"dominas 8-2 de media contra Pablo"— es su propio bloque.
+
+---
+
 ## 3 · Sugerir técnicas nuevas / mandar feedback
 
 **Principio: nadie escribe directamente en `tecnicas`.** El diccionario es lo que sostiene los
@@ -181,8 +215,7 @@ la gente de verdad.
 6. **Tiempo de dominio / posesión** — el dato ya se captura (`eventos.segundo_roll`
    sella cada evento con el segundo del cronómetro). Falta decidir cómo se cierra
    el último tramo y qué cuenta como disputa.
-7. **Heatmaps y head-to-head en la app** — los datos y las vistas ya están; falta
-   la pantalla.
+7. ~~**Heatmaps y head-to-head en la app**~~ — hecho.
 8. **`de_rodillas` en `bjj_posicion`** — vocabulario, lo cierran Felipe y Pablo.
 9. **Sugerencias de técnicas** — cuando haya gente fuera de vosotros dos usándolo.
 
