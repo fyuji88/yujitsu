@@ -60,11 +60,70 @@ export interface PracticanteRow {
   created_at: string;
 }
 
+export type RolGrupo = 'admin' | 'miembro';
+export type EstadoMiembro = 'activo' | 'baja';
+export type EstadoQuedada = 'abierta' | 'cerrada' | 'cancelada';
+export type EstadoInscripcion = 'apuntado' | 'lista_espera' | 'cancelado';
+
+export interface GrupoRow {
+  id: string;
+  nombre: string;
+  slug: string;
+  ciudad: string | null;
+  /** Solo lo ve quien es miembro; el admin lo dice en el vestuario. */
+  codigo_union: string;
+  modo_cachondeo: boolean;
+  created_at: string;
+}
+
+export interface MiembroRow {
+  grupo_id: string;
+  practicante_id: string;
+  rol: RolGrupo;
+  estado: EstadoMiembro;
+  created_at: string;
+}
+
+export interface QuedadaRow {
+  id: string;
+  grupo_id: string;
+  titulo: string;
+  fecha: string;
+  hora_inicio: string | null;
+  duracion_min: number | null;
+  lugar: string | null;
+  plazas_max: number | null;
+  modalidad: Modalidad;
+  admite_externos: boolean;
+  token_invitacion: string;
+  notas: string | null;
+  estado: EstadoQuedada;
+  creado_por: string | null;
+  created_at: string;
+}
+
+export interface InscripcionRow {
+  id: string;
+  quedada_id: string;
+  practicante_id: string;
+  estado: EstadoInscripcion;
+  orden: number | null;
+  es_externo: boolean;
+  created_at: string;
+}
+
 export interface SesionInsert {
   id: string;
   practicante_id: string;
   fecha: string;
   academia?: string | null;
+  /** De qué grupo es. Sustituye al texto libre de `academia`. */
+  grupo_id?: string | null;
+  /**
+   * A qué quedada pertenece, si es que hay una. A nivel de sesión y no de
+   * roll: todos los rolls de esa tarde en ese sitio son de esa quedada.
+   */
+  quedada_id?: string | null;
   modalidad: Modalidad;
   tipo: TipoSesion;
   duracion_min?: number | null;

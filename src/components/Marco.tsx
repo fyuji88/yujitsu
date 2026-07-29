@@ -148,10 +148,14 @@ export function Marco(
 
       {pie}
 
+      {/* Cinco pestañas caben en 390px con etiquetas cortas: "Gente" en vez de
+          "Practicantes", que se comía el ancho de dos. */}
       <nav className="tabs">
         <Link href="/entreno" className={ruta === '/entreno' ? 'on' : ''}>Entreno</Link>
+        <Link href="/quedadas" className={ruta === '/quedadas' ? 'on' : ''}>Quedadas</Link>
         <Link href="/analisis" className={ruta === '/analisis' ? 'on' : ''}>Análisis</Link>
-        <Link href="/practicantes" className={ruta === '/practicantes' ? 'on' : ''}>Practicantes</Link>
+        <Link href="/grupo" className={ruta === '/grupo' ? 'on' : ''}>Grupo</Link>
+        <Link href="/practicantes" className={ruta === '/practicantes' ? 'on' : ''}>Gente</Link>
       </nav>
     </div>
   );

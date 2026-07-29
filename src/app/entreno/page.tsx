@@ -109,6 +109,11 @@ function Flujo({ sesion }: { sesion: Sesion }) {
   // Lo último que se encoló observando, para poder corregirle la duración.
   const [ultimo, setUltimo] = useState<ArgsRollObservado | null>(null);
 
+  /** La quedada de hoy en la que estás apuntado, si la hay. */
+  const [quedadaHoy, setQuedadaHoy] = useState<
+    { id: string; grupo_id: string; titulo: string; lugar: string | null } | null
+  >(null);
+
   useEffect(() => {
     const guardada = localStorage.getItem(CLAVE_SESION);
     if (guardada) {
@@ -118,6 +123,14 @@ function Flujo({ sesion }: { sesion: Sesion }) {
     }
     const cache = localStorage.getItem(CLAVE_TECNICAS);
     if (cache) setTecnicas(JSON.parse(cache));
+  }, []);
+
+  useEffect(() => {
+    void supabase().from('v_mi_quedada_hoy').select('id,grupo_id,titulo,lugar')
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setQuedadaHoy(data as typeof quedadaHoy);
+      });
   }, []);
 
   useEffect(() => {
@@ -225,6 +238,10 @@ function Flujo({ sesion }: { sesion: Sesion }) {
       modalidad,
       tipo,
       academia: sesion.practicante.academia,
+      // Si hay una quedada hoy en tu grupo y estás apuntado, viene sola: en el
+      // caso normal son cero toques. "Roll libre" es lo que sale si no hay.
+      grupo_id: quedadaHoy?.grupo_id ?? null,
+      quedada_id: quedadaHoy?.id ?? null,
     });
     localStorage.setItem(CLAVE_SESION, JSON.stringify(s));
     setAbierta(s);
@@ -376,6 +393,13 @@ function Flujo({ sesion }: { sesion: Sesion }) {
       <>
         <h1>Nuevo entreno</h1>
         <p className="hint">Se abre una vez al llegar. Después, cada roll es un toque.</p>
+        {quedadaHoy && (
+          <p className="hint" data-testid="quedada-hoy" style={{ color: 'var(--yo)' }}>
+            Hoy hay <b>{quedadaHoy.titulo}</b>
+            {quedadaHoy.lugar && <> en {quedadaHoy.lugar}</>} y estás apuntado:
+            lo que registres se guarda en esa quedada.
+          </p>
+        )}
         <h2 className="sec">Modalidad</h2>
         <div className="chips">
           <button className="chip" onClick={() => abrirSesion('gi', 'sparring')}>Gi</button>
