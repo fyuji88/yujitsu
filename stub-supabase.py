@@ -54,9 +54,13 @@ MARC_ID = '88888888-8888-8888-8888-888888888888'
 # apuntar a otro sitio con la variable CAPTURA.
 SALIDA = os.environ.get('CAPTURA', '/tmp/capturado.json')
 
-# El unico codigo que acepta /auth/v1/verify. Cualquier otro se rechaza como
-# lo haria GoTrue, para poder probar tambien el camino del codigo mal tecleado.
-CODIGO_BUENO = '123456'
+# El unico codigo que acepta /auth/v1/verify. De OCHO digitos a proposito:
+# Supabase deja configurar el largo entre 6 y 10, y este proyecto lo tiene en 8.
+# Un stub que mandara 6 no probaria lo que pasa de verdad — de hecho, dar por
+# hecho que eran 6 hizo que el campo truncara el codigo y no entrara nadie.
+# Cualquier otro valor se rechaza como lo haria GoTrue, para poder probar
+# tambien el camino del codigo mal tecleado.
+CODIGO_BUENO = '30986845'
 
 # Cuentas registradas: email -> contraseña. Sirve para distinguir entrar de
 # crear cuenta, que es justo lo que la pantalla de entrada separa.

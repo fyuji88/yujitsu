@@ -82,7 +82,7 @@ export default function Reset() {
             <p className="hint">
               Los enlaces de recuperación caducan y son de un solo uso. Pide otro desde
               la pantalla de entrada — y si lo vas a abrir en otro dispositivo, usa el
-              código de 6 dígitos del mismo correo, que no depende del navegador.
+              código del mismo correo, que no depende del navegador.
             </p>
             <div style={{ marginTop: 18 }}>
               <button className="primary" onClick={() => router.replace('/login')}>

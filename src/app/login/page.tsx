@@ -19,7 +19,7 @@ import { supabase } from '@/lib/supabase';
  *
  * DOS VÍAS PARA ENTRAR
  *
- * Contraseña, que es lo rápido, y código de 6 dígitos por si no te acuerdas.
+ * Contraseña, que es lo rápido, y código del correo por si no te acuerdas.
  * El código sigue existiendo porque no depende de nada guardado en el navegador
  * ni de abrir un enlace en el sitio correcto.
  */
@@ -28,6 +28,18 @@ type Modo = 'entrar' | 'alta';
 type Paso = 'formulario' | 'codigo' | 'reset';
 
 const MINIMO = 8;
+
+/**
+ * Largo del código del correo.
+ *
+ * No es 6. Supabase deja configurarlo entre 6 y 10 en Authentication →
+ * Sign In / Providers → Email, y este proyecto lo tiene en 8. Dar por hecho
+ * que eran 6 hacía que el campo truncase el código y que GoTrue lo rechazara
+ * con "ese código no vale", que es un mensaje que manda a buscar al sitio
+ * equivocado. Se aceptan los dos extremos y ya rechaza el servidor si no toca.
+ */
+const LARGO_MINIMO = 6;
+const LARGO_MAXIMO = 10;
 
 /** Los mensajes de GoTrue llegan en inglés y de espaldas al usuario. */
 function traducir(mensaje: string): string {
@@ -170,16 +182,20 @@ export default function Login() {
           <form onSubmit={verificar}>
             <h1>Mira tu correo</h1>
             <p className="hint">{aviso}</p>
-            <label htmlFor="codigo">Código de 6 dígitos</label>
+            <label htmlFor="codigo">Código</label>
+            {/* La longitud del código NO es 6 fija: Supabase la deja configurar
+                entre 6 y 10 (Authentication → Sign In/Providers → Email), y
+                este proyecto la tiene en 8. Con maxLength={6} el campo cortaba
+                el código por la mitad y GoTrue lo rechazaba con razón. */}
             <input id="codigo" ref={campoCodigo} data-testid="codigo"
               value={codigo} inputMode="numeric" autoComplete="one-time-code"
-              maxLength={6} placeholder="123456"
-              style={{ fontSize: 26, letterSpacing: '.35em', textAlign: 'center' }}
+              maxLength={LARGO_MAXIMO} placeholder="el que te llega al correo"
+              style={{ fontSize: 24, letterSpacing: '.3em', textAlign: 'center' }}
               onChange={(e) => setCodigo(e.target.value.replace(/\D/g, ''))} />
             {error && <p className="err" data-testid="error">{error}</p>}
             <div style={{ marginTop: 20 }}>
               <button className="primary" type="submit" data-testid="verificar"
-                disabled={ocupado || codigo.length < 6}>
+                disabled={ocupado || codigo.length < LARGO_MINIMO}>
                 {ocupado ? 'Entrando…' : 'Entrar'}
               </button>
             </div>
