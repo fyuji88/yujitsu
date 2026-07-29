@@ -26,12 +26,12 @@ from urllib.parse import urlparse, parse_qs
 PSQL = os.environ.get('PSQL')
 PGURL = os.environ.get('PGURL')
 TABLAS_PUENTE = ('practicantes', 'tecnicas', 'grupos', 'miembros_grupo',
-                 'quedadas', 'inscripciones', 'v_mi_quedada_hoy')
+                 'quedadas', 'inscripciones', 'v_mi_quedada_hoy', 'reacciones')
 RPC_PUENTE = ('analisis', 'analisis_rolls_celda', 'unirse_con_codigo',
               'crear_grupo', 'regenerar_codigo', 'apuntarse_a_quedada',
-              'cancelar_inscripcion', 'quedada_por_token')
+              'cancelar_inscripcion', 'quedada_por_token', 'feed')
 # Las que devuelven un conjunto de filas y no un valor suelto.
-RPC_CONJUNTO = ('analisis_rolls_celda', 'quedada_por_token')
+RPC_CONJUNTO = ('analisis_rolls_celda', 'quedada_por_token', 'feed')
 
 
 def consultar(sql):
@@ -51,8 +51,14 @@ def consultar(sql):
         f"{sql};"
         "commit;"
     )
-    r = subprocess.run([PSQL, PGURL, '-Atq', '-c', envuelto],
-                       capture_output=True, text=True, timeout=30)
+    # El SQL va por STDIN y no por `-c`: en Windows la linea de comandos no es
+    # UTF-8, y un emoji en una reaccion llegaba corrompido — lo suficiente para
+    # que el check de `reacciones` lo rechazara. Por stdin con encoding
+    # explicito no hay conversion por el medio. De paso desaparece el limite de
+    # longitud de la linea de comandos.
+    r = subprocess.run([PSQL, PGURL, '-Atq'], input=envuelto,
+                       capture_output=True, text=True, encoding='utf-8',
+                       env={**os.environ, 'PGCLIENTENCODING': 'UTF8'}, timeout=30)
     if r.returncode != 0:
         raise RuntimeError(r.stderr.strip() or 'psql fallo')
     # Con -q no salen los BEGIN/SET/COMMIT, pero si el eco del set_config. El
@@ -399,6 +405,19 @@ class H(BaseHTTPRequestHandler):
 
     def do_DELETE(self):
         u = urlparse(self.path)
+        m = re.match(r'^/rest/v1/(\w+)$', u.path)
+        if m and PGURL and m.group(1) in TABLAS_PUENTE:
+            tabla, q = m.group(1), parse_qs(u.query)
+            filtros = ' and '.join(
+                f"{k} = {literal(re.sub(r'^eq[.]', '', vs[0]))}"
+                for k, vs in q.items() if vs[0].startswith('eq.'))
+            try:
+                consultar(f"with x as (delete from {tabla} where {filtros or 'false'} "
+                          f"returning *) select coalesce(jsonb_agg(x), '[]'::jsonb) from x")
+                return self.responder(200, [])
+            except Exception as e:                # noqa: BLE001
+                return self.responder(403, {'message': str(e)})
+
         m = re.match(r'^/rest/v1/(\w+)$', u.path)
         if m:
             with LOCK:

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Marco, type Sesion } from '@/components/Marco';
+import { Feed } from '@/components/Feed';
 import { supabase } from '@/lib/supabase';
 import type {
   GrupoRow, MiembroRow, PracticanteRow, RolGrupo,
@@ -115,6 +116,15 @@ function Panel({ sesion }: { sesion: Sesion }) {
     <>
       {error && <p className="err" data-testid="error">{error}</p>}
       {aviso && <p className="hint" data-testid="aviso" style={{ color: 'var(--good)' }}>{aviso}</p>}
+
+      {/* El feed va arriba: es lo que se abre a diario. La ficha del grupo y
+          la lista de miembros se consultan de vez en cuando. */}
+      {grupos.length > 0 && (
+        <>
+          <h2 className="sec" style={{ marginTop: 4 }}>Lo que está pasando</h2>
+          <Feed practicanteId={sesion.practicante.id} />
+        </>
+      )}
 
       {grupos.map((g) => {
         const admin = soyAdminDe(g.id);

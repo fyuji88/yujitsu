@@ -113,6 +113,12 @@ function Flujo({ sesion }: { sesion: Sesion }) {
   const [quedadaHoy, setQuedadaHoy] = useState<
     { id: string; grupo_id: string; titulo: string; lugar: string | null } | null
   >(null);
+  /**
+   * Tu grupo, para colgar de él las sesiones que no son de ninguna quedada.
+   * Sin esto, una sesión suelta se queda con `grupo_id` a null y no sale en el
+   * feed del grupo — que es casi todas.
+   */
+  const [miGrupo, setMiGrupo] = useState<string | null>(null);
 
   useEffect(() => {
     const guardada = localStorage.getItem(CLAVE_SESION);
@@ -123,6 +129,14 @@ function Flujo({ sesion }: { sesion: Sesion }) {
     }
     const cache = localStorage.getItem(CLAVE_TECNICAS);
     if (cache) setTecnicas(JSON.parse(cache));
+  }, []);
+
+  useEffect(() => {
+    void supabase().from('miembros_grupo').select('grupo_id')
+      .eq('estado', 'activo').limit(1).maybeSingle()
+      .then(({ data }) => {
+        if (data) setMiGrupo((data as { grupo_id: string }).grupo_id);
+      });
   }, []);
 
   useEffect(() => {
@@ -240,14 +254,14 @@ function Flujo({ sesion }: { sesion: Sesion }) {
       academia: sesion.practicante.academia,
       // Si hay una quedada hoy en tu grupo y estás apuntado, viene sola: en el
       // caso normal son cero toques. "Roll libre" es lo que sale si no hay.
-      grupo_id: quedadaHoy?.grupo_id ?? null,
+      grupo_id: quedadaHoy?.grupo_id ?? miGrupo,
       quedada_id: quedadaHoy?.id ?? null,
     });
     localStorage.setItem(CLAVE_SESION, JSON.stringify(s));
     setAbierta(s);
     setModalidadObs(modalidad);
     void vaciarCola();
-  }, [sesion.practicante]);
+  }, [sesion.practicante, quedadaHoy, miGrupo]);
 
   function limpiarRoll() {
     setOponente(null);

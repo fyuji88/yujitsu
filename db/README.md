@@ -23,6 +23,7 @@ Migraciones aplicadas en producción, en orden:
 | 20260729070000 | bjj_14_grupos_y_miembros | `09_grupos.sql` |
 | 20260729070100 | bjj_15_lectura_por_grupo | `10_lectura_por_grupo.sql` |
 | 20260729070200 | bjj_16_quedadas_e_inscripciones | `11_quedadas.sql` |
+| 20260729080000 | bjj_17_feed_y_reacciones | `12_feed.sql` |
 
 `07_transicion_y_puntos.sql` son **dos migraciones en un fichero**: Postgres deja
 añadir un valor a un enum dentro de una transacción pero no usarlo en esa misma
