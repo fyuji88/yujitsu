@@ -19,6 +19,7 @@ Migraciones aplicadas en producción, en orden:
 | 20260729003611 | bjj_10_transicion_y_segundos | `07_…` (PARTE 1) |
 | 20260729003705 | bjj_11_marcador_ibjjf | `07_…` (PARTE 2) |
 | 20260729010142 | bjj_12_search_path_de_las_funciones | integrado en `07` |
+| 20260729060000 | bjj_13_analisis_y_lectura_comun | `08_analisis.sql` |
 
 `07_transicion_y_puntos.sql` son **dos migraciones en un fichero**: Postgres deja
 añadir un valor a un enum dentro de una transacción pero no usarlo en esa misma
