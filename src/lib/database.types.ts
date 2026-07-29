@@ -30,8 +30,18 @@ export type Posicion =
 export type Objetivo =
   | 'cuello' | 'hombro' | 'codo' | 'muneca' | 'biceps' | 'columna' | 'cadera'
   | 'rodilla' | 'tobillo_pie' | 'pantorrilla' | 'ninguno';
+/**
+ * Los tipos de evento.
+ *
+ * `transicion` es la excepción a la regla de lectura de `posicion`: en todos
+ * los demás tipos, `posicion` es desde dónde se hizo la acción; en una
+ * transición es **el destino**, dónde acaba el actor. Existe porque lo que
+ * interesa de una transición es dónde te deja, y porque sin ella los puntos de
+ * montada y rodilla en barriga no se podrían registrar.
+ */
 export type TipoEvento =
-  | 'sumision' | 'barrida' | 'pase_guardia' | 'derribo' | 'toma_espalda' | 'escape';
+  | 'sumision' | 'barrida' | 'pase_guardia' | 'derribo' | 'toma_espalda' | 'escape'
+  | 'transicion';
 export type ResultadoRoll =
   | 'sumision_favor' | 'sumision_contra' | 'sin_sumision' | 'no_registrado';
 export type OrigenRoll = 'propio' | 'observador';
@@ -93,6 +103,15 @@ export interface EventoInsert {
   tecnica_id: string | null;
   completado: boolean;
   minuto?: number | null;
+  /**
+   * Segundo del roll en que ocurrió, del cronómetro del observador.
+   *
+   * Se sella en segundos y no en minutos aunque hoy nadie mida nada por debajo
+   * del minuto: el cronómetro ya está corriendo, así que la precisión sale
+   * gratis, y el análisis de posesión que viene después la necesita. Un dato
+   * que no capturas no lo recuperas luego.
+   */
+  segundo_roll?: number | null;
   notas?: string | null;
 }
 
@@ -112,7 +131,8 @@ export interface EventoObservado {
   objetivo: Objetivo;
   tecnica_slug: string | null;
   completado: boolean;
-  minuto: number | null;
+  /** El sello del cronómetro. `minuto` lo deriva Postgres a partir de esto. */
+  segundo_roll: number | null;
 }
 
 /**
@@ -130,6 +150,17 @@ export interface ArgsRollObservado {
   p_fecha: string;
   p_modalidad: Modalidad;
   p_duracion_min: number | null;
+  /**
+   * Desde dónde arrancó el roll. En clase se empieza constantemente desde una
+   * posición pactada ("empezáis con la guardia cerrada puesta"), y antes esa
+   * información se perdía: todo entraba como de_pie / neutral.
+   *
+   * `p_rol_inicio` describe al **practicante A**. Al espejar a B se invierte,
+   * mientras que `p_posicion_inicio` se mantiene, porque es física y es la
+   * misma para los dos.
+   */
+  p_posicion_inicio: Posicion;
+  p_rol_inicio: Rol;
   p_resultado: ResultadoRoll;
   p_eventos: EventoObservado[];
 }

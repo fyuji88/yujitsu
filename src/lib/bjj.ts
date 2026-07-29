@@ -178,17 +178,27 @@ export interface EventoBorrador {
   tecnicaSlug: string | null;
   completado: boolean;
   /**
-   * Minuto del roll. Solo lo rellena el observador, que registra en vivo con
-   * el cronómetro corriendo; loguear lo tuyo se hace de memoria al acabar y
-   * ahí el minuto sería inventado. Aquí no hay reloj: lo pone la pantalla.
+   * Segundo del roll. Solo lo rellena el observador, que registra en vivo con
+   * el cronómetro corriendo; loguear lo tuyo se hace de memoria al acabar y ahí
+   * el sello sería inventado. Aquí no hay reloj: lo pone la pantalla.
+   *
+   * En segundos y no en minutos porque el cronómetro ya está corriendo y la
+   * precisión sale gratis. `minuto` lo deriva Postgres.
    */
-  minuto?: number | null;
+  segundo?: number | null;
 }
 
 /** Un paso pendiente: la app tiene que preguntar algo antes de cerrar el evento. */
 export type Pendiente =
   | { tipo: 'posicion'; titulo: string; opciones: Posicion[]; mas?: boolean;
-      siguiente: (p: Posicion) => EstadoRoll }
+      siguiente: (p: Posicion) => EstadoRoll;
+      /**
+       * Evento que solo se puede construir cuando se sabe el destino.
+       *
+       * Lo usa "mejorar posición": hasta que no eliges a dónde pasas no se
+       * sabe si eso es una transición cualquiera o una toma de espalda.
+       */
+      eventoAlElegir?: (p: Posicion) => EventoBorrador }
   | { tipo: 'tecnica'; titulo: string; actor: 'yo' | 'oponente';
       posicion: Posicion; rol: Rol; opciones: readonly Sub[] };
 
@@ -304,14 +314,23 @@ export function aplicarAccion(
         estado: { pos: 'espalda', rol: 'abajo' },
       };
 
-    // Mejorar posición NO genera evento salvo que acabe en la espalda: no es
-    // ninguno de nuestros seis tipos. Ver el backlog: `transicion` pendiente.
+    // Mejorar posición SÍ genera evento desde que existe `transicion`. Antes se
+    // actualizaba la posición sin escribir nada, y eso dejaba fuera los 4 de la
+    // montada y los 2 de la rodilla en barriga: el marcador se dejaba 6 de los
+    // puntos posibles y era falso en la mayoría de los rolls.
+    //
+    // Llegar a la espalda es la excepción: eso ya tenía su tipo propio, y
+    // `toma_espalda` puntúa 4, así que se registra como toma de espalda y no
+    // como transición.
     case 'mejora':
       return {
         pendiente: {
           tipo: 'posicion', titulo: t('¿A dónde pasas?', `¿A dónde pasa ${ctx.a}?`),
           opciones: DOMINANTES.filter((p) => p !== e.pos),
           siguiente: (p) => ({ pos: p, rol: 'arriba' }),
+          eventoAlElegir: (p) => (p === 'espalda'
+            ? ev('yo', 'toma_espalda', e.pos, 'arriba')
+            : ev('yo', 'transicion', p, 'arriba')),
         },
       };
     case 'op_mejora':
@@ -320,6 +339,9 @@ export function aplicarAccion(
           tipo: 'posicion', titulo: t('¿A dónde pasa él?', `¿A dónde pasa ${ctx.b}?`),
           opciones: DOMINANTES.filter((p) => p !== e.pos),
           siguiente: (p) => ({ pos: p, rol: 'abajo' }),
+          eventoAlElegir: (p) => (p === 'espalda'
+            ? ev('oponente', 'toma_espalda', e.pos, 'arriba')
+            : ev('oponente', 'transicion', p, 'arriba')),
         },
       };
 

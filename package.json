@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:puntos": "tsc --ignoreConfig src/lib/__tests__/puntos.test.ts --outDir .test-tmp --module node18 --target ES2022 --strict --skipLibCheck --esModuleInterop --types node && node .test-tmp/__tests__/puntos.test.js"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.3",

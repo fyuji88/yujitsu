@@ -1,0 +1,76 @@
+{
+  "_lee_esto_primero": [
+    "Los casos de prueba del marcador IBJJF. Los leen DOS cosas:",
+    "  - src/lib/__tests__/puntos.test.ts   (npm run test:puntos)",
+    "  - db/pruebas/puntos.sql              (contra un Postgres local)",
+    "El cálculo existe dos veces porque hace falta en vivo (TypeScript) y para",
+    "el histórico (SQL). Este fichero es lo que impide que se separen: si",
+    "alguien cambia una regla en un sitio y no en el otro, uno de los dos falla.",
+    "Además de los números, los dos comprueban el invariante del espejo en cada",
+    "caso: el mismo roll visto desde el otro lado tiene que dar el tanteo",
+    "cambiado de sitio."
+  ],
+  "casos": [
+    {
+      "nombre": "todas_las_acciones_que_puntuan",
+      "descripcion": "Una de cada: 2 derribo + 3 paso + 2 rodilla + 4 montada + 4 espalda.",
+      "esperado": { "a": 15, "b": 0 },
+      "eventos": [
+        { "actor": "yo", "tipo": "derribo", "posicion": "de_pie", "rol": "neutral", "objetivo": "ninguno", "completado": true, "segundo_roll": 8 },
+        { "actor": "yo", "tipo": "pase_guardia", "posicion": "guardia_cerrada", "rol": "arriba", "objetivo": "ninguno", "completado": true, "segundo_roll": 45 },
+        { "actor": "yo", "tipo": "transicion", "posicion": "rodilla_en_barriga", "rol": "arriba", "objetivo": "ninguno", "completado": true, "segundo_roll": 70 },
+        { "actor": "yo", "tipo": "transicion", "posicion": "montada", "rol": "arriba", "objetivo": "ninguno", "completado": true, "segundo_roll": 95 },
+        { "actor": "yo", "tipo": "toma_espalda", "posicion": "montada", "rol": "arriba", "objetivo": "ninguno", "completado": true, "segundo_roll": 130 }
+      ]
+    },
+    {
+      "nombre": "el_escape_del_rival_reabre_la_secuencia",
+      "descripcion": "3 paso + 4 montada, el rival escapa, y la segunda montada vuelve a puntuar: 11.",
+      "esperado": { "a": 11, "b": 0 },
+      "eventos": [
+        { "actor": "yo", "tipo": "pase_guardia", "posicion": "guardia_cerrada", "rol": "arriba", "objetivo": "ninguno", "completado": true, "segundo_roll": 30 },
+        { "actor": "yo", "tipo": "transicion", "posicion": "montada", "rol": "arriba", "objetivo": "ninguno", "completado": true, "segundo_roll": 55 },
+        { "actor": "oponente", "tipo": "escape", "posicion": "montada", "rol": "abajo", "objetivo": "ninguno", "completado": true, "segundo_roll": 80 },
+        { "actor": "yo", "tipo": "transicion", "posicion": "montada", "rol": "arriba", "objetivo": "ninguno", "completado": true, "segundo_roll": 120 }
+      ]
+    },
+    {
+      "nombre": "no_se_repuntua_la_misma_posicion",
+      "descripcion": "Montar, bajar a cien kilos y volver a montar sin que el rival haga nada son 4, no 8.",
+      "esperado": { "a": 4, "b": 0 },
+      "eventos": [
+        { "actor": "yo", "tipo": "transicion", "posicion": "montada", "rol": "arriba", "objetivo": "ninguno", "completado": true, "segundo_roll": 40 },
+        { "actor": "yo", "tipo": "transicion", "posicion": "cien_kilos", "rol": "arriba", "objetivo": "ninguno", "completado": true, "segundo_roll": 60 },
+        { "actor": "yo", "tipo": "transicion", "posicion": "montada", "rol": "arriba", "objetivo": "ninguno", "completado": true, "segundo_roll": 75 }
+      ]
+    },
+    {
+      "nombre": "la_barrida_no_cuenta_ademas_como_derribo",
+      "descripcion": "Barrida desde guardia cerrada abajo: 2 puntos y solo 2.",
+      "esperado": { "a": 2, "b": 0 },
+      "eventos": [
+        { "actor": "yo", "tipo": "barrida", "posicion": "guardia_cerrada", "rol": "abajo", "objetivo": "ninguno", "completado": true, "segundo_roll": 50 }
+      ]
+    },
+    {
+      "nombre": "sumision_sin_nada_posicional",
+      "descripcion": "Un roll que acaba en sumisión sin ninguna acción que puntúe: 0-0, y el marcador lo enseña sin parecer roto.",
+      "esperado": { "a": 0, "b": 0 },
+      "eventos": [
+        { "actor": "yo", "tipo": "sumision", "posicion": "guardia_cerrada", "rol": "abajo", "objetivo": "cuello", "completado": true, "segundo_roll": 65 }
+      ]
+    },
+    {
+      "nombre": "roll_con_los_dos_puntuando",
+      "descripcion": "Los dos marcan y las secuencias se abren y cierran. Es el caso que de verdad ejercita el invariante del espejo.",
+      "esperado": { "a": 2, "b": 10 },
+      "eventos": [
+        { "actor": "yo", "tipo": "derribo", "posicion": "de_pie", "rol": "neutral", "objetivo": "ninguno", "completado": true, "segundo_roll": 12 },
+        { "actor": "oponente", "tipo": "barrida", "posicion": "media_guardia", "rol": "abajo", "objetivo": "ninguno", "completado": true, "segundo_roll": 44 },
+        { "actor": "oponente", "tipo": "transicion", "posicion": "montada", "rol": "arriba", "objetivo": "ninguno", "completado": true, "segundo_roll": 70 },
+        { "actor": "yo", "tipo": "escape", "posicion": "montada", "rol": "abajo", "objetivo": "ninguno", "completado": true, "segundo_roll": 105 },
+        { "actor": "oponente", "tipo": "transicion", "posicion": "montada", "rol": "arriba", "objetivo": "ninguno", "completado": true, "segundo_roll": 140 }
+      ]
+    }
+  ]
+}

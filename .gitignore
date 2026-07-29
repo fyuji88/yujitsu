@@ -9,3 +9,6 @@ next-env.d.ts
 # Ninguna clave al repositorio, pero la plantilla si se versiona.
 .env*
 !.env.local.example
+
+# Salida temporal de `npm run test:puntos`.
+.test-tmp
