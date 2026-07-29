@@ -25,17 +25,43 @@ from urllib.parse import urlparse, parse_qs
 # Solo lectura y solo para lo que la pantalla de analisis necesita.
 PSQL = os.environ.get('PSQL')
 PGURL = os.environ.get('PGURL')
-TABLAS_PUENTE = ('practicantes', 'tecnicas')
-RPC_PUENTE = ('analisis', 'analisis_rolls_celda')
+TABLAS_PUENTE = ('practicantes', 'tecnicas', 'grupos', 'miembros_grupo',
+                 'quedadas', 'inscripciones', 'v_mi_quedada_hoy')
+RPC_PUENTE = ('analisis', 'analisis_rolls_celda', 'unirse_con_codigo',
+              'crear_grupo', 'regenerar_codigo', 'apuntarse_a_quedada',
+              'cancelar_inscripcion', 'quedada_por_token')
+# Las que devuelven un conjunto de filas y no un valor suelto.
+RPC_CONJUNTO = ('analisis_rolls_celda', 'quedada_por_token')
 
 
 def consultar(sql):
-    """Devuelve el resultado de una consulta que produce un solo json."""
-    r = subprocess.run([PSQL, PGURL, '-At', '-c', sql],
+    """
+    Ejecuta contra el Postgres local COMO EL USUARIO AUTENTICADO, no como
+    superusuario.
+
+    Esto importa: como `postgres` la RLS se salta entera y el navegador
+    enseñaria cosas que en produccion no se ven. Poniendo el claim y el rol,
+    el recorrido en navegador ejerce las politicas de verdad — que es la unica
+    forma de que un fallo de privacidad salga aqui y no en el movil de alguien.
+    """
+    envuelto = (
+        "begin;"
+        f"select set_config('request.jwt.claims', '{{\"sub\":\"{USER_ID}\"}}', true);"
+        "set local role authenticated;"
+        f"{sql};"
+        "commit;"
+    )
+    r = subprocess.run([PSQL, PGURL, '-Atq', '-c', envuelto],
                        capture_output=True, text=True, timeout=30)
     if r.returncode != 0:
         raise RuntimeError(r.stderr.strip() or 'psql fallo')
-    return json.loads(r.stdout.strip() or 'null')
+    # Con -q no salen los BEGIN/SET/COMMIT, pero si el eco del set_config. El
+    # resultado es la ultima linea que parece json.
+    lineas = [l.strip() for l in r.stdout.splitlines() if l.strip()]
+    for linea in reversed(lineas):
+        if linea[:1] in '[{' or linea in ('null',):
+            return json.loads(linea)
+    return None
 
 
 def literal(v):
@@ -182,7 +208,7 @@ class H(BaseHTTPRequestHandler):
             if PGURL and tabla in TABLAS_PUENTE:
                 try:
                     filas = consultar(
-                        f"select coalesce(json_agg(t), '[]'::json) from {tabla} t")
+                        f"select coalesce(jsonb_agg(t), '[]'::jsonb) from {tabla} t")
                     return self.responder(200, filtrar(filas, parse_qs(u.query)))
                 except Exception as e:            # noqa: BLE001
                     return self.responder(400, {'message': str(e)})
@@ -260,21 +286,22 @@ class H(BaseHTTPRequestHandler):
                 self.volcar()
 
             if PGURL and fn in RPC_PUENTE:
+                # Generico: se pasan los argumentos por NOMBRE, que es como los
+                # manda PostgREST, y Postgres resuelve los tipos. Asi el puente
+                # no hay que tocarlo cada vez que aparece una funcion nueva.
                 a = args or {}
+                argumentos = ', '.join(
+                    f"{k} => " + ('null' if v is None
+                                  else literal(json.dumps(v)) + '::jsonb'
+                                  if isinstance(v, (dict, list))
+                                  else literal(v))
+                    for k, v in a.items())
                 try:
-                    if fn == 'analisis':
-                        sql = (f"select analisis({literal(a.get('p_autor'))}::uuid, "
-                               f"{literal(a.get('p_modalidad'))}, "
-                               f"{literal(a.get('p_desde'))}::date)")
+                    if fn in RPC_CONJUNTO:
+                        sql = (f"select coalesce(jsonb_agg(t), '[]'::jsonb) "
+                               f"from {fn}({argumentos}) t")
                     else:
-                        sql = (
-                            "select coalesce(json_agg(t), '[]'::json) from "
-                            f"analisis_rolls_celda({literal(a.get('p_autor'))}::uuid, "
-                            f"{literal(a.get('p_actor'))}::bjj_actor, "
-                            f"{literal(a.get('p_posicion'))}::bjj_posicion, "
-                            f"{literal(a.get('p_objetivo'))}::bjj_objetivo, "
-                            f"{literal(a.get('p_modalidad'))}, "
-                            f"{literal(a.get('p_desde'))}::date) t")
+                        sql = f"select to_jsonb({fn}({argumentos}))"
                     return self.responder(200, consultar(sql))
                 except Exception as e:            # noqa: BLE001
                     return self.responder(400, {'message': str(e)})
@@ -288,6 +315,30 @@ class H(BaseHTTPRequestHandler):
                 'roll_b': str(uuid.uuid4()) if b and b['usa_sistema'] else None,
                 'creado': True,
             })
+
+        m = re.match(r'^/rest/v1/(\w+)$', u.path)
+        if m and PGURL and m.group(1) in TABLAS_PUENTE:
+            # Escritura real contra la base, tambien con la RLS puesta: si la
+            # politica lo prohibe, aqui sale el error igual que en produccion.
+            tabla = m.group(1)
+            filas = self.cuerpo()
+            filas = filas if isinstance(filas, list) else [filas]
+            try:
+                for f in filas:
+                    cols = ', '.join(f.keys())
+                    vals = ', '.join(
+                        'null' if v is None
+                        else ('true' if v is True else 'false' if v is False
+                              else literal(v))
+                        for v in f.values())
+                    # `insert ... returning` no vale dentro de un subselect en
+                    # Postgres: tiene que ser un CTE.
+                    consultar(f"with x as (insert into {tabla} ({cols}) "
+                              f"values ({vals}) returning *) "
+                              f"select coalesce(jsonb_agg(x), '[]'::jsonb) from x")
+                return self.responder(201, filas)
+            except Exception as e:                # noqa: BLE001
+                return self.responder(403, {'message': str(e)})
 
         m = re.match(r'^/rest/v1/(\w+)$', u.path)
         if m:
@@ -322,6 +373,21 @@ class H(BaseHTTPRequestHandler):
 
     def do_PATCH(self):
         u = urlparse(self.path)
+        m = re.match(r'^/rest/v1/(\w+)$', u.path)
+        if m and PGURL and m.group(1) in TABLAS_PUENTE:
+            tabla, cambios, q = m.group(1), self.cuerpo(), parse_qs(u.query)
+            sets = ', '.join(f"{k} = {literal(v)}" for k, v in cambios.items())
+            filtros = ' and '.join(
+                f"{k} = {literal(re.sub(r'^eq[.]', '', vs[0]))}"
+                for k, vs in q.items() if vs[0].startswith('eq.'))
+            try:
+                consultar(f"with x as (update {tabla} set {sets} "
+                          f"where {filtros or 'false'} returning *) "
+                          f"select coalesce(jsonb_agg(x), '[]'::jsonb) from x")
+                return self.responder(200, [])
+            except Exception as e:                # noqa: BLE001
+                return self.responder(403, {'message': str(e)})
+
         m = re.match(r'^/rest/v1/(\w+)$', u.path)
         if m:
             cambios = self.cuerpo()
