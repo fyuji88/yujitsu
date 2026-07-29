@@ -48,6 +48,7 @@ create or replace function sesion_del_dia(
   p_academia    text default null
 ) returns uuid
 language plpgsql
+set search_path = public
 as $$
 declare v_id uuid;
 begin
@@ -79,6 +80,7 @@ $$;
 create or replace function espejar_roll(p_roll_id uuid)
 returns uuid
 language plpgsql
+set search_path = public
 as $$
 declare
   r            rolls%rowtype;

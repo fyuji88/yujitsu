@@ -176,6 +176,7 @@ create or replace function progreso_reto(p_reto_id uuid, p_practicante_id uuid)
 returns integer
 language sql
 stable
+set search_path = public
 as $$
   select count(*)::int
   from v_eventos v

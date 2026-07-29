@@ -16,6 +16,17 @@ Migraciones aplicadas en producción, en orden:
 | 20260728133654 | bjj_07_alta_de_companeros | incluido en `01` |
 | 20260728134345 | bjj_08_ficha_al_registrarse | `05_ficha_al_registrarse.sql` |
 | 20260728232708 | bjj_09_rpc_roll_observado | `06_rpc_roll_observado.sql` |
+| 20260729003611 | bjj_10_transicion_y_segundos | `07_…` (PARTE 1) |
+| 20260729003705 | bjj_11_marcador_ibjjf | `07_…` (PARTE 2) |
+| 20260729010142 | bjj_12_search_path_de_las_funciones | integrado en `07` |
+
+`07_transicion_y_puntos.sql` son **dos migraciones en un fichero**: Postgres deja
+añadir un valor a un enum dentro de una transacción pero no usarlo en esa misma
+transacción, y el aplicador de Supabase envuelve el fichero entero. Con `psql` da
+igual, porque cada sentencia va en su propia transacción.
+
+`bjj_12` fijó el `search_path` de `espejar_roll`, `regla_punto` y `puntos_roll`.
+Ya está incorporado en `07`, así que ejecutar los ficheros de cero no lo necesita.
 
 Las migraciones 05 a 07 fueron correcciones que aquí ya están integradas en
 `01_esquema_base.sql`, para que ejecutar estos ficheros de cero sobre una base
