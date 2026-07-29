@@ -4,8 +4,10 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { arrancarSync, observarSync, type EstadoSync } from '@/lib/sync';
-import { contarPendientes } from '@/lib/db';
+import {
+  arrancarSync, observarSync, retenerCola, vaciarCola, type EstadoSync,
+} from '@/lib/sync';
+import { contarPendientes, olvidarDatosDelUsuario } from '@/lib/db';
 import type { PracticanteRow } from '@/lib/database.types';
 
 export interface Sesion {
@@ -33,6 +35,8 @@ export function Marco(
   const [s, setS] = useState<Sesion | null>(null);
   const [cargando, setCargando] = useState(true);
   const [sync, setSync] = useState<EstadoSync>({ enCola: 0, enviando: false, error: null });
+  const [saliendo, setSaliendo] = useState(false);
+  const [pendientesAlSalir, setPendientesAlSalir] = useState<number | null>(null);
 
   useEffect(() => {
     let vivo = true;
@@ -61,6 +65,32 @@ export function Marco(
     return () => { parar(); };
   }, []);
 
+  /**
+   * Salir.
+   *
+   * Lo importante no es cerrar la sesión —eso es una línea— sino no dejarle al
+   * siguiente cosas del anterior. Primero se intenta vaciar la cola: los rolls
+   * que queden dentro se subirían con la sesión de quien entre después, y la
+   * RLS los rechazaría por ajenos. Si no se puede vaciar (sin cobertura), se
+   * dice cuántos hay y se pregunta, en vez de tirarlos a la callada.
+   */
+  async function pedirSalir() {
+    setSaliendo(true);
+    retenerCola(false);          // por si veníamos del resumen del observador
+    await vaciarCola();
+    const quedan = await contarPendientes();
+    setSaliendo(false);
+    if (quedan > 0) { setPendientesAlSalir(quedan); return; }
+    await salir();
+  }
+
+  async function salir() {
+    setSaliendo(true);
+    await olvidarDatosDelUsuario();
+    await supabase().auth.signOut();
+    router.replace('/login');
+  }
+
   const pastilla = sync.error
     ? { cls: 'sync err', txt: 'error al sincronizar' }
     : sync.enviando
@@ -76,10 +106,37 @@ export function Marco(
           <div className="t1">{titulo}</div>
           <div className="t2">{sub ?? (s ? s.practicante.nombre : '…')}</div>
         </div>
-        <span className={pastilla.cls} data-testid="sync">{pastilla.txt}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <span className={pastilla.cls} data-testid="sync">{pastilla.txt}</span>
+          {s && (
+            <button className="salir" data-testid="salir" disabled={saliendo}
+              onClick={() => void pedirSalir()}>Salir</button>
+          )}
+        </div>
       </div>
 
       <main>
+        {pendientesAlSalir !== null && (
+          <div className="state" data-testid="aviso-salir" style={{ marginBottom: 14 }}>
+            <div className="lbl">Antes de salir</div>
+            <div className="pos" style={{ fontSize: 17 }}>
+              {pendientesAlSalir} {pendientesAlSalir === 1 ? 'cosa sin subir' : 'cosas sin subir'}
+            </div>
+            <p className="hint" style={{ margin: '8px 0 0' }}>
+              No hay conexión, o Supabase no las acepta. Si sales ahora se pierden: no
+              se pueden dejar para el siguiente que entre, porque se subirían con su
+              cuenta y la base las rechazaría por ajenas.
+            </p>
+            <div style={{ display: 'flex', gap: 9, marginTop: 14 }}>
+              <button className="ghost" data-testid="salir-cancelar"
+                onClick={() => setPendientesAlSalir(null)}>Me quedo</button>
+              <button className="ghost" data-testid="salir-descartar"
+                style={{ color: 'var(--bad)' }} disabled={saliendo}
+                onClick={() => void salir()}>Salir y descartarlas</button>
+            </div>
+          </div>
+        )}
+
         {cargando && <p className="empty">Cargando…</p>}
         {!cargando && !s && (
           <p className="err">

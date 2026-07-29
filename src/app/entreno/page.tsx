@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Marco, type Sesion } from '@/components/Marco';
 import { supabase } from '@/lib/supabase';
-import { encolar, encolarRollObservado, nuevoId } from '@/lib/db';
+import {
+  CLAVE_SESION, CLAVE_TECNICAS, encolar, encolarRollObservado, nuevoId,
+} from '@/lib/db';
 import { retenerCola, vaciarCola } from '@/lib/sync';
 import {
   accionesPosibles, aplicarAccion, CONTEXTO_PROPIO, GUARDIAS_TODAS,
@@ -14,9 +16,6 @@ import { puntuar, type Anotacion, type Marcador } from '@/lib/puntos';
 import type {
   ArgsRollObservado, Modalidad, Posicion, PracticanteRow, Rol, TipoSesion,
 } from '@/lib/database.types';
-
-const CLAVE_SESION = 'bjj.sesion-abierta';
-const CLAVE_TECNICAS = 'bjj.tecnicas';
 
 /** Las salidas que se usan de verdad. El resto está detrás de "Otra…". */
 const SALIDAS: Posicion[] = [

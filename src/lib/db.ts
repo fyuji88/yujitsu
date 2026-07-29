@@ -59,6 +59,39 @@ export const local = new BaseLocal();
 
 export const nuevoId = () => crypto.randomUUID();
 
+/**
+ * Lo que se guarda en `localStorage`.
+ *
+ * `SESION_ABIERTA` es **de un usuario concreto**: guarda el id de la sesión de
+ * entreno de hoy. `TECNICAS` es solo la caché del diccionario, que es igual
+ * para todo el mundo y no hay por qué tirar al cambiar de usuario.
+ */
+export const CLAVE_SESION = 'bjj.sesion-abierta';
+export const CLAVE_TECNICAS = 'bjj.tecnicas';
+
+/**
+ * Deja el dispositivo listo para otra persona.
+ *
+ * Esto no es limpieza cosmética: sin ello, quien entre después hereda cosas del
+ * anterior y se encuentra errores en vez de una app vacía.
+ *
+ *  - La **cola** puede tener rolls sin subir. Se enviarían con la sesión del
+ *    nuevo usuario: la RLS rechazaría sesiones, rolls y eventos ajenos, y un
+ *    roll observado quedaría atribuido a quien no es, porque `registrado_por`
+ *    sale de `private.practicante_actual()`.
+ *  - La **sesión de entreno abierta** pertenece al usuario anterior. Si se
+ *    queda, el siguiente empieza a colgar rolls de una sesión que no es suya,
+ *    la RLS los rechaza y la cola se atasca sin decir por qué.
+ *
+ * Devuelve cuántos envíos pendientes se descartaron, para poder avisar.
+ */
+export async function olvidarDatosDelUsuario(): Promise<number> {
+  const pendientes = await local.outbox.count();
+  await local.outbox.clear();
+  localStorage.removeItem(CLAVE_SESION);
+  return pendientes;
+}
+
 /** Escribe local y encola. Devuelve al instante: la red no bloquea la UI. */
 export async function encolar(tabla: TablaRemota, fila: SesionInsert | RollInsert | EventoInsert) {
   await local.outbox.put({
