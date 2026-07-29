@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Marco, type Sesion } from '@/components/Marco';
+import { Enfoque } from '@/components/Enfoque';
 import { supabase } from '@/lib/supabase';
 import { NOMBRE_OBJETIVO } from '@/lib/bjj';
 import type { Objetivo, Posicion, PracticanteRow } from '@/lib/database.types';
@@ -246,7 +247,20 @@ function Panel({ sesion }: { sesion: Sesion }) {
                 no porcentajes, porque con tan poco volumen un porcentaje miente.</>
             )}
           </p>
+        </>
+      )}
 
+      {/* El enfoque va aquí a propósito: pegado a los números que lo
+          contradicen. En una pantalla aparte sería un propósito de año nuevo;
+          debajo de los KPIs es "dijiste esto y jugaste aquello".
+          Se enseña también sin rolls — declarar lo que vas a trabajar es justo
+          lo que tiene sentido hacer antes de empezar. */}
+      {!cargando && (
+        <Enfoque practicanteId={autor} esMio={esMio} nombre={quien?.nombre ?? ''} />
+      )}
+
+      {!cargando && datos && k && k.rolls > 0 && (
+        <>
           <Heatmaps off={datos.off} def={datos.def} claro={tema === 'claro'}
             onCelda={abrirCelda} />
 

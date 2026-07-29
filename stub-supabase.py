@@ -26,10 +26,12 @@ from urllib.parse import urlparse, parse_qs
 PSQL = os.environ.get('PSQL')
 PGURL = os.environ.get('PGURL')
 TABLAS_PUENTE = ('practicantes', 'tecnicas', 'grupos', 'miembros_grupo',
-                 'quedadas', 'inscripciones', 'v_mi_quedada_hoy', 'reacciones')
+                 'quedadas', 'inscripciones', 'v_mi_quedada_hoy', 'reacciones',
+                 'enfoques')
 RPC_PUENTE = ('analisis', 'analisis_rolls_celda', 'unirse_con_codigo',
               'crear_grupo', 'regenerar_codigo', 'apuntarse_a_quedada',
-              'cancelar_inscripcion', 'quedada_por_token', 'feed')
+              'cancelar_inscripcion', 'quedada_por_token', 'feed',
+              'enfoque_contraste')
 # Las que devuelven un conjunto de filas y no un valor suelto.
 RPC_CONJUNTO = ('analisis_rolls_celda', 'quedada_por_token', 'feed')
 
@@ -44,10 +46,17 @@ def consultar(sql):
     el recorrido en navegador ejerce las politicas de verdad — que es la unica
     forma de que un fallo de privacidad salga aqui y no en el movil de alguien.
     """
+    # El delimitador no es cosmetico. Antes se cogia "la ultima linea que
+    # parezca json", y el eco del set_config —que es `{"sub":"..."}`— parece
+    # json. Mientras todas las funciones devolvian algo no se noto; la primera
+    # que devolvio NULL imprimio una linea vacia y el stub contesto el claim
+    # en vez de null. Con el marcador, lo de despues es el resultado y lo de
+    # antes no se mira.
     envuelto = (
         "begin;"
         f"select set_config('request.jwt.claims', '{{\"sub\":\"{USER_ID}\"}}', true);"
         "set local role authenticated;"
+        "\\echo ---RESULTADO---\n"
         f"{sql};"
         "commit;"
     )
@@ -61,19 +70,29 @@ def consultar(sql):
                        env={**os.environ, 'PGCLIENTENCODING': 'UTF8'}, timeout=30)
     if r.returncode != 0:
         raise RuntimeError(r.stderr.strip() or 'psql fallo')
-    # Con -q no salen los BEGIN/SET/COMMIT, pero si el eco del set_config. El
-    # resultado es la ultima linea que parece json.
-    lineas = [l.strip() for l in r.stdout.splitlines() if l.strip()]
-    for linea in reversed(lineas):
-        if linea[:1] in '[{' or linea in ('null',):
-            return json.loads(linea)
-    return None
+    # Todo lo que va despues del marcador es el resultado. Sin lineas: la
+    # funcion devolvio NULL, y eso es un dato — significa "no hay", no un fallo.
+    cola = r.stdout.split('---RESULTADO---')[-1]
+    lineas = [l.strip() for l in cola.splitlines() if l.strip()]
+    if not lineas:
+        return None
+    return json.loads(lineas[-1])
 
 
 def literal(v):
     """Literal SQL seguro para lo poco que se pasa desde el navegador."""
     if v is None:
         return 'null'
+    if v is True or v is False:
+        return 'true' if v else 'false'
+    if isinstance(v, (list, tuple)):
+        # Un array de PostgREST llega como lista JSON. Se manda como literal de
+        # array SIN tipo y se deja que Postgres lo coaccione al de la columna:
+        # es lo unico que vale igual para `bjj_posicion[]` y para `uuid[]`, y
+        # el stub no sabe —ni tiene por que saber— cual es cual.
+        dentro = ','.join(
+            '"' + str(x).replace('\\', '\\\\').replace('"', '\\"') + '"' for x in v)
+        return "'{" + dentro.replace("'", "''") + "}'"
     return "'" + str(v).replace("'", "''") + "'"
 
 USER_ID = '55555555-5555-5555-5555-555555555555'
@@ -332,11 +351,7 @@ class H(BaseHTTPRequestHandler):
             try:
                 for f in filas:
                     cols = ', '.join(f.keys())
-                    vals = ', '.join(
-                        'null' if v is None
-                        else ('true' if v is True else 'false' if v is False
-                              else literal(v))
-                        for v in f.values())
+                    vals = ', '.join(literal(v) for v in f.values())
                     # `insert ... returning` no vale dentro de un subselect en
                     # Postgres: tiene que ser un CTE.
                     consultar(f"with x as (insert into {tabla} ({cols}) "

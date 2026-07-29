@@ -239,3 +239,22 @@ export interface PosicionRow {
   es_guardia: boolean | null;
   core_v1: boolean;
 }
+
+/**
+ * Un enfoque: lo que alguien está trabajando, con fechas.
+ *
+ * `posiciones` y `tecnicas` van estructuradas —y no solo dentro de `texto`—
+ * porque son lo que permite contrastar lo dicho con lo hecho. El texto libre
+ * se queda para el matiz que no cabe en un enum.
+ */
+export interface EnfoqueRow {
+  id: string;
+  practicante_id: string;
+  desde: string;
+  /** null = sigue abierto. */
+  hasta: string | null;
+  texto: string | null;
+  posiciones: Posicion[];
+  tecnicas: string[];
+  created_at: string;
+}
