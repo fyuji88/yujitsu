@@ -289,6 +289,7 @@ src/app/grupo              feed, ficha del grupo, miembros, unirse/crear
 src/app/quedadas           próximas y pasadas, plazas, informe
 db/                        el esquema SQL, igual que lo desplegado
 db/pruebas/                los tests en SQL, uno por bloque
+db/pruebas/semilla-demo.sql  el juego de datos de prueba, SOLO local
 docs/                      decisiones de producto y backlog
 ```
 
@@ -424,6 +425,26 @@ El proyecto tiene poca red de seguridad automática, así que:
   desde la imitación en memoria, que se parece bastante a "no hay datos". Si un
   recorrido enseña vacíos que no te cuadran, mira ahí antes que en la app.
 
+- `npm run test:contraste` mide los contrastes de los tokens y falla por debajo
+  de AA. También falla si el verde de marca se cuela en un heatmap, una barra o
+  una leyenda, y si aparece un segundo verde en la hoja. Los valores los lee de
+  `globals.css`, así que no hay un gemelo que se separe.
+- **La base local se siembra**, no se llena a mano:
+
+  ```bash
+  psql ... -v confirmar=si -f db/pruebas/semilla-demo.sql
+  ```
+
+  Es determinista —nada de `random()`— así que los recorridos en navegador
+  pueden comprobar cantidades. Da 180 rolls de Goku en cuatro meses, con el
+  reparto **pesado a propósito**: vive en la espalda y la montada y casi no
+  toca las piernas. Un juego de datos plano dibuja un heatmap sin relieve y no
+  prueba que la rampa de color funcione.
+
+  El roster es de Dragon Ball para que se vea de un golpe que es falso: un juego
+  de prueba con nombres realistas acaba en una captura pareciendo un
+  head-to-head de verdad. **Borra sesiones, rolls y eventos**, así que pide
+  `-v confirmar=si` y se planta si `auth.users` tiene más de tres cuentas.
 - Para cambios de esquema, probar contra un Postgres local antes de aplicar la
   migración al proyecto real. Sin Docker también se puede: ver `db/README.md`.
 - El bucle que más ha valido la pena: recorrer la app en el navegador contra el

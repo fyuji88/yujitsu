@@ -118,6 +118,106 @@ Por **veces conseguido**, por logro, con el mes como ventana. Y en el perfil, tu
 colección de por vida con las rachas. Reinicio mensual, que además evita que los
 mismos lo dominen para siempre.
 
+## ¿Solo en modo observador? No, pero casi — y el criterio es preciso
+
+La preocupación es real y hay que tomársela en serio: **los datos autoregistrados
+están sesgados, y el sesgo va a tu favor.** No ves tu propia espalda, no recuerdas
+los intentos que fallaste, y sí recuerdas la barrida que te salió. Un logro es
+moneda pública y comparable, así que acuñarla con datos inflados corrompe el
+ranking — y peor, **premia al que registra mal**.
+
+Pero exigir observador para todos los logros los mata. Tres razones:
+
+- **El volumen se hunde.** Hoy casi ningún roll real está registrado por un
+  observador, porque hace falta una tercera persona dispuesta a sentarse seis
+  minutos a pulsar botones. La mayoría de la gente tendría cero logros para
+  siempre.
+- **Castiga a quien no toca.** Alguien que va a un open mat sin coach mirando no
+  consigue nada por bien que ruede. Eso no es "sin sesgo", es "solo cuentan los
+  que tienen público".
+- **Contradice la familia de constancia.** EL NOTARIO es, por definición, sobre
+  registrar tú. Si los logros exigen observador, los logros que premian registrar
+  no pueden existir.
+
+### El criterio que sí funciona: ausencia contra presencia
+
+El sesgo no afecta a todos los logros igual, y esto es lo que hay que ver. **Los
+logros que se definen por la ausencia de algo son inflables sin querer; los que se
+definen por algo que pasó, no.**
+
+- **IMPASABLE** es "no hubo ningún pase". Se infla simplemente no registrando el
+  pase. Igual **LIMPIO** ("sin intentos fallados antes"), **MURO**, **CUELLO DE
+  ACERO** y **CINTURÓN INVISIBLE**.
+- **RELÁMPAGO** es "hubo una sumisión antes del minuto". Para conseguirlo tuviste
+  que **registrar activamente** el evento. Igual EL RODILLO, LA CADENA, QUINCE,
+  HOUDINI, EL MOCHILERO, JUGUETE NUEVO.
+
+Así que la regla es:
+
+> **Los logros de ausencia requieren `origen = 'observador'`. Los de presencia, no.**
+
+En el catálogo, un `requiere_observador boolean`. Son cinco o seis de veinticinco,
+así que el coste es bajo y arregla casi todo el problema. Y no hace falta nada
+nuevo en la base: `rolls.origen` ya existe y `v_rolls_unicos` ya prefiere la
+versión del observador cuando hay las dos.
+
+### Y en vez de esconder la procedencia, enseñarla
+
+- En tu colección: **"IMPASABLE ×14 · 5 verificados 👁"**.
+- En el ranking, un interruptor que **por defecto cuenta solo los verificados**.
+  Ese interruptor hace un trabajo extra: **le explica a la gente por qué importa
+  el modo observador** sin un tutorial.
+
+### Un principio de diseño que sale de aquí
+
+**Prefiere logros cuya inflación exija auto-inculparse.** EL PULPO cuenta intentos
+de sumisión fallados: para inflarlo tienes que registrar tus propios fracasos, que
+es lo contrario del sesgo cómodo. Los logros con esa propiedad son a prueba de
+trampas por construcción y no necesitan observador ni verificación.
+
+## Cómo aparecen en el feed: agregar, no suprimir
+
+Felipe quiere que el feed avise **también las veces siguientes**, no solo la
+primera. La intuición es buena —si solo se anuncia la primera vez, al mes los
+logros desaparecen del feed y quien lleva catorce IMPASABLE no recibe nada— pero
+un elemento de feed por logro no se sostiene.
+
+**Las cuentas.** Un gimnasio de doce personas, ocho rolls por cabeza y semana, uno
+o dos logros por roll: **unas 150 entradas semanales**. El feed pasa a ser 95 %
+"X ha conseguido IMPASABLE otra vez", y eso entierra lo que sí tiene valor: el
+informe de la quedada, quién se apunta el domingo, el primer logro de alguien. Y
+se lleva por delante las reacciones, porque **la densidad del feed y la tasa de
+reacción son inversamente proporcionales**: nadie pone 🔥 en el elemento número
+noventa.
+
+La salida no es esconder logros, es **cambiar la unidad del elemento**: el feed
+habla de **sesiones**, y los logros viajan dentro.
+
+> **Pablo registró 6 rolls anoche** · IMPASABLE ×2 · MURO · RELÁMPAGO
+
+Un solo elemento, toda la información, y encima se lee mejor: ves la forma de su
+noche en vez de siete líneas sueltas. Nada queda invisible, que era el punto de
+Felipe.
+
+Y por encima de eso, **cuatro cosas que sí merecen su propio elemento**, porque
+son noticia:
+
+1. **La primera vez** que alguien consigue un logro.
+2. **Los números redondos**: ×5, ×10, ×25, ×50. El que va por catorce recibe algo
+   al llegar a quince.
+3. **El primero del grupo** en conseguir un logro, aunque para él no sea la
+   primera vez. Eso es socialmente interesante.
+4. **Los raros**, siempre.
+
+Más el **cierre de mes**, un elemento único con el ranking, que es donde las
+cuentas acumuladas tienen su momento.
+
+**Nota de secuenciación honesta:** con tres personas la inundación no existe —150
+a la semana es un problema de doce—. Así que se empieza por el resumen por sesión
+más los cuatro casos de arriba, y se revisa cuando el grupo sea real y se pueda
+ver de verdad si alguien echa algo en falta. Si hace falta, un ajuste por grupo
+para subir o bajar el detalle.
+
 ---
 
 # 2 · Privacidad del perfil

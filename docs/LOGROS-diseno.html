@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="es" data-tema="claro"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>yujitsu · logros</title>
+<style>
+html[data-tema="claro"]{
+  --plano:#f1f0ee; --sup:#fbfaf9; --sup2:#f4f3f1;
+  --ink:#141413; --ink2:#4d4c49; --muted:#807e79; --border:rgba(20,20,19,.13);
+  --verde:#458c50; --verde-t:#33693c; --verde-suave:rgba(69,140,80,.10);
+  --yo:#2a78d6; --op:#eb6834; --oro:#a8791f; --sombra:0 1px 2px rgba(20,20,19,.05);
+}
+html[data-tema="oscuro"]{
+  --plano:#0d0d0d; --sup:#1a1a19; --sup2:#232322;
+  --ink:#fff; --ink2:#c3c2b7; --muted:#898781; --border:rgba(255,255,255,.10);
+  --verde:#55a562; --verde-t:#7dc389; --verde-suave:rgba(85,165,98,.14);
+  --yo:#3987e5; --op:#d95926; --oro:#d8ab4a; --sombra:none;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plano);color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;padding:26px 18px 80px}
+.wrap{max-width:1120px;margin:0 auto}
+header{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
+h1{font-size:23px;font-weight:690;margin:0 0 5px;letter-spacing:-.015em}
+.sub{color:var(--ink2);font-size:13.5px;margin:0;max-width:66ch;line-height:1.55}
+button.tgl{font:inherit;font-size:12px;color:var(--ink2);background:var(--sup);
+  border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer}
+h2{font-size:12.5px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted);margin:40px 0 6px}
+p.n{font-size:13px;color:var(--ink2);line-height:1.62;max-width:76ch;margin:9px 0 0}
+p.n b{color:var(--ink)} p.n em{font-style:normal;color:var(--verde-t);font-weight:600}
+code{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:var(--sup2);
+  padding:1px 5px;border-radius:4px}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:9px;overflow:hidden;
+  margin:12px 0 4px;background:var(--sup)}
+.seg button{font:inherit;font-size:12.5px;padding:7px 15px;border:0;background:transparent;
+  color:var(--ink2);cursor:pointer}
+.seg button.on{background:var(--verde);color:#0b1a0e;font-weight:640}
+html[data-tema="oscuro"] .seg button.on{color:#08140a}
+
+/* ---- tres estilos de icono ---- */
+.tres{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:14px}
+@media(max-width:860px){.tres{grid-template-columns:1fr}}
+.col{background:var(--sup);border:1px solid var(--border);border-radius:14px;padding:15px 15px 17px;
+  box-shadow:var(--sombra)}
+.col h3{font-size:13.5px;font-weight:660;margin:0 0 3px}
+.col .d{font-size:11.5px;color:var(--muted);line-height:1.45;margin:0 0 13px;min-height:44px}
+.col .rec{display:inline-block;font-size:10px;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--verde-t);border:1px solid var(--verde);border-radius:999px;padding:2px 8px;margin-bottom:9px}
+.lista{display:flex;flex-direction:column;gap:8px}
+.lg{display:flex;align-items:center;gap:11px;padding:8px 9px;border-radius:11px;
+  border:1px solid var(--border);background:var(--sup2)}
+.lg .tx{flex:1;min-width:0}
+.lg .nb{font-size:12.5px;font-weight:620;line-height:1.2;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.lg .ds{font-size:10.5px;color:var(--muted);line-height:1.3;margin-top:2px}
+.lg .ct{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.lg .ct small{font-size:11px;font-weight:500;color:var(--muted)}
+
+/* estilo A · estoico */
+.ic{width:34px;height:34px;flex:0 0 auto;display:grid;place-items:center;border-radius:9px}
+.a .ic{background:transparent;box-shadow:inset 0 0 0 1px var(--border)}
+.a .ic svg{stroke:var(--ink2)}
+.a .ct{color:var(--ink)}
+/* estilo B · intermedio */
+.b .ic{background:var(--verde-suave);box-shadow:inset 0 0 0 1px rgba(69,140,80,.28)}
+.b .ic svg{stroke:var(--verde)}
+.b .ct{color:var(--ink)}
+.b .lg.raro .ic{background:transparent;box-shadow:inset 0 0 0 1.5px var(--oro)}
+.b .lg.raro .ic svg{stroke:var(--oro)}
+/* estilo C · golosina */
+.c .ic{background:linear-gradient(150deg,#5fb26d,#2f6b3c);box-shadow:0 2px 6px rgba(47,107,60,.35),
+  inset 0 1px 0 rgba(255,255,255,.35)}
+.c .ic svg{stroke:#fff}
+.c .lg{background:linear-gradient(180deg,rgba(69,140,80,.09),transparent)}
+.c .lg.raro .ic{background:linear-gradient(150deg,#e8c464,#a8791f);
+  box-shadow:0 2px 8px rgba(168,121,31,.45),inset 0 1px 0 rgba(255,255,255,.5)}
+.c .ct{color:var(--verde-t)}
+
+/* ---- ranking ---- */
+.rank{background:var(--sup);border:1px solid var(--border);border-radius:14px;padding:16px 17px;
+  box-shadow:var(--sombra);margin-top:14px;max-width:560px}
+.rank .cab{display:flex;align-items:center;gap:11px;padding-bottom:11px;
+  border-bottom:1px solid var(--border);margin-bottom:4px}
+.rank .cab .nb{font-size:14.5px;font-weight:680}
+.rank .cab .ds{font-size:11.5px;color:var(--muted);margin-top:2px}
+.fila{display:grid;grid-template-columns:20px 1fr auto;align-items:center;gap:11px;padding:9px 0;
+  border-bottom:1px solid var(--border);font-size:13px}
+.fila:last-child{border-bottom:0}
+.fila .pos{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums;text-align:right}
+.fila .who{display:flex;align-items:center;gap:8px;min-width:0}
+.fila .who b{font-weight:580}
+.fila .bd{font-size:12px}
+.fila .barra{display:flex;align-items:center;gap:8px}
+.fila .tr{width:84px;height:7px;border-radius:99px;background:var(--sup2);overflow:hidden}
+.fila .tr i{display:block;height:100%;background:var(--verde);border-radius:99px}
+.fila .v{font-variant-numeric:tabular-nums;font-weight:660;min-width:26px;text-align:right}
+.yo-fila{background:var(--verde-suave);margin:0 -17px;padding:9px 17px}
+
+/* ---- coleccion ---- */
+.col-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:9px;margin-top:14px}
+.cel{background:var(--sup);border:1px solid var(--border);border-radius:12px;padding:11px 10px 10px;
+  text-align:center;box-shadow:var(--sombra)}
+.cel .ic{margin:0 auto 7px}
+.cel .nb{font-size:11px;font-weight:620;line-height:1.25}
+.cel .ct{font-size:15px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums}
+.cel.off{opacity:.42;box-shadow:none}
+.cel.off .ic{background:transparent;box-shadow:inset 0 0 0 1px var(--border)}
+.cel.off .ic svg{stroke:var(--muted)}
+.cel.off .ct{color:var(--muted);font-size:11px;font-weight:500}
+
+/* ---- momento del desbloqueo ---- */
+.feed{max-width:430px;background:var(--sup);border:1px solid var(--border);border-radius:14px;
+  padding:15px 16px;margin-top:14px;box-shadow:var(--sombra);display:flex;gap:13px;align-items:flex-start}
+.feed .ic{width:44px;height:44px}
+.feed .t1{font-size:13.5px;font-weight:650;line-height:1.3}
+.feed .t2{font-size:12.5px;color:var(--ink2);margin-top:4px;line-height:1.45}
+.feed .t3{font-size:11px;color:var(--muted);margin-top:7px}
+.reac{display:flex;gap:6px;margin-top:9px}
+.reac span{font-size:12px;border:1px solid var(--border);border-radius:999px;padding:3px 8px;
+  background:var(--sup2)}
+footer{margin-top:46px;font-size:11.5px;color:var(--muted);line-height:1.7;max-width:78ch}
+</style></head><body><div class="wrap">
+
+<header>
+  <div>
+    <h1>Logros · cómo se ven y cómo se llaman</h1>
+    <p class="sub">Datos inventados, con los practicantes de demo. Dos decisiones que tomar mirando
+      esto: el idioma de los nombres, y cuánto brillo llevan los iconos.</p>
+  </div>
+  <button class="tgl" onclick="tema()">Modo oscuro</button>
+</header>
+
+<h2>1 · El idioma</h2>
+<div class="seg" id="segIdioma">
+  <button class="on" onclick="idioma('es')">Nombres en español</button>
+  <button onclick="idioma('en')">Nombres en inglés</button>
+</div>
+<p class="n">Dale a los dos y compara las tarjetas de abajo. <b>Mi voto es español</b>, y la razón es
+concreta: <em>los nombres de los logros son chistes</em>, y los chistes no se traducen. EL RODILLO
+en inglés es "THE ROLLING PIN" y deja de tener gracia; PEAJE es "TOLL BOOTH", que es peor. Los
+arquetipos sí funcionan en inglés porque no son chistes, son etiquetas — Crab, Snake, Monkey son
+cortas y legibles en cualquier idioma.</p>
+<p class="n">Y lo que hace que esto <b>no sea una decisión definitiva</b>: en la base va la
+<code>clave</code> (<code>impasable</code>, <code>el_rodillo</code>), y el nombre visible sale de un
+fichero de textos. Cambiar de idioma pasa a ser editar un fichero, no una migración. Es además el
+primer paso del punto de i18n que ya está en el backlog, así que sale gratis.</p>
+
+<h2>2 · Los iconos: tres niveles de brillo</h2>
+<div class="tres">
+  <div class="col a">
+    <h3>A · Estoico</h3>
+    <p class="d">Pictograma de línea, sin color, el número manda. Se lee como un instrumento, igual
+      que los heatmaps.</p>
+    <div class="lista" id="lA"></div>
+  </div>
+  <div class="col b">
+    <span class="rec">mi recomendación</span>
+    <h3>B · Intermedio</h3>
+    <p class="d">Mismo pictograma, un solo color de acento, y la rareza marcada con el borde en oro.
+      Sobrio pero vivo.</p>
+    <div class="lista" id="lB"></div>
+  </div>
+  <div class="col c">
+    <h3>C · Golosina</h3>
+    <p class="d">Relleno, degradado, sombra, oro para los raros. Es lo que hacen los juegos.</p>
+    <div class="lista" id="lC"></div>
+  </div>
+</div>
+
+<p class="n"><b>Por qué el B.</b> La tentación es pensar que si los logros no brillan, no motivan. Pero
+fíjate en dónde está el orgullo en las tres columnas: <em>está en el número, no en el icono</em>.
+"IMPASABLE ×14" es la frase que enseñas en el vestuario, y los números son sobrios por naturaleza. Si
+el icono no tiene que cargar solo con la emoción, no necesita degradados.</p>
+<p class="n">Y hay un argumento que no es de gusto: a dos toques de esta pantalla están los heatmaps
+y el marcador, que son diseño aprobado y deliberadamente austero. Una insignia con degradado al lado
+de un heatmap no se lee como premio, se lee como <b>que la app la han hecho dos personas distintas</b>.
+El B mantiene una sola voz y guarda el oro para lo raro, que es cuando el brillo significa algo.</p>
+<p class="n"><b>Y por eso pictogramas propios en vez de emojis</b>, aunque los arquetipos sí sean
+emoji. Un emoji se dibuja distinto en Android, en iPhone y en Windows — y la tarjeta del informe de
+la quedada es tu pieza de crecimiento, así que <b>tiene que verse igual para todos</b>. Los
+arquetipos se quedan en emoji porque son <em>quién eres</em>, uno solo y con carácter; los logros son
+<em>qué has hecho</em>, una rejilla que tiene que leerse como sistema.</p>
+
+<h2>3 · El ranking del mes</h2>
+<div class="rank" id="rank"></div>
+<p class="n">Se ordena por <b>veces conseguido</b>, no por posición relativa, así que no es de suma
+cero: que Vegeta consiga 14 no te quita los tuyos. Y como es un contador, el ranking del mes y tu
+colección de por vida son la misma cosa mirada con dos ventanas distintas.</p>
+
+<h2>4 · Tu colección</h2>
+<div class="col-grid" id="coleccion"></div>
+<p class="n">Los apagados también se enseñan, con su descripción. <b>Un logro que no sabes que
+existe no te motiva</b>, y ver "LA CADENA · pasa, monta y toma la espalda en el mismo roll" apagado
+es lo que hace que un martes intentes justo eso. Es la misma razón por la que en el mapa del juego se
+dejan a la vista las posiciones vacías.</p>
+
+<h2>5 · El momento que importa</h2>
+<div class="feed" id="feed"></div>
+<p class="n">La primera vez que consigues uno es la única entrada del feed que la gente va a
+comentar. Ahí sí pondría movimiento — una animación corta al desbloquear —, porque <b>el brillo va
+en el momento, no en el icono</b>. Un icono con degradado brilla para siempre y deja de significar
+nada; una animación de medio segundo brilla una vez y se recuerda.</p>
+
+<footer>
+  Iconos dibujados en SVG en línea, un solo grosor de trazo y una sola rejilla, para que se puedan
+  ampliar sin perder nada y se vean idénticos en cualquier dispositivo. Paleta de Gullo, tema claro
+  por defecto. Datos inventados.
+</footer>
+</div>
+
+<script>
+/* ---------- iconos: un solo grosor, una sola rejilla ---------- */
+const SVG = (d,extra='') => `<svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+  stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${d}${extra}</svg>`;
+const IC = {
+  escudo:  SVG(`<path d="M12 3 20 6v6c0 4-3.4 7.4-8 9-4.6-1.6-8-5-8-9V6z"/><path d="M7 12h10"/>`),
+  rodillo: SVG(`<rect x="3" y="5" width="18" height="5" rx="2.5"/><path d="M12 10v5"/>
+                <path d="M8.5 18.5 12 22l3.5-3.5"/>`),
+  rayo:    SVG(`<path d="M13 2 5 14h6l-1 8 8-12h-6z"/>`),
+  cadena:  SVG(`<path d="M4 8h5a4 4 0 0 1 0 8H8"/><path d="M20 16h-5a4 4 0 0 1 0-8h1"/>`),
+  houdini: SVG(`<path d="M7 11V8a5 5 0 0 1 9.5-2"/><rect x="4" y="11" width="16" height="9" rx="2"/>
+                <path d="M9.5 15.5l5 3"/>`),
+  pulpo:   SVG(`<circle cx="12" cy="12" r="2.5"/><path d="M12 9.5V3"/><path d="M14.5 12H21"/>
+                <path d="M10 14 5 19"/><path d="M14 14l5 5"/><path d="M10 10 5 5"/>`),
+  notario: SVG(`<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8.5l1.6 1.6L13 6.7"/>
+                <path d="M8 15.5l1.6 1.6L13 13.7"/><path d="M16 10h1"/><path d="M16 17h1"/>`),
+  quince:  SVG(`<path d="M4 20V13"/><path d="M9.3 20V9"/><path d="M14.7 20v-7"/><path d="M20 20V4"/>`),
+  cinturon:SVG(`<path d="M3 12h18"/><path d="M9 9v6"/><path d="M15 9v6"/>
+                <path d="M12 8V2"/><path d="M9.5 4.5 12 2l2.5 2.5"/>`),
+  muro:    SVG(`<rect x="3" y="5" width="18" height="6" rx="1.5"/>
+                <rect x="3" y="13" width="18" height="6" rx="1.5"/><path d="M11 5v6"/><path d="M15 13v6"/>`),
+};
+
+/* ---------- catálogo ---------- */
+const L = [
+  {k:'impasable', ic:'escudo',   raro:0, es:['IMPASABLE','ningún pase encajado en el roll'],
+                                          en:['UNPASSABLE','no guard pass conceded']},
+  {k:'rodillo',   ic:'rodillo',  raro:0, es:['EL RODILLO','3 pases de guardia en un roll'],
+                                          en:['THE ROLLING PIN','3 guard passes in one roll']},
+  {k:'cadena',    ic:'cadena',   raro:1, es:['LA CADENA','pasas, montas y tomas la espalda'],
+                                          en:['THE CHAIN','pass, mount and take the back']},
+  {k:'relampago', ic:'rayo',     raro:0, es:['RELÁMPAGO','finalizas en menos de 60 s'],
+                                          en:['LIGHTNING','submit in under 60 s']},
+  {k:'houdini',   ic:'houdini',  raro:0, es:['HOUDINI','3 escapes de posiciones dominantes'],
+                                          en:['HOUDINI','3 escapes from dominant positions']},
+  {k:'quince',    ic:'quince',   raro:1, es:['QUINCE','15 puntos estimados en un roll'],
+                                          en:['FIFTEEN','15 estimated points in one roll']},
+  {k:'notario',   ic:'notario',  raro:0, es:['EL NOTARIO','registras todos los rolls de la quedada'],
+                                          en:['THE SCRIBE','log every roll of the session']},
+  {k:'muro',      ic:'muro',     raro:0, es:['MURO','te atacan 3 veces y no cae ninguna'],
+                                          en:['THE WALL','3 attacks against you, none land']},
+  {k:'invisible', ic:'cinturon', raro:1, es:['CINTURÓN INVISIBLE','finalizas a un cinturón superior'],
+                                          en:['INVISIBLE BELT','submit a higher belt']},
+  {k:'pulpo',     ic:'pulpo',    raro:0, es:['EL PULPO','5 intentos de sumisión en un roll'],
+                                          en:['THE OCTOPUS','5 submission attempts in one roll']},
+];
+const VECES = {impasable:14, rodillo:9, cadena:2, relampago:5, houdini:7, quince:1,
+               notario:4, muro:6, invisible:1, pulpo:11};
+let IDIOMA = 'es';
+const nom = l => l[IDIOMA][0], des = l => l[IDIOMA][1];
+
+function fila(l){
+  return `<div class="lg ${l.raro?'raro':''}">
+    <div class="ic">${IC[l.ic]}</div>
+    <div class="tx"><div class="nb">${nom(l)}</div><div class="ds">${des(l)}</div></div>
+    <div class="ct">${VECES[l.k]}<small>×</small></div>
+  </div>`;
+}
+function pintaTres(){
+  const seis = L.slice(0,5).concat([L[8]]);
+  for (const c of ['A','B','C'])
+    document.getElementById('l'+c).innerHTML = seis.map(fila).join('');
+}
+
+/* ---------- ranking ---------- */
+const RANK = [
+  {n:'Vegeta',  bd:'🐍💧', v:14, yo:0},
+  {n:'Goku',    bd:'🦅🪨', v:11, yo:0},
+  {n:'Felipe',  bd:'🦅🪨', v:9,  yo:1},
+  {n:'Krilin',  bd:'🕷🌪', v:6,  yo:0},
+  {n:'Piccolo', bd:'🦈🔥', v:4,  yo:0},
+];
+function pintaRank(){
+  const max = Math.max(...RANK.map(r=>r.v));
+  const l = L[0];
+  document.getElementById('rank').innerHTML = `
+    <div class="cab"><div class="ic" style="width:38px;height:38px;background:var(--verde-suave);
+      box-shadow:inset 0 0 0 1px rgba(69,140,80,.28);display:grid;place-items:center;border-radius:10px">
+      ${IC.escudo.replace('stroke-width="1.75"','stroke-width="1.75" stroke="#458c50"')}</div>
+      <div><div class="nb">${nom(l)}</div><div class="ds">${des(l)} · julio</div></div></div>
+    ${RANK.map((r,i)=>`<div class="fila ${r.yo?'yo-fila':''}">
+      <div class="pos">${i+1}</div>
+      <div class="who"><b>${r.n}</b><span class="bd">${r.bd}</span></div>
+      <div class="barra"><div class="tr"><i style="width:${100*r.v/max}%"></i></div>
+        <div class="v">${r.v}</div></div></div>`).join('')}`;
+}
+
+/* ---------- colección ---------- */
+function pintaColeccion(){
+  const conseguidos = new Set(['impasable','rodillo','relampago','houdini','notario','muro','pulpo']);
+  document.getElementById('coleccion').innerHTML = L.map(l=>{
+    const ok = conseguidos.has(l.k);
+    return `<div class="cel ${ok?'b':'off'}" title="${des(l)}">
+      <div class="ic" style="${ok?'background:var(--verde-suave);box-shadow:inset 0 0 0 1px rgba(69,140,80,.28)':''}">
+        ${ok ? IC[l.ic].replace('fill="none"','fill="none" stroke="#458c50"') : IC[l.ic]}</div>
+      <div class="nb">${nom(l)}</div>
+      <div class="ct">${ok ? VECES[l.k]+'×' : 'sin conseguir'}</div></div>`;
+  }).join('');
+}
+
+/* ---------- feed ---------- */
+function pintaFeed(){
+  const l = L[2];
+  document.getElementById('feed').innerHTML = `
+    <div class="ic" style="background:transparent;box-shadow:inset 0 0 0 1.5px var(--oro);
+      display:grid;place-items:center;border-radius:11px">
+      ${IC[l.ic].replace('fill="none"','fill="none" stroke="#a8791f"').replace('width="20" height="20"','width="24" height="24"')}</div>
+    <div><div class="t1">Pablo ha desbloqueado ${nom(l)}</div>
+      <div class="t2">${des(l)}. Es la primera vez que lo consigue, y el segundo del grupo en tenerlo.</div>
+      <div class="t3">hoy · quedada del domingo · registrado por Felipe</div>
+      <div class="reac"><span>🔥 3</span><span>💪 1</span><span>🫡</span></div></div>`;
+}
+
+function idioma(x){
+  IDIOMA = x;
+  [...document.querySelectorAll('#segIdioma button')].forEach((b,i)=>
+    b.classList.toggle('on', (i===0) === (x==='es')));
+  todo();
+}
+function tema(){
+  const h = document.documentElement;
+  const osc = h.getAttribute('data-tema') === 'oscuro';
+  h.setAttribute('data-tema', osc ? 'claro' : 'oscuro');
+  document.querySelector('button.tgl').textContent = osc ? 'Modo oscuro' : 'Modo claro';
+  todo();
+}
+function todo(){ pintaTres(); pintaRank(); pintaColeccion(); pintaFeed(); }
+todo();
+</script>
+</body></html>

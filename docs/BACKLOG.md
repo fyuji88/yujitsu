@@ -95,7 +95,9 @@ quinta es la que te dice si se está muriendo despacio.
 | 🟡 Media | **Retos semanales.** El enum `bjj_tipo_regla` ya está en el esquema esperándolos. Demo dibujada. |
 | 🟡 Media | **El mapa de tu juego.** Posiciones que se encienden al finalizar desde ellas por primera vez. Barato y motivador. Demo dibujada. |
 | 🟡 Media | **Némesis y cliente.** Una consulta sobre `v_h2h`, por proporción y no por bruto, mínimo 10 rolls. Demo dibujada. |
-| 🟡 Media | **Logros mensuales y su ranking.** Distintos de los títulos de la quedada: absolutos y acumulables, un predicado por roll, contables ("IMPASABLE ×14"). Diseño en `docs/04-logros-privacidad-y-grupo.md`. |
+| 🟡 Media | **Logros mensuales y su ranking.** Distintos de los títulos de la quedada: absolutos y acumulables, un predicado por roll, contables ("IMPASABLE ×14"). Nombres **en español** (son chistes, y los chistes no se traducen), guardados como `clave` + fichero de textos para que el idioma sea reversible. Iconos **pictogramas propios de línea, un solo acento, oro solo para los raros** — SVG y no emoji, porque la tarjeta compartible tiene que verse igual en todos los móviles. Diseño en `docs/04-logros-privacidad-y-grupo.md` y `docs/LOGROS-diseno.html`. |
+| 🟡 Media | **Sesgo de los logros: ausencia contra presencia.** Los logros que se definen por **la ausencia** de algo (IMPASABLE, LIMPIO, MURO, CUELLO DE ACERO, CINTURÓN INVISIBLE) se inflan solos con no registrar el evento, así que **requieren `origen = 'observador'`**. Los de presencia no, porque para conseguirlos hubo que registrar algo activamente. Flag `requiere_observador` en el catálogo; `rolls.origen` ya existe. Y la procedencia se enseña: "×14 · 5 verificados 👁", con el ranking contando solo verificados por defecto. |
+| 🟡 Media | **Logros en el feed: resumen por sesión, no un elemento por logro.** "Pablo registró 6 rolls anoche · IMPASABLE ×2 · MURO · RELÁMPAGO". Con elemento propio solo para la primera vez, los números redondos (×5, ×10, ×25), el primero del grupo y los raros. Un elemento por logro serían ~150 a la semana con doce personas, y eso mata el feed y las reacciones a la vez. |
 | 🟡 Media | **La familia de logros de constancia** — EL NOTARIO, OJO DEL COACH, SEMANA COMPLETA. Son los únicos que premian **registrar** en vez de rendir, y registrar es el único riesgo que mata el producto. De todos los logros, estos primero. |
 | 🟡 Media | **Pestaña de grupo**: nombre, escudo, lema y **top 5 del mes**. Ranking unificado de cuatro componentes, con la **progresión contra ti mismo** como pieza clave para que no sea una escalera de cinturones. Solo top 5, nunca la tabla entera. |
 | 🟢 Baja | **Modo torneo** con cronómetro reglamentario. Sale casi gratis desde el marcador, pero es otra conversación. |
@@ -109,19 +111,19 @@ Paleta de Gullo medida del logo: verde **`#458c50`**, hueso `#f1f0ee`, naranja
 | | Iniciativa |
 |---|---|
 | 🔴 **Alta** | **Plantilla de tarjeta compartible** con la marca del grupo. Cosmética y motor de crecimiento a la vez, y por eso es la única alta de este grupo. |
-| ~~🟡 Media~~ | ~~**Tokens en una sola fuente de verdad + tema por grupo**~~ — **hecho** (`bjj_20`). Tres familias en `globals.css`: `--marca-*` tematizable, `--dato-*` y estado nunca. El grupo elige un color y la app deriva el resto midiendo contraste. |
-| ~~🟡 Media~~ | ~~**Tema claro por defecto**~~ — **hecho**. El oscuro es paleta propia, no derivada. El sistema no decide: guardada → claro. |
-| ~~🟡 Media~~ | ~~**Avatares de cinturón**~~ — **hecho**. `src/components/Avatar.tsx`, SVG generado. La foto opcional sigue pendiente y va en su bloque. |
-| ~~🟡 Media~~ | ~~**Un solo verde**~~ — **hecho**. `--good:#0ca30c` fundido con el de marca, y el verificador falla si aparece un segundo verde. |
-| ~~🟡 Media~~ | ~~**Botones verdes con texto oscuro**~~ — **hecho**, y medido: la tinta acabó en `#050d06`, porque el `#0b1a0e` de la referencia da 4,38 y tampoco pasaba. |
+| 🟡 Media | **Tokens en una sola fuente de verdad + tema por grupo** (solo el acento). Cimiento de todo lo demás y base de los informes con marca de academia. Prompt escrito. |
+| 🟡 Media | **Tema claro por defecto**, con el oscuro como variante elegida, no derivada. |
+| 🟡 Media | **Avatares de cinturón**: aro, barra y grados. El negro con su barra roja, el blanco con filo. Foto opcional encima, después. |
+| 🟡 Media | **Un solo verde**: fundir `--good:#0ca30c` con el de marca. |
+| 🟡 Media | **Botones verdes con texto oscuro** (blanco sobre el verde da 4,1 y no pasa AA) y verde aclarado `#55a562` para texto pequeño. |
 | 🟡 Media | **Pictogramas de las 24 posiciones.** Lo que hace que parezca hecha por alguien que entrena, y arregla la legibilidad del heatmap en móvil. |
 | 🟡 Media | **Modo tatami**: brillo y contraste altos, objetivos grandes, todo en la mitad inferior, usable con una mano y dedos sudados. |
 | 🟡 Media | **Estados vacíos con carácter.** Son las primeras pantallas que ve cualquiera y hoy no existen. |
 | 🟡 Media | **Onboarding de tres pantallas** y diseño explícito del arranque en frío: qué ves el día uno y el día tres. |
-| 🟡 Media | **Auditoría de accesibilidad** — **medio hecho**: `npm run test:contraste` cubre los 34 pares de tokens y el recorrido comprueba los 44px de lo que se toca rodando. Falta el resto: lectores de pantalla, orden de foco y los textos alternativos fuera de los avatares. |
+| 🟡 Media | **Auditoría de accesibilidad**: contraste AA en toda la app y objetivos táctiles de 44px. |
 | 🟢 Baja | **Confirmación sin mirar**: vibración corta y micro-animación al registrar. |
-| 🟢 Baja | **Icono, splash y manifest** — **a medias**: el manifest ya lleva nombre, hueso de fondo y verde de tema; los PNG siguen siendo los provisionales porque hace falta el logo en fichero. Es dejar `public/logo-gullo.png` y generar tamaños. |
-| 🟢 Baja | **Tipografía de display** parecida al wordmark de Gullo. La **escala tipográfica ya está declarada** (seis pasos, `--txt-1` … `--txt-6`), igual que la de espaciado de 4px, los radios y las sombras. |
+| 🟢 Baja | **Icono, splash y manifest** con la marca del grupo. Hoy provisionales. |
+| 🟢 Baja | **Tipografía de display** parecida al wordmark de Gullo, y escala tipográfica declarada. |
 
 # 7 · Datos y ciencia de datos
 
@@ -184,16 +186,6 @@ también manual** · la entidad se llama `grupos` · arquetipos **en inglés**, 
 ---
 
 ## ✅ Hecho
-
-**Tema Gullo y sistema de diseño** · tokens en tres familias con el claro como
-base y el oscuro como paleta propia · tema por grupo con un solo acento, del que
-se deriva todo lo demás midiendo contraste · avatares de cinturón en SVG ·
-`npm run test:contraste`, que falla por debajo de AA y si el verde se cuela en
-los datos.
-
-**Bloque social** · grupos con roles y código de unión · lectura por grupo ·
-quedadas con plazas y lista de espera · feed con reacciones · informe congelado
-de la quedada con ranking y títulos · enfoques contrastados con los datos.
 
 Auth por magic link · pestaña de practicantes con altas y edición · PWA de logging
 con máquina de estados · escritura local-first con cola · modo observador con

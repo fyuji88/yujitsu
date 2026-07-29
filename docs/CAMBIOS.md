@@ -42,10 +42,19 @@ midiendo contraste · avatares de cinturón en SVG · `npm run test:contraste`.
 **Sabido roto:**
 - **Los iconos del manifest siguen siendo los provisionales.** Falta el logo en
   fichero; con él son diez minutos. El manifest ya lleva el nombre y los colores.
-- `recorrer-analisis.js` tiene clavados los números del juego demo (180 rolls) y
-  la base local ya no los tiene. Falla por datos, no por código; es anterior a
-  esta tanda.
 - No hay pantalla para elegir el acento del grupo: hoy se cambia por SQL.
+- Los recorridos en navegador siguen viviendo en el scratchpad, no en el
+  repositorio: meterlos exigiría `playwright-core` como dependencia y esa
+  decisión no la he tomado yo.
+
+**Semilla de demo:** `db/pruebas/semilla-demo.sql`, determinista y solo local
+(pide `-v confirmar=si` y aborta si `auth.users` tiene más de tres cuentas).
+Roster de Dragon Ball —se ve a la legua que es falso, y así no acaba en una
+captura pareciendo real— con 180 rolls de Goku en cuatro meses. El reparto va
+**pesado a propósito**: vive en la espalda y la montada y casi no toca las
+piernas, porque un heatmap plano no prueba que la rampa funcione. Con eso,
+`recorrer-analisis.js` vuelve a pasar entero (23 comprobaciones); antes fallaba
+porque esperaba los números de un juego de datos que ya no existía.
 
 **Backlog:** tachadas cinco de "Diseño y UX"; accesibilidad e iconos quedan a
 medias con lo que falta escrito.
