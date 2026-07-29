@@ -67,8 +67,21 @@ comprobar que el cronómetro no se queda parado.
 
 ## 3. Qué falta ahora mismo — por orden
 
-**a) ~~Confirmar que el login funciona~~ — HECHO.** El flujo implícito está en
-`main` y desplegado; Felipe entró desde el móvil con un magic link.
+**a) Las tres plantillas de correo.** Es lo único que queda para que la entrada
+funcione entera, y lo tiene que hacer Felipe desde **Authentication → Emails →
+pestaña Templates** (en el panel nuevo ya no están en el menú lateral; si no ves
+la pestaña es que la ventana es estrecha).
+
+| Plantilla | Para qué | Qué añadir |
+|---|---|---|
+| **Magic Link** | entrar con código | `{{ .Token }}` |
+| **Confirm signup** | terminar un alta | `{{ .Token }}` |
+| **Reset Password** | contraseña nueva | `{{ .Token }}` y `{{ .ConfirmationURL }}` |
+
+**b) Activar la protección de contraseñas filtradas.** Ahora que hay
+contraseñas, el aviso del linter de Supabase pasa a tener sentido: comprueba
+contra HaveIBeenPwned que la contraseña elegida no esté en una filtración
+conocida. Está en los ajustes de contraseñas de Authentication.
 
 **b) ~~URL Configuration de Supabase~~ — HECHO.** Site URL y redirect apuntando
 a `https://yujitsu-eight.vercel.app`.
@@ -137,6 +150,12 @@ Se documentan porque todos aparecieron **ejecutando**, no leyendo:
    imposible de construir hasta arreglarlo (`bjj_07`).
 
 3. **PKCE rompía el magic link** al pedirlo en un dispositivo y abrirlo en otro.
+   El primer arreglo —poner `flowType: 'implicit'`— **fue una operación nula**:
+   `@supabase/ssr` fija `flowType: "pkce"` después del spread de las opciones,
+   así que se ignoraba. Parecía arreglado y no lo estaba, y fallaba de forma
+   intermitente: solo cuando el correo se abría en otro navegador. Resuelto de
+   verdad quitando `@supabase/ssr` y usando `createClient`, y sobre todo
+   añadiendo la entrada por código de 6 dígitos, que no depende del enlace.
 
 4. **El modo observador no se podía construir solo con frontend.** La RLS impide
    que un tercero escriba datos de otros: autenticado como el coach, crear la

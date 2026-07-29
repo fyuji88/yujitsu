@@ -103,6 +103,25 @@ cliente, se encuentra `42501` y no hay forma de rodearlo desde el frontend.
 heatmaps dependen de que Felipe y Pablo usen las mismas palabras. Los códigos
 feos viven en la base; las etiquetas humanas, en la interfaz.
 
+**Entrar y crear cuenta son dos cosas distintas.** Al entrar se pasa
+`shouldCreateUser: false`. Si no, un correo mal tecleado no da error: crea una
+cuenta nueva, y con ella una ficha de practicante nueva por el trigger
+`bjj_08` — el historial se parte en dos sin que nadie se entere. Ese fue el
+comportamiento durante un tiempo.
+
+**Salir tiene que limpiar lo local, no solo cerrar la sesión.** Está en
+`olvidarDatosDelUsuario()` (`src/lib/db.ts`) y lo llama `Marco.tsx`. Hay dos
+cosas que son del usuario y no del dispositivo:
+
+- La **cola de salida**: lo que quede dentro se subiría con la sesión de quien
+  entre después. La RLS rechazaría sesiones, rolls y eventos ajenos, y un roll
+  observado quedaría atribuido a quien no es.
+- **`bjj.sesion-abierta`**: el id de la sesión de entreno de hoy. Si se queda,
+  el siguiente cuelga rolls de una sesión que no es suya, la RLS los rechaza y
+  la cola se atasca sin explicar por qué.
+
+La caché de técnicas sí se queda: el diccionario es igual para todos.
+
 **Los puntos se derivan, nunca se guardan.** No hay columna `puntos` en `rolls`
 ni en `eventos`, y no la añadas: el tanteo es una función de la lista de
 eventos, igual que el heatmap. Si mañana se corrige un evento mal registrado, el
@@ -168,8 +187,39 @@ sesiones y `ON DELETE SET NULL` en `rolls.oponente_id`. Resuelto difiriendo dos
 claves foráneas (migración `bjj_06`). Si se recrean esas FK, mantener el
 `deferrable initially deferred`.
 
-**PKCE no sirve para magic links** que se piden en un dispositivo y se abren en
-otro. El cliente usa `flowType: 'implicit'` a propósito (`src/lib/supabase.ts`).
+**@supabase/ssr fuerza PKCE, y PKCE no sirve para enlaces por correo.** Por eso
+`src/lib/supabase.ts` usa `createClient` de `@supabase/supabase-js` y **no**
+`createBrowserClient` de `@supabase/ssr`. Ese paquete construye el objeto de
+auth con `flowType: "pkce"` **después** del spread de tus opciones, así que
+pedirle `implicit` no hace nada: es una opción ignorada, no una preferencia.
+
+Estuvimos un tiempo creyendo que estaba arreglado porque el fichero decía
+`flowType: 'implicit'`. No lo estaba. Si alguien vuelve a meter `@supabase/ssr`
+"porque es el recomendado para Next", el magic link se rompe otra vez, y de
+forma intermitente —solo cuando el correo se abre en otro navegador—, que es la
+peor manera de romperse.
+
+Por qué PKCE no puede funcionar aquí: el verificador se guarda en el navegador
+donde **pides** el enlace y se exige en el que lo **abres**. Con un enlace que
+llega por correo, esos dos sitios no tienen por qué coincidir — Gmail abre su
+propia pestaña, la PWA instalada es otro contexto, el correo se mira en otro
+móvil.
+
+Esta app no tiene autenticación en servidor (no hay `middleware.ts`, no hay
+`createServerClient`, todas las pantallas son de cliente), así que ese paquete
+no aportaba nada. La sesión vive en `localStorage`.
+
+**El camino que de verdad cierra el problema es el código de 6 dígitos**, no el
+enlace: la sesión se abre en la misma pestaña donde se pidió. El enlace se
+mantiene porque es cómodo cuando el correo se abre en el mismo sitio, pero
+depende de un enlace que caduca, es de un solo uso y que algunos escáneres de
+correo corporativos abren —y queman— antes que el usuario.
+
+Requisito: las plantillas de correo tienen que enseñar `{{ .Token }}`. En el
+panel nuevo están en **Authentication → Emails → pestaña Templates** (ya no
+cuelgan del menú lateral). Hacen falta tres: *Magic Link*, *Confirm signup* y
+*Reset Password*. Sin el token no llega ningún código y media pantalla de
+entrada no sirve.
 
 **El helper de RLS vive en el esquema `private`**, no en `public`, para que
 PostgREST no lo publique en `/rest/v1/rpc/`.
