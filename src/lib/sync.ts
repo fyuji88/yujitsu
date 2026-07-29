@@ -76,10 +76,29 @@ async function enviarObservados(lote: EnvioPendiente[]): Promise<string | null> 
 }
 
 let enMarcha = false;
+let retenido = false;
+
+/**
+ * Retiene el vaciado sin vaciar lo que ya hay encolado.
+ *
+ * Lo usa el resumen del roll observado, donde todavía se puede corregir la
+ * duración: si la cola sale antes, la corrección no llega — la RPC reconoce el
+ * `roll_grupo_id` y devuelve el roll que ya existe sin tocarlo. Un campo
+ * editable que en silencio no hace nada es peor que no tenerlo.
+ *
+ * El roll ya está a salvo en IndexedDB mientras tanto; esto solo retrasa la red.
+ */
+export function retenerCola(v: boolean) {
+  retenido = v;
+  if (!v) void vaciarCola();
+}
 
 export async function vaciarCola(): Promise<void> {
   if (enMarcha) return;
-  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+  // Retenido o sin red, se sigue emitiendo la cuenta: si no, la píldora diría
+  // "sincronizado" con cosas esperando, que es justo lo que no puede pasar.
+  const sinRed = typeof navigator !== 'undefined' && !navigator.onLine;
+  if (retenido || sinRed) {
     emitir({ enCola: await local.outbox.count(), enviando: false });
     return;
   }

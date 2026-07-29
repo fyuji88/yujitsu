@@ -1,21 +1,30 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Marco, type Sesion } from '@/components/Marco';
 import { supabase } from '@/lib/supabase';
 import { encolar, encolarRollObservado, nuevoId } from '@/lib/db';
-import { vaciarCola } from '@/lib/sync';
+import { retenerCola, vaciarCola } from '@/lib/sync';
 import {
-  accionesPosibles, aplicarAccion, CONTEXTO_PROPIO, esGuardia, GUARDIAS_TODAS,
+  accionesPosibles, aplicarAccion, CONTEXTO_PROPIO, GUARDIAS_TODAS,
   NOMBRE_OBJETIVO, NOMBRE_POSICION, resultadoDe,
   type Contexto, type EstadoRoll, type EventoBorrador, type Modo, type Pendiente,
 } from '@/lib/bjj';
+import { puntuar, type Anotacion, type Marcador } from '@/lib/puntos';
 import type {
-  Modalidad, Posicion, PracticanteRow, TipoSesion,
+  ArgsRollObservado, Modalidad, Posicion, PracticanteRow, Rol, TipoSesion,
 } from '@/lib/database.types';
 
 const CLAVE_SESION = 'bjj.sesion-abierta';
 const CLAVE_TECNICAS = 'bjj.tecnicas';
+
+/** Las salidas que se usan de verdad. El resto está detrás de "Otra…". */
+const SALIDAS: Posicion[] = [
+  'de_pie', 'guardia_cerrada', 'guardia_abierta', 'media_guardia', 'montada', 'espalda',
+];
+
+/** De pie y clinch son simétricas: no hay a quién preguntar quién está arriba. */
+const esNeutral = (p: Posicion) => p === 'de_pie' || p === 'clinch';
 
 interface SesionAbierta {
   id: string;
@@ -25,12 +34,47 @@ interface SesionAbierta {
   rolls: number;
 }
 
+/**
+ * El cronómetro.
+ *
+ * Se deriva de marcas de tiempo, nunca de un contador que suma ticks. Si el
+ * móvil apaga la pantalla o el navegador manda la pestaña a segundo plano, el
+ * intervalo se ralentiza o se para — un contador acumulado se quedaría corto y
+ * el observador no se enteraría hasta el final. Aquí el intervalo solo sirve
+ * para repintar; la hora la dice `Date.now()`.
+ */
+interface Crono {
+  /** Cuándo se puso en marcha la última vez. null = en pausa. */
+  desde: number | null;
+  /** Milisegundos acumulados en los tramos anteriores. */
+  acumulado: number;
+}
+
+const CRONO_PARADO: Crono = { desde: null, acumulado: 0 };
+const transcurrido = (c: Crono, ahora: number) =>
+  c.acumulado + (c.desde !== null ? Math.max(0, ahora - c.desde) : 0);
+
+function mmss(ms: number) {
+  const s = Math.floor(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
 const hoy = () => new Date().toISOString().slice(0, 10);
 
-/** mm:ss para el cronómetro del observador. */
-function reloj(desde: number, ahora: number) {
-  const s = Math.max(0, Math.floor((ahora - desde) / 1000));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+/** Una foto del roll para poder deshacer. Ver `deshacer()`. */
+interface Instantanea {
+  estado: EstadoRoll;
+  eventos: EventoBorrador[];
+  pendiente: Pendiente | null;
+  subPendiente: SubPendiente | null;
+}
+
+interface SubPendiente {
+  slug: string;
+  objetivo: string;
+  actor: 'yo' | 'oponente';
+  posicion: Posicion;
+  rol: string;
 }
 
 export default function Entreno() {
@@ -41,26 +85,30 @@ function Flujo({ sesion }: { sesion: Sesion }) {
   const [abierta, setAbierta] = useState<SesionAbierta | null>(null);
   const [roster, setRoster] = useState<PracticanteRow[]>([]);
   const [tecnicas, setTecnicas] = useState<Record<string, string>>({});
-  const [fase, setFase] = useState<'inicio' | 'observadorA' | 'oponente' | 'roll' | 'fin'>('inicio');
+  const [fase, setFase] = useState<
+    'inicio' | 'observadorA' | 'oponente' | 'quienArriba' | 'roll' | 'fin'
+  >('inicio');
 
-  // Quién registra. En modo observador el roll no es de nadie de los que miran:
-  // `practA` es quien queda como `actor: 'yo'` en los datos.
   const [modo, setModo] = useState<Modo>('propio');
   const [practA, setPractA] = useState<PracticanteRow | null>(null);
   const [modalidadObs, setModalidadObs] = useState<Modalidad>('gi');
+  const [posInicio, setPosInicio] = useState<Posicion>('de_pie');
+  const [rolInicio, setRolInicio] = useState<Rol>('neutral');
+  const [verTodasSalidas, setVerTodasSalidas] = useState(false);
 
   // roll en curso
   const [oponente, setOponente] = useState<PracticanteRow | null>(null);
   const [estado, setEstado] = useState<EstadoRoll>({ pos: 'de_pie', rol: 'neutral' });
   const [eventos, setEventos] = useState<EventoBorrador[]>([]);
   const [pendiente, setPendiente] = useState<Pendiente | null>(null);
-  const [subPendiente, setSubPendiente] = useState<
-    { slug: string; objetivo: string; actor: 'yo' | 'oponente'; posicion: Posicion; rol: string } | null
-  >(null);
+  const [subPendiente, setSubPendiente] = useState<SubPendiente | null>(null);
+  const [pila, setPila] = useState<Instantanea[]>([]);
 
-  // El observador registra en vivo: el reloj arranca al elegir al segundo.
-  const [tRoll, setTRoll] = useState<number | null>(null);
+  const [crono, setCrono] = useState<Crono>(CRONO_PARADO);
   const [ahora, setAhora] = useState(() => Date.now());
+
+  // Lo último que se encoló observando, para poder corregirle la duración.
+  const [ultimo, setUltimo] = useState<ArgsRollObservado | null>(null);
 
   useEffect(() => {
     const guardada = localStorage.getItem(CLAVE_SESION);
@@ -77,7 +125,6 @@ function Flujo({ sesion }: { sesion: Sesion }) {
     (async () => {
       const { data } = await supabase().from('practicantes').select('*').order('nombre');
       if (data) setRoster(data as PracticanteRow[]);
-      // El diccionario se cachea: hace falta para mapear técnica -> id sin red.
       const { data: t } = await supabase().from('tecnicas').select('id,slug');
       if (t) {
         const m = Object.fromEntries((t as { id: string; slug: string }[])
@@ -88,12 +135,35 @@ function Flujo({ sesion }: { sesion: Sesion }) {
     })();
   }, []);
 
-  // El reloj solo corre observando y dentro del roll.
+  // Solo repinta. Si la pestaña se va a segundo plano y el intervalo se
+  // ralentiza, al volver el primer tick ya muestra la hora real.
   useEffect(() => {
-    if (modo !== 'observador' || fase !== 'roll' || tRoll === null) return;
-    const id = setInterval(() => setAhora(Date.now()), 1000);
+    if (crono.desde === null) return;
+    const id = setInterval(() => setAhora(Date.now()), 500);
     return () => clearInterval(id);
-  }, [modo, fase, tRoll]);
+  }, [crono.desde]);
+
+  // Al volver de segundo plano, repintar sin esperar al siguiente tick.
+  useEffect(() => {
+    const despertar = () => setAhora(Date.now());
+    document.addEventListener('visibilitychange', despertar);
+    window.addEventListener('focus', despertar);
+    return () => {
+      document.removeEventListener('visibilitychange', despertar);
+      window.removeEventListener('focus', despertar);
+    };
+  }, []);
+
+  // Mientras se mira el resumen del roll observado, la cola espera: ahí todavía
+  // se puede corregir la duración. Ver `retenerCola`.
+  const reteniendo = modo === 'observador' && fase === 'fin';
+  useEffect(() => {
+    retenerCola(reteniendo);
+    // El cleanup solo suelta si este efecto era el que retenía. Sin la guarda,
+    // al pasar de false a true React limpia el efecto anterior primero y esa
+    // llamada a retenerCola(false) vacía la cola justo antes de retenerla.
+    return () => { if (reteniendo) retenerCola(false); };
+  }, [reteniendo]);
 
   const observando = modo === 'observador';
   const nombreA = observando ? (practA?.nombre ?? '') : 'Yo';
@@ -103,15 +173,49 @@ function Flujo({ sesion }: { sesion: Sesion }) {
     ? { modo: 'observador', a: practA.nombre, b: oponente.nombre }
     : CONTEXTO_PROPIO;
 
-  /** Minuto del roll, solo si hay cronómetro. Se acota igual que el check de la base. */
-  const minutoActual = useCallback(() => {
-    if (tRoll === null) return null;
-    return Math.min(60, Math.floor((Date.now() - tRoll) / 60000));
-  }, [tRoll]);
+  const marcador = useMemo(() => puntuar(eventos), [eventos]);
+
+  const segundoActual = useCallback(() => (
+    crono.desde === null && crono.acumulado === 0
+      ? null
+      : Math.min(3600, Math.floor(transcurrido(crono, Date.now()) / 1000))
+  ), [crono]);
+
+  const foto = useCallback((): Instantanea => (
+    { estado, eventos, pendiente, subPendiente }
+  ), [estado, eventos, pendiente, subPendiente]);
 
   const agregar = useCallback((ev: EventoBorrador) => {
-    setEventos((e) => [...e, { ...ev, minuto: minutoActual() }]);
-  }, [minutoActual]);
+    setEventos((e) => [...e, { ...ev, segundo: segundoActual() }]);
+  }, [segundoActual]);
+
+  /**
+   * Deshacer.
+   *
+   * Deja de ser un extra en cuanto hay un marcador visible: el observador ve
+   * sus propios errores en tiempo real y quiere corregirlos en el momento.
+   * Se guarda una foto antes de cada toque y esto la restaura — así vuelve
+   * también la posición, no solo el evento. Como el roll no sube hasta que
+   * termina, es un pop sobre el estado y no una operación contra la base.
+   */
+  function deshacer() {
+    if (!pila.length) return;
+    // Una acción son dos toques (elegir la acción y luego el destino), así que
+    // deshacer no puede ser un pop: dejaría al observador dentro de la pregunta
+    // que acababa de contestar. Se retrocede hasta la foto anterior al evento,
+    // y luego hasta el principio de esa acción.
+    let i = pila.length - 1;
+    while (i >= 0 && pila[i].eventos.length >= eventos.length) i--;
+    if (i < 0) i = 0;
+    while (i > 0 && pila[i - 1].eventos.length === pila[i].eventos.length) i--;
+
+    const f = pila[i];
+    setEstado(f.estado);
+    setEventos(f.eventos);
+    setPendiente(f.pendiente);
+    setSubPendiente(f.subPendiente);
+    setPila(pila.slice(0, i));
+  }
 
   const abrirSesion = useCallback(async (modalidad: Modalidad, tipo: TipoSesion) => {
     const s: SesionAbierta = { id: nuevoId(), fecha: hoy(), modalidad, tipo, rolls: 0 };
@@ -135,7 +239,9 @@ function Flujo({ sesion }: { sesion: Sesion }) {
     setEventos([]);
     setPendiente(null);
     setSubPendiente(null);
-    setTRoll(null);
+    setPila([]);
+    setCrono(CRONO_PARADO);
+    setUltimo(null);
   }
 
   function nuevoRoll() {
@@ -149,24 +255,39 @@ function Flujo({ sesion }: { sesion: Sesion }) {
     limpiarRoll();
     setModo('observador');
     setPractA(null);
+    setPosInicio('de_pie');
+    setRolInicio('neutral');
+    setVerTodasSalidas(false);
     setFase('observadorA');
   }
 
-  function salirDeObservador() {
+  function salir() {
     limpiarRoll();
     setModo('propio');
     setPractA(null);
     setFase('inicio');
   }
 
+  /** Arranca el roll con la posición de salida elegida y el crono en marcha. */
+  function empezarRoll(rol: Rol) {
+    setEstado({ pos: posInicio, rol });
+    setEventos([]);
+    setPendiente(null);
+    setSubPendiente(null);
+    setPila([]);
+    setCrono({ desde: Date.now(), acumulado: 0 });
+    setAhora(Date.now());
+    setFase('roll');
+  }
+
   function accion(clave: Parameters<typeof aplicarAccion>[0]) {
+    setPila((p) => [...p, foto()]);
     const r = aplicarAccion(clave, estado, ctx);
     if (r.evento) agregar(r.evento);
     if (r.estado) setEstado(r.estado);
     setPendiente(r.pendiente ?? null);
   }
 
-  /** Tu propio roll: filas sueltas por la cola de siempre. */
   async function terminarPropio() {
     if (!abierta || !oponente) return;
     const rollId = nuevoId();
@@ -193,7 +314,7 @@ function Flujo({ sesion }: { sesion: Sesion }) {
         objetivo: ev.objetivo,
         tecnica_id: ev.tecnicaSlug ? tecnicas[ev.tecnicaSlug] ?? null : null,
         completado: ev.completado,
-        minuto: ev.minuto ?? null,
+        segundo_roll: ev.segundo ?? null,
       });
     }
     const s = { ...abierta, rolls: abierta.rolls + 1 };
@@ -203,23 +324,21 @@ function Flujo({ sesion }: { sesion: Sesion }) {
     void vaciarCola();
   }
 
-  /**
-   * Roll observado: una sola llamada a la RPC.
-   *
-   * No pasa por `encolar()` porque la RLS no deja escribir filas de otros; y
-   * no toca la sesión del observador, porque el roll no es suyo. La técnica
-   * viaja por slug: la resuelve Postgres.
-   */
   async function terminarObservado() {
     if (!practA || !oponente) return;
-    const seg = tRoll ? Math.round((Date.now() - tRoll) / 1000) : 0;
-    await encolarRollObservado({
+    // Antes de encolar, no después: el efecto que retiene la cola no corre
+    // hasta el siguiente render, y para entonces ya se habría enviado.
+    retenerCola(true);
+    const seg = Math.floor(transcurrido(crono, Date.now()) / 1000);
+    const args: ArgsRollObservado = {
       p_grupo: nuevoId(),
       p_practicante_a: practA.id,
       p_practicante_b: oponente.id,
       p_fecha: hoy(),
       p_modalidad: modalidadObs,
       p_duracion_min: Math.min(60, Math.max(0, Math.round(seg / 60))),
+      p_posicion_inicio: posInicio,
+      p_rol_inicio: rolInicio,
       p_resultado: resultadoDe(eventos),
       p_eventos: eventos.map((ev) => ({
         actor: ev.actor,
@@ -229,11 +348,24 @@ function Flujo({ sesion }: { sesion: Sesion }) {
         objetivo: ev.objetivo,
         tecnica_slug: ev.tecnicaSlug,
         completado: ev.completado,
-        minuto: ev.minuto ?? null,
+        segundo_roll: ev.segundo ?? null,
       })),
-    });
+    };
+    await encolarRollObservado(args);
+    setUltimo(args);
+    setCrono((c) => ({ desde: null, acumulado: transcurrido(c, Date.now()) }));
     setFase('fin');
+    // No envía nada porque está retenida; sirve para que la píldora enseñe que
+    // hay un roll esperando en vez de decir "sincronizado".
     void vaciarCola();
+  }
+
+  /** Corrige la duración del roll que aún está en la cola. */
+  async function corregirDuracion(min: number) {
+    if (!ultimo) return;
+    const args = { ...ultimo, p_duracion_min: Math.min(60, Math.max(0, min)) };
+    await encolarRollObservado(args);
+    setUltimo(args);
   }
 
   const terminar = () => (observando ? terminarObservado() : terminarPropio());
@@ -253,19 +385,20 @@ function Flujo({ sesion }: { sesion: Sesion }) {
         </div>
         <h2 className="sec">O mira a otros</h2>
         <div style={{ marginTop: 4 }}>
-          <button className="ghost" data-testid="observar" onClick={observar}>
-            👁 Observar
-          </button>
+          <button className="ghost" data-testid="observar" onClick={observar}>👁 Observar</button>
         </div>
         <p className="hint">
-          Para registrar el roll de otros dos sin entrenar tú. No hace falta abrir sesión:
-          el roll va a la de ellos, no a la tuya.
+          Para registrar el roll de otros dos sin entrenar tú, con marcador y cronómetro.
+          No hace falta abrir sesión: el roll va a la de ellos, no a la tuya.
         </p>
       </>
     );
   }
 
   if (fase === 'observadorA') {
+    const salidas = verTodasSalidas
+      ? (Object.keys(NOMBRE_POSICION) as Posicion[])
+      : SALIDAS;
     return (
       <>
         <h1>Modo observador</h1>
@@ -273,6 +406,7 @@ function Flujo({ sesion }: { sesion: Sesion }) {
           Tú solo miras. El roll se guarda para los dos: uno lo verá como ataque y el otro
           como defensa, sin que ninguno toque el móvil.
         </p>
+
         <h2 className="sec">Modalidad del roll</h2>
         <div className="chips">
           {(['gi', 'nogi'] as const).map((m) => (
@@ -284,6 +418,27 @@ function Flujo({ sesion }: { sesion: Sesion }) {
             </button>
           ))}
         </div>
+
+        <h2 className="sec">Posición de salida</h2>
+        <div className="chips">
+          {salidas.map((p) => (
+            <button key={p} className="chip" data-testid={`salida-${p}`}
+              style={posInicio === p
+                ? { borderColor: 'var(--yo)', color: 'var(--yo)' } : undefined}
+              onClick={() => setPosInicio(p)}>
+              {NOMBRE_POSICION[p]}
+            </button>
+          ))}
+          {!verTodasSalidas && (
+            <button className="chip" data-testid="salida-mas"
+              onClick={() => setVerTodasSalidas(true)}>Otra…</button>
+          )}
+        </div>
+        <p className="hint">
+          En clase se arranca constantemente desde una posición pactada. Por defecto de pie:
+          si lo cambias, luego se pregunta quién empieza arriba.
+        </p>
+
         <h2 className="sec" style={{ color: 'var(--yo)' }}>Primer practicante</h2>
         <div className="chips">
           {roster.map((p) => (
@@ -299,7 +454,7 @@ function Flujo({ sesion }: { sesion: Sesion }) {
           </p>
         )}
         <div style={{ marginTop: 18 }}>
-          <button className="ghost" onClick={salirDeObservador}>← Atrás</button>
+          <button className="ghost" onClick={salir}>← Atrás</button>
         </div>
       </>
     );
@@ -319,9 +474,9 @@ function Flujo({ sesion }: { sesion: Sesion }) {
             <button className="chip" key={p.id} data-testid={`op-${p.nombre}`}
               onClick={() => {
                 setOponente(p);
-                setTRoll(observando ? Date.now() : null);
-                setAhora(Date.now());
-                setFase('roll');
+                if (!observando) { setCrono(CRONO_PARADO); setFase('roll'); setEventos([]); return; }
+                if (esNeutral(posInicio)) { setRolInicio('neutral'); empezarRoll('neutral'); }
+                else setFase('quienArriba');
               }}>
               {p.nombre}{p.usa_sistema && <small>app</small>}
             </button>
@@ -333,7 +488,10 @@ function Flujo({ sesion }: { sesion: Sesion }) {
           </p>
         )}
         {observando && (
-          <p className="hint">En cuanto elijas, arranca el cronómetro del roll.</p>
+          <p className="hint">
+            Empezáis en <b>{NOMBRE_POSICION[posInicio]}</b>. En cuanto elijas, arranca el
+            cronómetro.
+          </p>
         )}
         <div style={{ marginTop: 18 }}>
           <button className="ghost"
@@ -343,18 +501,53 @@ function Flujo({ sesion }: { sesion: Sesion }) {
     );
   }
 
+  if (fase === 'quienArriba' && practA && oponente) {
+    return (
+      <>
+        <h1>{NOMBRE_POSICION[posInicio]}</h1>
+        <h2 className="sec">¿Quién empieza arriba?</h2>
+        <div className="chips">
+          <button className="chip" data-testid="arriba-a"
+            style={{ borderColor: 'var(--yo)' }}
+            onClick={() => { setRolInicio('arriba'); empezarRoll('arriba'); }}>
+            {practA.nombre}
+          </button>
+          <button className="chip" data-testid="arriba-b"
+            style={{ borderColor: 'var(--op)' }}
+            onClick={() => { setRolInicio('abajo'); empezarRoll('abajo'); }}>
+            {oponente.nombre}
+          </button>
+        </div>
+        <p className="hint">
+          La posición es física y es la misma para los dos; lo que cambia es quién la juega.
+          Si {practA.nombre} está abajo en guardia cerrada, {oponente.nombre} está dentro
+          intentando pasarla.
+        </p>
+        <div style={{ marginTop: 18 }}>
+          <button className="ghost" onClick={() => setFase('oponente')}>← Atrás</button>
+        </div>
+      </>
+    );
+  }
+
   if (fase === 'roll' && oponente && (!observando || practA)) {
     const a = accionesPosibles(estado, modo);
     const quienArriba = estado.rol === 'arriba' ? nombreA : nombreB;
+    const responder = (fn: () => void) => { setPila((p) => [...p, foto()]); fn(); };
     return (
       <>
+        {observando && (
+          <MarcadorEnVivo
+            marcador={marcador} a={nombreA} b={nombreB}
+            ms={transcurrido(crono, ahora)} enPausa={crono.desde === null}
+            onPausa={() => setCrono((c) => (c.desde === null
+              ? { desde: Date.now(), acumulado: c.acumulado }
+              : { desde: null, acumulado: transcurrido(c, Date.now()) }))}
+          />
+        )}
+
         <div className="state">
-          <div className="lbl">
-            Posición actual
-            {observando && tRoll !== null && (
-              <> · <span data-testid="crono">{reloj(tRoll, ahora)}</span></>
-            )}
-          </div>
+          <div className="lbl">Posición actual</div>
           <div className="pos">{NOMBRE_POSICION[estado.pos]}</div>
           <div className="rol">
             {estado.rol === 'neutral'
@@ -368,23 +561,24 @@ function Flujo({ sesion }: { sesion: Sesion }) {
         {pendiente
           ? <Pregunta
               p={pendiente}
-              onPosicion={(pos) => {
+              onPosicion={(pos) => responder(() => {
                 if (pendiente.tipo !== 'posicion') return;
+                if (pendiente.eventoAlElegir) agregar(pendiente.eventoAlElegir(pos));
                 setEstado(pendiente.siguiente(pos));
                 setPendiente(null);
-              }}
+              })}
               onMas={() => {
                 if (pendiente.tipo !== 'posicion') return;
                 setPendiente({ ...pendiente, opciones: GUARDIAS_TODAS, mas: false });
               }}
-              onTecnica={(slug, objetivo) => {
+              onTecnica={(slug, objetivo) => responder(() => {
                 if (pendiente.tipo !== 'tecnica') return;
                 setSubPendiente({
                   slug, objetivo, actor: pendiente.actor,
                   posicion: pendiente.posicion, rol: pendiente.rol,
                 });
                 setPendiente(null);
-              }}
+              })}
               onCancelar={() => setPendiente(null)}
             />
           : subPendiente
@@ -392,24 +586,23 @@ function Flujo({ sesion }: { sesion: Sesion }) {
               <>
                 <h2 className="sec">¿Entró?</h2>
                 <div className="chips">
-                  <button className="chip ok" data-testid="entro-si" onClick={() => {
-                    agregar({
-                      actor: subPendiente.actor, tipo: 'sumision',
-                      posicion: subPendiente.posicion, rol: subPendiente.rol as EstadoRoll['rol'],
-                      objetivo: subPendiente.objetivo as EventoBorrador['objetivo'],
-                      tecnicaSlug: subPendiente.slug, completado: true,
-                    });
-                    setSubPendiente(null);
-                  }}>✓ Sí, fin del roll</button>
-                  <button className="chip no" onClick={() => {
-                    agregar({
-                      actor: subPendiente.actor, tipo: 'sumision',
-                      posicion: subPendiente.posicion, rol: subPendiente.rol as EstadoRoll['rol'],
-                      objetivo: subPendiente.objetivo as EventoBorrador['objetivo'],
-                      tecnicaSlug: subPendiente.slug, completado: false,
-                    });
-                    setSubPendiente(null);
-                  }}>✗ Falló, seguimos</button>
+                  {([true, false] as const).map((entro) => (
+                    <button key={String(entro)}
+                      className={`chip ${entro ? 'ok' : 'no'}`}
+                      data-testid={entro ? 'entro-si' : 'entro-no'}
+                      onClick={() => responder(() => {
+                        agregar({
+                          actor: subPendiente.actor, tipo: 'sumision',
+                          posicion: subPendiente.posicion,
+                          rol: subPendiente.rol as EstadoRoll['rol'],
+                          objetivo: subPendiente.objetivo as EventoBorrador['objetivo'],
+                          tecnicaSlug: subPendiente.slug, completado: entro,
+                        });
+                        setSubPendiente(null);
+                      })}>
+                      {entro ? '✓ Sí, fin del roll' : '✗ Falló, seguimos'}
+                    </button>
+                  ))}
                 </div>
               </>
             )
@@ -448,6 +641,10 @@ function Flujo({ sesion }: { sesion: Sesion }) {
           <button className="primary" data-testid="fin-roll" onClick={terminar}>
             Fin del roll
           </button>
+          {observando && (
+            <button className="ghost" data-testid="deshacer"
+              disabled={!pila.length} onClick={deshacer}>↶ Deshacer</button>
+          )}
         </div>
       </>
     );
@@ -456,8 +653,8 @@ function Flujo({ sesion }: { sesion: Sesion }) {
   if (fase === 'fin') {
     const res = resultadoDe(eventos);
     const txt = observando
-      ? (res === 'sumision_favor' ? `Ganó ${nombreA}`
-        : res === 'sumision_contra' ? `Ganó ${nombreB}` : 'Sin sumisión')
+      ? (res === 'sumision_favor' ? `Sumisión de ${nombreA}`
+        : res === 'sumision_contra' ? `Sumisión de ${nombreB}` : 'Sin sumisión')
       : (res === 'sumision_favor' ? 'Sumisión a favor'
         : res === 'sumision_contra' ? 'Sumisión en contra' : 'Sin sumisión');
     const espeja = observando && oponente?.usa_sistema;
@@ -465,33 +662,53 @@ function Flujo({ sesion }: { sesion: Sesion }) {
       <>
         <div className="state">
           <div className="lbl">{observando ? 'Roll observado' : 'Roll guardado'}</div>
-          <div className="pos" data-testid="resultado">{txt}</div>
-          <div className="rol">
-            {eventos.length} eventos · {observando ? `${nombreA} vs ${nombreB}` : `vs ${nombreB}`}
+          <div className="tanteo" data-testid="tanteo-final" style={{ margin: '4px 0 2px' }}>
+            <span className="n a">{marcador.a}</span>
+            <span className="sep">–</span>
+            <span className="n b">{marcador.b}</span>
+            <span style={{ fontSize: 13, color: 'var(--ink-2)', marginLeft: 6 }}>
+              {observando ? `${nombreA} · ${nombreB}` : `tú · ${nombreB}`}
+            </span>
+          </div>
+          <div className="rol" data-testid="resultado">
+            {txt} · {eventos.length} eventos · {mmss(transcurrido(crono, ahora))}
           </div>
         </div>
+
+        <h2 className="sec">De dónde salen los puntos</h2>
+        <Desglose marcador={marcador} a={nombreA} b={nombreB} />
+
+        {observando && ultimo && (
+          <>
+            <label htmlFor="dur">Duración (minutos), del cronómetro</label>
+            <input id="dur" type="number" min={0} max={60} data-testid="duracion"
+              defaultValue={ultimo.p_duracion_min ?? 0}
+              onChange={(e) => void corregirDuracion(Number(e.target.value))} />
+            <p className="hint">
+              Se rellena sola. Solo hace falta tocarla si el cronómetro se quedó corriendo.
+            </p>
+          </>
+        )}
 
         {observando ? (
           <>
             <p className="hint" data-testid="resumen-observado">
               {espeja
-                ? <>Se han guardado <b>dos rolls</b>, uno para {nombreA} y otro para {nombreB},
-                    unidos por el mismo <code>roll_grupo_id</code>. Ninguno de los dos ha tocado
-                    el móvil, y lo que para uno es ataque para el otro es defensa.</>
-                : <>Se ha guardado <b>un roll</b>, el de {nombreA}. {nombreB} no usa la app,
-                    así que no hay a quién espejárselo: cuando se dé de alta, este roll seguirá
-                    contando como suyo en el head-to-head de {nombreA}.</>}
+                ? <>Se guardan <b>dos rolls</b>, uno para {nombreA} y otro para {nombreB},
+                    unidos por el mismo <code>roll_grupo_id</code>. Lo que para uno es ataque
+                    para el otro es defensa.</>
+                : <>Se guarda <b>un roll</b>, el de {nombreA}. {nombreB} no usa la app, así que
+                    no hay a quién espejárselo.</>}
+              {' '}Sale hacia Supabase en cuanto salgas de esta pantalla.
             </p>
             <p className="hint">
               Si alguno de los dos registra este mismo roll por su cuenta, <b>gana esta
-              versión</b>: el que mira ve cosas que tú no ves — tu propia espalda, y las
-              sumisiones que intentaste y fallaste.
+              versión</b>: el que mira ve cosas que tú no ves.
             </p>
           </>
         ) : (
           <p className="hint">
             Se ha guardado en el móvil y sale hacia Supabase en cuanto haya red.
-            Mira la píldora de arriba.
           </p>
         )}
 
@@ -500,9 +717,7 @@ function Flujo({ sesion }: { sesion: Sesion }) {
             limpiarRoll();
             setFase(observando ? 'observadorA' : 'oponente');
           }}>+ Otro roll</button>
-          <button className="ghost" onClick={salirDeObservador}>
-            {observando ? 'Salir' : 'Fin sesión'}
-          </button>
+          <button className="ghost" onClick={salir}>{observando ? 'Salir' : 'Fin sesión'}</button>
         </div>
       </>
     );
@@ -519,15 +734,96 @@ function Flujo({ sesion }: { sesion: Sesion }) {
         <button className="primary" data-testid="nuevo-roll" onClick={nuevoRoll}>
           + Nuevo roll
         </button>
-        <button className="ghost" data-testid="observar" onClick={observar}>
-          👁 Observar
-        </button>
+        <button className="ghost" data-testid="observar" onClick={observar}>👁 Observar</button>
       </div>
       <p className="hint">
-        La sesión se cierra sola a medianoche. Si mañana entrenas otra vez, se abre una nueva.
-        <b> 👁 Observar</b> es para registrar el roll de otros dos: cada uno recibe sus datos.
+        La sesión se cierra sola a medianoche. <b>👁 Observar</b> registra el roll de otros dos,
+        con marcador y cronómetro en vivo.
       </p>
     </>
+  );
+}
+
+/**
+ * El marcador de reojo.
+ *
+ * En modo propio no existe: si estás rodando no lo miras, y ahí el tanteo sale
+ * solo en el resumen final.
+ */
+function MarcadorEnVivo(
+  { marcador, a, b, ms, enPausa, onPausa }: {
+    marcador: Marcador; a: string; b: string;
+    ms: number; enPausa: boolean; onPausa: () => void;
+  },
+) {
+  const [flash, setFlash] = useState<Anotacion | null>(null);
+  const previo = useRef(0);
+
+  useEffect(() => {
+    const n = marcador.desglose.length;
+    if (n > previo.current) {
+      setFlash(marcador.desglose[n - 1]);
+      previo.current = n;
+      const t = setTimeout(() => setFlash(null), 2200);
+      return () => clearTimeout(t);
+    }
+    previo.current = n;
+  }, [marcador]);
+
+  return (
+    <div className="marcador">
+      <div className="lado a">
+        <div className="quien">{a}</div>
+        <div className="n" data-testid="puntos-a">{marcador.a}</div>
+        {flash?.actor === 'yo' && (
+          <span className="flash" key={flash.indice}>+{flash.puntos} {flash.etiqueta}</span>
+        )}
+      </div>
+
+      <div className="medio">
+        <button className={`crono${enPausa ? ' pausa' : ''}`} data-testid="crono"
+          onClick={onPausa} aria-label={enPausa ? 'Reanudar' : 'Pausar'}>
+          {mmss(ms)}
+        </button>
+        <div className={`aviso${enPausa ? '' : ' tenue'}`} data-testid="crono-estado">
+          {enPausa ? '⏸ pausa' : 'toca para pausar'}
+        </div>
+      </div>
+
+      <div className="lado b">
+        <div className="quien">{b}</div>
+        <div className="n" data-testid="puntos-b">{marcador.b}</div>
+        {flash?.actor === 'oponente' && (
+          <span className="flash" key={flash.indice}>+{flash.puntos} {flash.etiqueta}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Desglose({ marcador, a, b }: { marcador: Marcador; a: string; b: string }) {
+  if (!marcador.desglose.length) {
+    return (
+      <p className="empty" data-testid="sin-puntos">
+        Ninguna acción de las que puntúan. Un roll puede acabar 0–0 y estar bien registrado.
+      </p>
+    );
+  }
+  return (
+    <div className="tl">
+      {marcador.desglose.map((d) => (
+        <div className="ev" key={`${d.indice}-${d.clave}`}>
+          <span className="dot" style={{
+            background: d.actor === 'yo' ? 'var(--yo)' : 'var(--op)',
+          }} />
+          <span className="tx">
+            {d.actor === 'yo' ? a : b} · {d.etiqueta}
+            <small>evento {d.indice + 1}</small>
+          </span>
+          <span className="pill">+{d.puntos}</span>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -577,6 +873,7 @@ function Timeline(
   const NOMBRE_TIPO: Record<EventoBorrador['tipo'], string> = {
     sumision: 'Sumisión', barrida: 'Barrida', pase_guardia: 'Pase de guardia',
     derribo: 'Derribo', toma_espalda: 'Toma de espalda', escape: 'Escape',
+    transicion: 'Transición',
   };
   if (!eventos.length) {
     return <p className="empty">Nada todavía. Toca una acción arriba.</p>;
@@ -593,8 +890,11 @@ function Timeline(
               e.tecnicaSlug === 'puxada' ? 'Tira guardia' : NOMBRE_TIPO[e.tipo]
             }{e.completado ? '' : ' (falló)'}
             <small>
-              {NOMBRE_POSICION[e.posicion]} · {e.rol}
-              {e.minuto != null ? ` · min ${e.minuto}` : ''}
+              {/* En una transición `posicion` es el DESTINO, no el origen. */}
+              {e.tipo === 'transicion'
+                ? `a ${NOMBRE_POSICION[e.posicion]}`
+                : `${NOMBRE_POSICION[e.posicion]} · ${e.rol}`}
+              {e.segundo != null ? ` · ${mmss(e.segundo * 1000)}` : ''}
               {e.tecnicaSlug && e.tipo === 'sumision'
                 ? ` · ${e.tecnicaSlug.replace(/_/g, ' ')} → ${NOMBRE_OBJETIVO[e.objetivo]}`
                 : ''}

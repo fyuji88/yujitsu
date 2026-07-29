@@ -6,6 +6,8 @@
   --yo:#3987e5; --yo-soft:rgba(57,135,229,.16);
   --op:#d95926; --op-soft:rgba(217,89,38,.16);
   --good:#0ca30c; --warn:#fab219; --bad:#d03b3b;
+  /* Alto de la cabecera. Lo necesita el marcador para pegarse justo debajo. */
+  --alto-top:57px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
@@ -90,6 +92,53 @@ nav.tabs{display:flex;gap:6px;border-top:1px solid var(--border);
 nav.tabs a{flex:1;text-align:center;font-size:12px;text-decoration:none;color:var(--muted);
   padding:8px 4px;border-radius:10px}
 nav.tabs a.on{color:var(--ink);background:var(--surface)}
+
+/* Marcador en vivo del modo observador.
+   Tiene que leerse de reojo, a un metro, desde el borde del tatami: numero
+   grande, nombre pequeño, sin decoracion. Se queda pegado arriba para que no
+   se pierda al crecer la lista de eventos. */
+.marcador{position:sticky;top:var(--alto-top);z-index:4;background:var(--plane);
+  border-bottom:1px solid var(--border);margin:-14px -16px 12px;padding:9px 14px 8px;
+  display:flex;align-items:center;gap:8px}
+.marcador .lado{flex:1;min-width:0;position:relative}
+.marcador .lado.b{text-align:right}
+.marcador .quien{font-size:11px;color:var(--muted);line-height:1.2;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.marcador .n{font-size:38px;font-weight:700;line-height:1.02;font-variant-numeric:tabular-nums}
+.marcador .lado.a .n{color:var(--yo)}
+.marcador .lado.b .n{color:var(--op)}
+
+.marcador .medio{flex:none;text-align:center;padding:0 2px}
+.marcador .crono{font-size:18px;font-weight:620;line-height:1.1;
+  font-variant-numeric:tabular-nums;background:none;border:none;color:var(--ink);
+  font-family:inherit;padding:2px 4px;cursor:pointer}
+.marcador .crono.pausa{color:var(--warn)}
+.marcador .aviso{font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--warn);line-height:1;margin-top:1px}
+.marcador .aviso.tenue{color:var(--muted)}
+
+/* El destello de "+3 paso": dice de donde vino el punto y se apaga. */
+/* Ocupa la linea del nombre en vez de superponerse a el: durante los dos
+   segundos que dura se lee "+4 montada" donde estaba el nombre, y los dos
+   textos encimados no compiten. */
+.marcador .flash{position:absolute;top:0;font-size:11.5px;font-weight:640;
+  line-height:1.2;white-space:nowrap;pointer-events:none;
+  background:var(--plane);animation:sube 2.2s ease-out forwards}
+.marcador .lado.a .flash{left:0;padding-right:6px;color:var(--yo)}
+.marcador .lado.b .flash{right:0;padding-left:6px;color:var(--op)}
+@keyframes sube{
+  0%{opacity:0;transform:translateY(7px)}
+  12%{opacity:1;transform:translateY(0)}
+  65%{opacity:1;transform:translateY(0)}
+  100%{opacity:0;transform:translateY(-9px)}
+}
+
+/* El tanteo en el resumen final, con el desglose. */
+.tanteo{display:flex;align-items:baseline;gap:8px;font-variant-numeric:tabular-nums}
+.tanteo .n{font-size:30px;font-weight:700;line-height:1}
+.tanteo .a{color:var(--yo)}
+.tanteo .b{color:var(--op)}
+.tanteo .sep{color:var(--muted);font-size:20px}
 
 .fila{display:flex;align-items:center;gap:10px;background:var(--surface);
   border:1px solid var(--border);border-radius:11px;padding:11px 13px;font-size:14px}
