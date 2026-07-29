@@ -50,11 +50,18 @@ dos en vez de "yo/él". Al terminar se guardan **dos rolls** unidos por el mismo
 `roll_grupo_id`: lo que para uno es ataque, para el otro es defensa. Si el
 segundo no tiene cuenta, se guarda solo el lado del primero.
 
+**Marcador estilo IBJJF**: observando, cabecera fija con el tanteo de los dos y
+cronómetro con pausa; en modo propio, en el resumen con el desglose de dónde
+salió cada punto. Los puntos **se derivan de los eventos, no se guardan**.
+
 **Probado**: el login, entrando de verdad desde el móvil. El logging propio, con
-recorrido en navegador y los payloads replicados contra la base real. Y el modo
+recorrido en navegador y los payloads replicados contra la base real. El modo
 observador, con 16 comprobaciones SQL contra un Postgres local (idempotencia,
 espejado celda a celda, RLS con `set local role authenticated`, borrado por el
-dueño) más 21 comprobaciones recorriéndolo en un navegador de verdad.
+dueño) más 21 recorriéndolo en un navegador de verdad. Y el marcador, con los
+mismos 6 casos pasados por TypeScript y por SQL, más 27 comprobaciones en
+navegador a 390px — incluido dejar la pestaña un minuto en segundo plano para
+comprobar que el cronómetro no se queda parado.
 
 ---
 
@@ -66,26 +73,28 @@ dueño) más 21 comprobaciones recorriéndolo en un navegador de verdad.
 **b) ~~URL Configuration de Supabase~~ — HECHO.** Site URL y redirect apuntando
 a `https://yujitsu-eight.vercel.app`.
 
-**c) Que entre Pablo** con su email. La ficha de practicante se crea sola con un
-trigger (`bjj_08`), con `usa_sistema = true`. A Pablo **no hay que darlo de alta
-a mano**: si lo creas como contacto y luego él se registra, acabáis con dos
-fichas suyas y el head-to-head partido en dos.
+**c) ~~Que entre Pablo~~ — HECHO.** Ya tiene ficha con cuenta (`usa_sistema =
+true`), creada sola por el trigger `bjj_08`. A partir de ahora un roll observado
+entre Felipe y Pablo sí se espeja a los dos.
 
-Hasta que Pablo no entre, el modo observador solo puede espejar a fichas con
-cuenta — hoy solo la de Felipe.
+**d) ~~Decidir `transicion`~~ — HECHO** y aplicado (`bjj_10`). Con él llegó el
+marcador estilo IBJJF.
 
-**d) Decidir `transicion`.** Es un `ALTER TYPE bjj_tipo_evento ADD VALUE
-'transicion'`, no rompe nada, y desbloquea la puntuación estilo IBJJF. La
-decisión es de vocabulario, así que la toman Felipe y Pablo. **Ya se ha visto en
-datos reales**: en el primer roll de prueba, el oponente derribó y llegó a
-montada, y ese paso a montada no quedó registrado en ninguna parte.
+**e) Decidir `de_rodillas`.** Falta en `bjj_posicion`, y empezar de rodillas no
+es `de_pie` ni es `clinch`. En un gimnasio es de las salidas más frecuentes, y
+ahora que se elige la posición de salida se nota que no está. Es vocabulario, o
+sea que lo cerráis vosotros dos.
 
-**e) Lo que queda de Fase 2**: heatmaps y head-to-head en la app (los datos y las
+**f) El tiempo de dominio / posesión.** El dato ya se captura: cada evento lleva
+`segundo_roll`, el sello del cronómetro. Falta decidir cómo se cierra el último
+tramo y qué cuenta como disputa.
+
+**g) Lo que queda de Fase 2**: heatmaps y head-to-head en la app (los datos y las
 vistas ya están, falta la pantalla) y los retos. Diseñado en `docs/`.
 
-**f) Limpieza pendiente en producción**: hay una sesión vacía sin rolls y un
-contacto "Test Account", los dos de las pruebas del primer día. Nada roto, pero
-conviene barrerlos antes de que empiecen los datos de verdad.
+**h) Limpieza pendiente en producción**: hay una sesión vacía sin rolls y los
+contactos de prueba ("Test Account", "Goku", "Vegeta"). Nada roto, pero conviene
+barrerlos antes de que empiecen los datos de verdad.
 
 ---
 

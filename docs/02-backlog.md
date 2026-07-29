@@ -68,7 +68,43 @@ poder decir "esta ficha soy yo": pasar `user_id` de null a su id, conservando to
 
 ---
 
-## 2 · Puntos y dominancia (estilo IBJJF)
+## 2 · ~~Puntos y dominancia (estilo IBJJF)~~ — HECHO (29 julio 2026)
+
+~~No medir solo sumisiones, sino quién dominó el roll.~~
+
+Implementado y desplegado. Observando, una cabecera fija con el tanteo de los
+dos y un cronómetro con pausa; en modo propio, en el resumen con desglose.
+
+**Se desbloqueó añadiendo `transicion`** al enum (`bjj_10`), que era la decisión
+de vocabulario que faltaba. Sin ella, montada (4) y rodilla en barriga (2) no
+se registraban y el marcador se dejaba 6 de los puntos posibles.
+
+Los puntos **se derivan, nunca se guardan**: son una función de los eventos,
+como el heatmap. El precio es que el cálculo vive dos veces —`src/lib/puntos.ts`
+en vivo y `puntos_roll()` en SQL— y lo que impide que se separen es que los dos
+leen los mismos casos, `src/lib/__fixtures__/puntos.json`.
+
+### Lo que queda pendiente de esto
+
+**Falta `de_rodillas` en `bjj_posicion`.** Empezar de rodillas no es `de_pie` ni
+es `clinch`, y en un gimnasio es de las salidas más frecuentes. El selector de
+posición de salida se montó con lo que hay. Es vocabulario, así que lo cierran
+Felipe y Pablo.
+
+**Un pase que aterriza directo en montada solo cuenta 3.** Los puntos de montada
+salen de un evento `transicion`, y ese solo lo genera "mejorar posición". Si el
+observador pasa la guardia y elige `montada` como destino del pase, no hay
+transición y los 4 de la montada se pierden. Se puede resolver haciendo que
+cualquier acción que aterrice en una posición que puntúa emita también su
+transición — pero eso cambia cómo se cuentan los eventos y es una decisión, no
+un arreglo.
+
+**Ventajas y penalizaciones** siguen fuera: son criterio de árbitro y duplicarían
+las pulsaciones. Un intento de sumisión ya se registra con `completado = false`.
+
+---
+
+## 2 bis · Notas del diseño original de los puntos
 
 La idea: no medir solo sumisiones, sino **quién dominó el roll**. Especialmente en modo
 observador, donde el coach ya está mirando y puede llevar la cuenta.
@@ -140,12 +176,15 @@ la gente de verdad.
 1. ~~**Auth + pestaña Practicantes**~~ — hecho.
 2. ~~**PWA de logging**~~ — hecho, el MVP de verdad.
 3. ~~**Modo observador**~~ — hecho.
-4. **`transicion` en el enum** — decisión de vocabulario de Felipe y Pablo, y
-   prerrequisito de los puntos. Es lo siguiente que desbloquea algo.
-5. **Puntos estimados** — barato una vez existan las transiciones.
-6. **Heatmaps y head-to-head en la app** — los datos y las vistas ya están; falta
+4. ~~**`transicion` en el enum**~~ — hecho, y con él los puntos.
+5. ~~**Puntos estimados**~~ — hecho.
+6. **Tiempo de dominio / posesión** — el dato ya se captura (`eventos.segundo_roll`
+   sella cada evento con el segundo del cronómetro). Falta decidir cómo se cierra
+   el último tramo y qué cuenta como disputa.
+7. **Heatmaps y head-to-head en la app** — los datos y las vistas ya están; falta
    la pantalla.
-7. **Sugerencias de técnicas** — cuando haya gente fuera de vosotros dos usándolo.
+8. **`de_rodillas` en `bjj_posicion`** — vocabulario, lo cierran Felipe y Pablo.
+9. **Sugerencias de técnicas** — cuando haya gente fuera de vosotros dos usándolo.
 
 Duplicados, reclamar ficha y restringir el modo observador al roster entran todos
 a la vez: el día que entre la primera persona de la academia.

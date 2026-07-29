@@ -33,6 +33,23 @@ Consecuencia importante: al espejar un roll observado al compañero **solo cambi
 `actor`**. `posicion` y `rol` describen a la misma persona física en las dos
 filas. Está implementado en `espejar_roll()`.
 
+### `transicion`: la única excepción a lo anterior
+
+En un evento de tipo `transicion`, **`posicion` es el destino** —dónde acaba el
+actor—, no desde dónde actuó. Es la única excepción al criterio general, y
+existe porque lo que interesa de una transición es dónde te deja.
+
+Consecuencia práctica: cualquier vista que agrupe por posición y objetivo tiene
+que excluir `tipo = 'transicion'`, o se llena de filas con `objetivo = 'ninguno'`
+que no significan nada. Los dos heatmaps ya estaban a salvo porque filtran
+`tipo = 'sumision'`; `v_fuertes_debiles` sí necesitó el filtro.
+
+`transicion` existe en vez de dos tipos nuevos (`monta`, `rodilla_barriga`)
+porque el análisis de posesión que viene después necesita **todos** los cambios
+de posición, también los que no puntúan: norte-sur, kesa gatame, tortuga,
+scramble. Dos tipos nuevos habrían cerrado el marcador y dejado la posesión
+igual de bloqueada.
+
 ---
 
 ## Estado actual
@@ -43,10 +60,14 @@ punta), pestaña de practicantes y pantalla de logging, con escritura local-firs
 **Modo observador terminado y desplegado.** Un tercero registra en vivo el roll
 de otros dos y cada uno recibe sus datos. Es el botón 👁 Observar del entreno.
 
+**Marcador IBJJF en vivo.** Observando, una cabecera fija con el tanteo de los
+dos y un cronómetro con pausa. En modo propio no hay marcador en vivo —si estás
+rodando no lo miras—: el tanteo sale en el resumen, con el desglose.
+
 - Supabase: proyecto `idzlxkxeadrcolcnmoeo`, org `yujitsu`, eu-west-1, plan gratuito
 - Vercel: `yujitsu-eight.vercel.app`, plan Hobby
 - GitHub: `fyuji88/yujitsu`, privado, rama `main`
-- 9 migraciones aplicadas (`bjj_01` … `bjj_09`), copia en `db/`
+- 12 migraciones aplicadas (`bjj_01` … `bjj_12`), copia en `db/`
 
 **Casi sin datos reales.** El diccionario (24 posiciones, 63 técnicas) y un roll
 de prueba de Felipe.
@@ -82,12 +103,26 @@ cliente, se encuentra `42501` y no hay forma de rodearlo desde el frontend.
 heatmaps dependen de que Felipe y Pablo usen las mismas palabras. Los códigos
 feos viven en la base; las etiquetas humanas, en la interfaz.
 
+**Los puntos se derivan, nunca se guardan.** No hay columna `puntos` en `rolls`
+ni en `eventos`, y no la añadas: el tanteo es una función de la lista de
+eventos, igual que el heatmap. Si mañana se corrige un evento mal registrado, el
+marcador se corrige solo; una columna guardada se queda vieja y nadie se entera.
+
+El precio de esa decisión es que el cálculo existe **dos veces**:
+`src/lib/puntos.ts` para el marcador en vivo y `puntos_roll()` en SQL para el
+histórico. Dos implementaciones que se separan son un bug esperando, así que las
+dos leen los mismos casos: `src/lib/__fixtures__/puntos.json`. Si tocas una
+regla, tócala en los dos sitios y pasa `npm run test:puntos` **y**
+`db/pruebas/puntos.sql`.
+
 ---
 
 ## Mapa del código
 
 ```
 src/lib/bjj.ts             vocabulario + máquina de estados del roll  ← el corazón
+src/lib/puntos.ts          el marcador IBJJF (gemelo de puntos_roll() en SQL)
+src/lib/__fixtures__/      los casos que leen el test de TS y el de SQL
 src/lib/db.ts              IndexedDB (Dexie) + cola de salida
 src/lib/sync.ts            vaciado de la cola
 src/lib/database.types.ts  tipos del esquema (subconjunto escrito a mano)
@@ -117,10 +152,16 @@ logging, modo observador incluido. Se abre en el navegador.
 
 ## Cosas que ya nos mordieron
 
-**`transicion` no existe como tipo de evento.** Pasar de cien kilos a montada no
-es ninguno de los seis tipos, así que hoy se actualiza la posición sin registrar
-evento. Se pierde información, y bloquea los puntos estilo IBJJF. Decisión
-pendiente de Felipe y Pablo, no la tomes tú.
+**Un `create or replace function` sin la cláusula `set` borra la configuración
+de la función.** Al recrear `espejar_roll` sin repetir `set search_path = public`
+se quedó sin él, y el linter de Supabase lo cazó. El código "no cambiaba", pero
+la función sí. Si recreas una función, comprueba `proconfig` después.
+
+**`mejorar posición` no generaba evento.** Se actualizaba la posición y no se
+escribía nada, así que los 4 puntos de la montada y los 2 de la rodilla en
+barriga eran invisibles. Resuelto con `transicion` (`bjj_10`): ahora sí genera
+evento, salvo cuando el destino es la espalda, que se registra como
+`toma_espalda` porque ese tipo ya existía y puntúa igual.
 
 **Borrar un practicante fallaba** por el choque entre `ON DELETE CASCADE` en
 sesiones y `ON DELETE SET NULL` en `rolls.oponente_id`. Resuelto difiriendo dos
@@ -155,6 +196,16 @@ del usuario en `request.jwt.claims`. En `db/README.md` está el apaño completo.
 El proyecto tiene poca red de seguridad automática, así que:
 
 - `npm run build` compila y hace typecheck en estricto. Que pase no es opcional.
+- `npm run test:puntos` pasa los casos del fixture por el cálculo en TypeScript,
+  y comprueba en cada uno el invariante del espejo. Su gemelo en SQL:
+
+  ```bash
+  psql ... -v ruta=$PWD/src/lib/__fixtures__/puntos.json -f db/pruebas/puntos.sql
+  ```
+
+  Ese sí manda cada caso por `registrar_roll_observado()`, así que de paso cubre
+  la RPC, el espejo y el orden de los eventos. **Los dos tienen que dar los
+  mismos números.**
 - `stub-supabase.py` levanta una imitación de Supabase en `127.0.0.1:54321` con
   los ids reales de las técnicas y cuatro fichas — dos con cuenta además del
   usuario, que es el mínimo para probar una observación de verdad. Captura todo
