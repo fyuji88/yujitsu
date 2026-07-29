@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test:puntos": "tsc --ignoreConfig src/lib/__tests__/puntos.test.ts --outDir .test-tmp --module node18 --target ES2022 --strict --skipLibCheck --esModuleInterop --types node && node .test-tmp/__tests__/puntos.test.js"
+    "test:puntos": "tsc --ignoreConfig src/lib/__tests__/puntos.test.ts --outDir .test-tmp --module node18 --target ES2022 --strict --skipLibCheck --esModuleInterop --types node && node .test-tmp/__tests__/puntos.test.js",
+    "test:contraste": "node scripts/contraste.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.9",

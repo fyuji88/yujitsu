@@ -181,19 +181,40 @@ SESION = {
 
 
 def filtrar(filas, query):
-    """Soporte del subconjunto de PostgREST que usa la app: eq y order."""
+    """
+    El subconjunto de PostgREST que usa la app: eq, is.null, order y limit.
+
+    `limit` estuvo un tiempo sin implementar y no fallaba: se colaba por el
+    bucle de filtros sin coincidir con nada y se ignoraba. El sintoma no era
+    "salen de mas", era que `.maybeSingle()` de supabase-js recibia ocho filas
+    y devolvia el error de PostgREST sobre multiples filas — un mensaje que
+    manda a mirar la consulta, que estaba bien. Lo que no se implementa aqui
+    tiene que fallar, no ignorarse.
+    """
     out = list(filas)
     for clave, valores in query.items():
-        if clave in ('select', 'order', 'on_conflict', 'columns'):
+        if clave in ('select', 'order', 'limit', 'offset', 'on_conflict', 'columns'):
             continue
         v = valores[0]
         m = re.match(r'^eq\.(.*)$', v)
         if m:
-            esperado = m.group(1)
-            out = [f for f in out if str(f.get(clave)) == esperado]
-    if 'order' in query:
-        campo = query['order'][0].split('.')[0]
-        out = sorted(out, key=lambda f: str(f.get(campo) or ''))
+            out = [f for f in out if str(f.get(clave)) == m.group(1)]
+            continue
+        if v == 'is.null':
+            out = [f for f in out if f.get(clave) is None]
+            continue
+        if v == 'not.is.null':
+            out = [f for f in out if f.get(clave) is not None]
+            continue
+        raise RuntimeError(
+            f'el stub no sabe el filtro "{clave}={v}". Anadelo a filtrar() '
+            'en vez de dejar que se ignore en silencio.')
+    for orden in reversed(query.get('order', [])):
+        campo, *resto = orden.split('.')
+        out = sorted(out, key=lambda f: str(f.get(campo) or ''),
+                     reverse='desc' in resto)
+    if 'limit' in query:
+        out = out[:int(query['limit'][0])]
     return out
 
 
@@ -223,6 +244,21 @@ class H(BaseHTTPRequestHandler):
         n = int(self.headers.get('Content-Length') or 0)
         return json.loads(self.rfile.read(n) or b'null')
 
+    def uno_o_lista(self, filas):
+        """
+        `.single()` y `.maybeSingle()` de supabase-js piden
+        `Accept: application/vnd.pgrst.object+json`, y PostgREST devuelve
+        entonces UN OBJETO, no una lista de uno.
+
+        El stub devolvia siempre la lista. La app leia `data.grupo_id` sobre un
+        array y sacaba `undefined` — sin error, sin nada en la consola, la
+        pantalla simplemente no se enteraba. Costo dos depuraciones en falso
+        antes de mirar aqui, asi que ahora se emula.
+        """
+        if 'vnd.pgrst.object' not in (self.headers.get('Accept') or ''):
+            return filas
+        return filas[0] if filas else None
+
     def do_GET(self):
         u = urlparse(self.path)
         if u.path == '/auth/v1/user':
@@ -230,16 +266,27 @@ class H(BaseHTTPRequestHandler):
         m = re.match(r'^/rest/v1/(\w+)$', u.path)
         if m:
             tabla = m.group(1)
+            # El stub no sabe hacer el embedding de PostgREST
+            # (`select=grupos(nombre)`). Antes lo ignoraba y devolvia las
+            # columnas planas: datos con buena pinta y forma equivocada, que
+            # es peor que un error — un recorrido en navegador pasaba mientras
+            # la pantalla leia `undefined`. Ahora se queja.
+            sel = parse_qs(u.query).get('select', [''])[0]
+            if '(' in sel:
+                return self.responder(400, {'message':
+                    f'el stub no sabe hacer embedding: select={sel}. '
+                    'Pidelo en dos consultas planas.'})
             if PGURL and tabla in TABLAS_PUENTE:
                 try:
                     filas = consultar(
                         f"select coalesce(jsonb_agg(t), '[]'::jsonb) from {tabla} t")
-                    return self.responder(200, filtrar(filas, parse_qs(u.query)))
+                    return self.responder(200, self.uno_o_lista(
+                        filtrar(filas, parse_qs(u.query))))
                 except Exception as e:            # noqa: BLE001
                     return self.responder(400, {'message': str(e)})
             with LOCK:
-                return self.responder(200, filtrar(TABLAS.get(tabla, []),
-                                                   parse_qs(u.query)))
+                return self.responder(200, self.uno_o_lista(
+                    filtrar(TABLAS.get(tabla, []), parse_qs(u.query))))
         return self.responder(404, {'message': 'no'})
 
     def do_POST(self):

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Marco, type Sesion } from '@/components/Marco';
 import { Feed } from '@/components/Feed';
+import { Avatar } from '@/components/Avatar';
 import { supabase } from '@/lib/supabase';
 import type {
   GrupoRow, MiembroRow, PracticanteRow, RolGrupo,
@@ -115,7 +116,7 @@ function Panel({ sesion }: { sesion: Sesion }) {
   return (
     <>
       {error && <p className="err" data-testid="error">{error}</p>}
-      {aviso && <p className="hint" data-testid="aviso" style={{ color: 'var(--good)' }}>{aviso}</p>}
+      {aviso && <p className="hint" data-testid="aviso" style={{ color: 'var(--ok)' }}>{aviso}</p>}
 
       {/* El feed va arriba: es lo que se abre a diario. La ficha del grupo y
           la lista de miembros se consultan de vez en cuando. */}
@@ -173,6 +174,10 @@ function Panel({ sesion }: { sesion: Sesion }) {
             <div className="tl">
               {suyos.map((m) => (
                 <div className="fila" key={m.practicante_id}>
+                  {m.ficha && (
+                    <Avatar nombre={m.ficha.nombre} cinturon={m.ficha.cinturon}
+                      grados={m.ficha.grados ?? 0} />
+                  )}
                   <span className="n">
                     {m.ficha?.nombre ?? 'ficha borrada'}
                     <small>

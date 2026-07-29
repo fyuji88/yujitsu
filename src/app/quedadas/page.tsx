@@ -177,7 +177,7 @@ function Panel({ sesion }: { sesion: Sesion }) {
   return (
     <>
       {error && <p className="err" data-testid="error">{error}</p>}
-      {aviso && <p className="hint" data-testid="aviso" style={{ color: 'var(--good)' }}>{aviso}</p>}
+      {aviso && <p className="hint" data-testid="aviso" style={{ color: 'var(--ok)' }}>{aviso}</p>}
 
       {/* Invitación de fuera: se ve la quedada y nada más del grupo. */}
       {invitacion && invitada && (
@@ -239,15 +239,15 @@ function Panel({ sesion }: { sesion: Sesion }) {
         return (
           <div className="tarjeta-q" key={q.id} data-testid={`quedada-${q.id}`}
             style={{
-              background: 'var(--surface)', border: '1px solid var(--border)',
+              background: 'var(--superficie)', border: '1px solid var(--borde)',
               borderRadius: 13, padding: 14, marginTop: 10,
             }}>
             <div style={{ fontSize: 16, fontWeight: 620 }}>{q.titulo}</div>
-            <div style={{ fontSize: 12.5, color: 'var(--ink-2)', marginTop: 3 }}>
+            <div style={{ fontSize: 12.5, color: 'var(--texto-2)', marginTop: 3 }}>
               {q.fecha}{q.hora_inicio && ` · ${q.hora_inicio.slice(0, 5)}`}
               {q.lugar && ` · ${q.lugar}`} · {q.modalidad === 'gi' ? 'Gi' : 'No-gi'}
             </div>
-            <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 3 }}>
+            <div style={{ fontSize: 12.5, color: 'var(--tenue)', marginTop: 3 }}>
               {dentro.length} apuntados
               {libres != null && (libres > 0
                 ? ` · ${libres} ${libres === 1 ? 'plaza libre' : 'plazas libres'}`
@@ -392,7 +392,7 @@ function Formulario(
       <div className="chips">
         {(['gi', 'nogi'] as const).map((m) => (
           <button key={m} type="button" className="chip"
-            style={modalidad === m ? { borderColor: 'var(--yo)', color: 'var(--yo)' } : undefined}
+            style={modalidad === m ? { borderColor: 'var(--marca)', color: 'var(--marca-texto)' } : undefined}
             onClick={() => setModalidad(m)}>{m === 'gi' ? 'Gi' : 'No-gi'}</button>
         ))}
       </div>
@@ -400,10 +400,10 @@ function Formulario(
       <h2 className="sec">Gente de fuera</h2>
       <div className="chips">
         <button type="button" className="chip"
-          style={externos ? { borderColor: 'var(--yo)', color: 'var(--yo)' } : undefined}
+          style={externos ? { borderColor: 'var(--marca)', color: 'var(--marca-texto)' } : undefined}
           onClick={() => setExternos(true)}>Sí, con enlace</button>
         <button type="button" className="chip"
-          style={!externos ? { borderColor: 'var(--yo)', color: 'var(--yo)' } : undefined}
+          style={!externos ? { borderColor: 'var(--marca)', color: 'var(--marca-texto)' } : undefined}
           onClick={() => setExternos(false)}>Solo el grupo</button>
       </div>
       <p className="hint">
@@ -433,11 +433,11 @@ function VistaInforme(
 ) {
   return (
     <div data-testid="informe" style={{
-      background: 'var(--surface)', border: '1px solid var(--border)',
+      background: 'var(--superficie)', border: '1px solid var(--borde)',
       borderRadius: 13, padding: 14, marginTop: 14,
     }}>
       <div style={{ fontSize: 16, fontWeight: 620 }}>{datos.quedada.titulo}</div>
-      <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 3 }}>
+      <div style={{ fontSize: 12.5, color: 'var(--tenue)', marginTop: 3 }}>
         {datos.quedada.fecha} · {datos.asistentes} asistentes · {datos.rolls} rolls
       </div>
 
@@ -467,7 +467,7 @@ function VistaInforme(
                 <small>{r.rolls} rolls · {r.favor} a favor · {r.contra} en contra</small>
               </span>
               <span className="pill" style={{
-                color: r.media >= 0 ? 'var(--good)' : 'var(--bad)',
+                color: r.media >= 0 ? 'var(--dato-yo-texto)' : 'var(--dato-neg)',
               }}>
                 {r.media > 0 ? '+' : ''}{r.media}
               </span>

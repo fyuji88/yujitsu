@@ -1,136 +1,310 @@
+/* ============================================================================
+   TOKENS · yujitsu / Gullo Jiu-Jitsu
+
+   Una sola fuente de verdad. Tres familias, y la diferencia entre ellas no es
+   organizativa: es lo que decide qué puede cambiar una academia y qué no.
+
+     --marca-*    TEMATIZABLE. Sale del grupo (grupos.color_acento). Identidad:
+                  cabecera, pestaña activa, botón principal, enlaces, foco.
+     --dato-*     NUNCA TEMATIZABLE. Azul = yo, naranja = el rival. Heatmaps,
+                  marcador y barras.
+     --ok/--aviso/--error   estado. Tampoco se tematizan: rojo es rojo.
+
+   POR QUÉ EL VERDE NO ENTRA EN LOS DATOS. Verde contra naranja es el par que
+   se cae con el daltonismo más común —cerca del 8 % de los hombres, y un
+   gimnasio de BJJ es mayoritariamente hombres—; azul contra naranja sobrevive.
+   Y cuando el tema va por grupo, si los colores de datos fueran tematizables
+   una academia podría elegir un acento que deje ilegible su propio heatmap.
+   `npm run test:contraste` falla si el verde aparece en un heatmap, una barra,
+   el marcador o una leyenda.
+
+   LOS DATOS COMO TEXTO SON OTRO TOKEN. `--dato-yo` y `--dato-op` son rellenos
+   —celdas, barras, fondos suaves— y no pasan AA como texto pequeño sobre el
+   fondo claro. Para números y etiquetas están `--dato-yo-texto` y
+   `--dato-op-texto`, que son pasos de la misma rampa aprobada, no colores
+   nuevos. Si pintas texto con un `--dato-*` a secas, el verificador lo caza.
+
+   EL CLARO ES LA BASE. `:root` es el tema claro y `[data-tema="oscuro"]` es la
+   variante. El oscuro es una paleta elegida, no el claro invertido.
+
+   Los ratios están medidos, no estimados: `npm run test:contraste`.
+   ========================================================================= */
+
 :root{
-  color-scheme:dark;
-  --plane:#0d0d0d; --surface:#1a1a19; --surface-2:#232322;
-  --ink:#fff; --ink-2:#c3c2b7; --muted:#898781;
-  --border:rgba(255,255,255,.10); --grid:#2c2c2a;
-  --yo:#3987e5; --yo-soft:rgba(57,135,229,.16);
-  --op:#d95926; --op-soft:rgba(217,89,38,.16);
-  --good:#0ca30c; --warn:#fab219; --bad:#d03b3b;
+  color-scheme:light;
+
+  /* ---- marca · TEMATIZABLE ------------------------------------------- */
+  /* El verde de Gullo, medido sobre el logo. `--marca` es relleno y borde;
+     para texto pequeño se queda en 3,60 sobre el hueso, así que los enlaces
+     y las etiquetas usan `--marca-texto`. */
+  --marca:#458c50;
+  --marca-texto:#33693c;
+  --marca-fuerte:#33693c;
+  --marca-suave:rgba(69,140,80,.14);
+  --marca-filo:rgba(51,105,60,.35);
+  /* Texto DENTRO del botón verde. Negro y no blanco: blanco sobre este verde
+     da 4,10 y no pasa AA. La web de Gullo lo usa en blanco, pero solo con
+     tipografía enorme, donde el listón baja a 3. */
+  --marca-tinta:#050d06;
+
+  /* ---- datos · NUNCA se tematizan ------------------------------------ */
+  --dato-yo:#2a78d6;        --dato-op:#eb6834;
+  --dato-yo-suave:rgba(42,120,214,.13);
+  --dato-op-suave:rgba(235,104,52,.13);
+  --dato-yo-filo:rgba(42,120,214,.32);
+  --dato-op-filo:rgba(235,104,52,.32);
+  --dato-yo-texto:#256abf;  --dato-op-texto:#a8431c;
+  --dato-neg:#c0392f;
+  --celda-vacia:#f0efec;
+
+  /* ---- estado --------------------------------------------------------- */
+  --ok:#33693c;             /* el único verde de la app: el de Gullo */
+  --aviso:#8a6100;
+  --error:#b3261e;
+
+  /* ---- superficies y texto -------------------------------------------- */
+  /* El hueso de la web de Gullo. Es casi el mismo que el fondo del panel de
+     análisis aprobado, así que las dos paletas claras se han fundido en esta. */
+  --plano:#f1f0ee;
+  --superficie:#fbfaf9;
+  --superficie-2:#f4f3f1;
+  --texto:#141413;
+  --texto-2:#4d4c49;
+  --tenue:#63615d;
+  --borde:rgba(20,20,19,.12);
+  --rejilla:#e1e0d9;
+  --eje:#c3c2b7;
+
+  /* ---- tipografía · seis pasos ---------------------------------------- */
+  --txt-1:11px;      /* etiquetas en mayúsculas, píldoras */
+  --txt-2:12.5px;    /* pies, notas, texto secundario */
+  --txt-3:14px;      /* cuerpo */
+  --txt-4:16px;      /* cuerpo destacado y campos — 16px evita el zoom de iOS */
+  --txt-5:21px;      /* títulos de pantalla */
+  --txt-6:34px;      /* el marcador, que se lee a un metro */
+
+  /* ---- espaciado · escala de 4px -------------------------------------- */
+  --esp-1:4px;  --esp-2:8px;  --esp-3:12px; --esp-4:16px;
+  --esp-5:20px; --esp-6:24px; --esp-7:32px; --esp-8:40px;
+
+  /* ---- radios y sombras ------------------------------------------------ */
+  --radio-1:8px; --radio-2:11px; --radio-3:14px; --radio-pill:999px;
+  --sombra-1:0 1px 2px rgba(20,20,19,.05);
+  --sombra-2:0 2px 10px rgba(20,20,19,.07);
+
   /* Alto de la cabecera. Lo necesita el marcador para pegarse justo debajo. */
   --alto-top:57px;
+  /* Lo que hay que tocar con el móvil en la mano y las manos sudadas. */
+  --toque:44px;
 }
+
+/* ---- el oscuro: paleta propia, no el claro invertido --------------------
+   Se aplica por atributo y no por `prefers-color-scheme`, porque el atributo
+   lo pone un script antes de pintar y ya ha mirado la preferencia del sistema.
+   Con las dos fuentes a la vez, el interruptor manual perdería contra el
+   sistema y el usuario no podría elegir. */
+:root[data-tema="oscuro"]{
+  color-scheme:dark;
+
+  --marca:#458c50;
+  --marca-texto:#55a562;   /* el de marca da 4,74 justo; este, 6,43 */
+  --marca-fuerte:#33693c;
+  --marca-suave:rgba(69,140,80,.18);
+  --marca-filo:rgba(85,165,98,.40);
+  --marca-tinta:#050d06;
+
+  --dato-yo:#3987e5;        --dato-op:#d95926;
+  --dato-yo-suave:rgba(57,135,229,.16);
+  --dato-op-suave:rgba(217,89,38,.16);
+  --dato-yo-filo:rgba(57,135,229,.35);
+  --dato-op-filo:rgba(217,89,38,.32);
+  --dato-yo-texto:#5598e7;  --dato-op-texto:#eb6834;
+  --dato-neg:#d03b3b;
+  --celda-vacia:#383835;
+
+  --ok:#55a562;
+  --aviso:#fab219;
+  --error:#e0685a;
+
+  --plano:#0d0d0d;
+  --superficie:#1a1a19;
+  --superficie-2:#232322;
+  --texto:#ffffff;
+  --texto-2:#c3c2b7;
+  --tenue:#898781;
+  --borde:rgba(255,255,255,.10);
+  --rejilla:#2c2c2a;
+  --eje:#383835;
+
+  --sombra-1:0 1px 2px rgba(0,0,0,.4);
+  --sombra-2:0 2px 10px rgba(0,0,0,.5);
+}
+
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
-body{background:var(--plane);color:var(--ink);
+body{background:var(--plano);color:var(--texto);
   font-family:system-ui,-apple-system,"Segoe UI",sans-serif;overscroll-behavior-y:none}
-a{color:var(--yo)}
+a{color:var(--marca-texto)}
+
+/* El foco visible es del acento de marca. Se pone con :focus-visible para que
+   no salga al tocar con el dedo, solo al navegar con teclado. */
+:focus-visible{outline:2px solid var(--marca);outline-offset:2px;border-radius:var(--radio-1)}
 
 .phone{max-width:430px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column}
 
-.top{display:flex;align-items:center;justify-content:space-between;gap:8px;
-  padding:14px 16px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;
-  background:var(--plane);z-index:5}
-.top .t1{font-size:15px;font-weight:640}
-.top .t2{font-size:11.5px;color:var(--muted);margin-top:1px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:var(--esp-2);
+  padding:var(--esp-4) var(--esp-4) var(--esp-3);border-bottom:1px solid var(--borde);
+  position:sticky;top:0;background:var(--plano);z-index:5}
+.top .t1{font-size:var(--txt-4);font-weight:640}
+.top .t2{font-size:var(--txt-1);color:var(--tenue);margin-top:1px}
+/* La marca, en la cabecera: es lo único de la app que lleva el verde a pelo.
+   Va en su propia línea y no delante del título: "ACADEMIA BCN" y
+   "Practicantes" en la misma línea parten en dos a 390px. */
+.top .marca{display:block;font-weight:800;font-size:var(--txt-1);
+  letter-spacing:.11em;color:var(--marca-texto);line-height:1.1;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-.sync{font-size:11px;border:1px solid var(--border);border-radius:999px;padding:4px 9px;
-  color:var(--ink-2);white-space:nowrap;background:var(--surface)}
-.sync.off{color:var(--warn);border-color:rgba(250,178,25,.4)}
-.sync.ok{color:var(--good);border-color:rgba(12,163,12,.35)}
-.sync.err{color:var(--bad);border-color:rgba(208,59,59,.4)}
+.sync{font-size:var(--txt-1);border:1px solid var(--borde);border-radius:var(--radio-pill);
+  padding:var(--esp-1) var(--esp-2);color:var(--texto-2);white-space:nowrap;
+  background:var(--superficie)}
+.sync.off{color:var(--aviso);border-color:currentColor}
+.sync.ok{color:var(--ok);border-color:var(--marca-filo)}
+.sync.err{color:var(--error);border-color:currentColor}
 
-button.salir{font:inherit;font-size:11px;color:var(--muted);background:none;
-  border:1px solid var(--border);border-radius:999px;padding:4px 9px;cursor:pointer;
-  white-space:nowrap}
+button.salir,button.tema{font:inherit;font-size:var(--txt-1);color:var(--tenue);
+  background:none;border:1px solid var(--borde);border-radius:var(--radio-pill);
+  padding:var(--esp-1) var(--esp-2);cursor:pointer;white-space:nowrap}
 button.salir:disabled{opacity:.5}
+button.tema{line-height:1;padding:var(--esp-1) 7px}
 
-main{flex:1;padding:14px 16px 24px}
+main{flex:1;padding:var(--esp-4) var(--esp-4) var(--esp-6)}
 
-h1{font-size:22px;font-weight:650;margin:0 0 6px}
-h2.sec{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
-  color:var(--muted);margin:18px 0 9px}
-h2.sec:first-child{margin-top:4px}
+h1{font-size:var(--txt-5);font-weight:650;margin:0 0 var(--esp-2)}
+h2.sec{font-size:var(--txt-2);font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--tenue);margin:var(--esp-5) 0 var(--esp-2)}
+h2.sec:first-child{margin-top:var(--esp-1)}
 
-.state{background:var(--surface);border:1px solid var(--border);border-radius:14px;
-  padding:14px 16px}
-.state .lbl{font-size:11px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase}
-.state .pos{font-size:21px;font-weight:650;margin-top:3px;line-height:1.15}
-.state .rol{font-size:13px;color:var(--ink-2);margin-top:3px}
-.state .rol b{color:var(--ink)}
+.state{background:var(--superficie);border:1px solid var(--borde);
+  border-radius:var(--radio-3);padding:var(--esp-4);box-shadow:var(--sombra-1)}
+.state .lbl{font-size:var(--txt-1);color:var(--tenue);letter-spacing:.05em;
+  text-transform:uppercase}
+.state .pos{font-size:var(--txt-5);font-weight:650;margin-top:3px;line-height:1.15}
+.state .rol{font-size:var(--txt-3);color:var(--texto-2);margin-top:3px}
+.state .rol b{color:var(--texto)}
 
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-button.act{font:inherit;font-size:15px;font-weight:560;color:var(--ink);text-align:left;
-  background:var(--surface);border:1px solid var(--border);border-radius:13px;
-  padding:15px 14px;min-height:56px;cursor:pointer;line-height:1.2;
-  display:flex;flex-direction:column;justify-content:center;transition:transform .06s}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--esp-2)}
+button.act{font:inherit;font-size:var(--txt-4);font-weight:560;color:var(--texto);
+  text-align:left;background:var(--superficie);border:1px solid var(--borde);
+  border-radius:var(--radio-3);padding:var(--esp-4) var(--esp-3);min-height:56px;
+  cursor:pointer;line-height:1.2;display:flex;flex-direction:column;
+  justify-content:center;transition:transform .06s}
 button.act:active{transform:scale(.97)}
-button.act.yo{background:var(--yo-soft);border-color:rgba(57,135,229,.35)}
-button.act.op{background:var(--op-soft);border-color:rgba(217,89,38,.32)}
-button.act .k{display:block;font-size:10.5px;color:var(--muted);font-weight:500;
+button.act.yo{background:var(--dato-yo-suave);border-color:var(--dato-yo-filo)}
+button.act.op{background:var(--dato-op-suave);border-color:var(--dato-op-filo)}
+button.act .k{display:block;font-size:var(--txt-1);color:var(--tenue);font-weight:500;
   margin-bottom:3px;letter-spacing:.05em;text-transform:uppercase}
 
-.chips{display:flex;flex-wrap:wrap;gap:8px}
-button.chip{font:inherit;font-size:14px;color:var(--ink);background:var(--surface-2);
-  border:1px solid var(--border);border-radius:999px;padding:11px 15px;cursor:pointer}
+.chips{display:flex;flex-wrap:wrap;gap:var(--esp-2)}
+button.chip{font:inherit;font-size:var(--txt-3);color:var(--texto);
+  background:var(--superficie-2);border:1px solid var(--borde);
+  border-radius:var(--radio-pill);padding:var(--esp-3) var(--esp-4);cursor:pointer;
+  min-height:var(--toque)}
 button.chip:active{transform:scale(.96)}
-button.chip small{color:var(--muted);margin-left:5px;font-size:11.5px}
-button.chip.ok{background:var(--good);border-color:var(--good);color:#fff;font-weight:600}
-button.chip.no{background:transparent;border-color:var(--border);color:var(--ink-2)}
+button.chip small{color:var(--tenue);margin-left:5px;font-size:var(--txt-2)}
+/* El chip elegido va con la marca, no con un verde suelto: es una elección
+   del usuario, no un dato. */
+button.chip.ok{background:var(--marca);border-color:var(--marca);
+  color:var(--marca-tinta);font-weight:600}
+button.chip.no{background:transparent;border-color:var(--borde);color:var(--texto-2)}
 
 .tl{display:flex;flex-direction:column;gap:6px}
-.ev{display:flex;align-items:center;gap:9px;background:var(--surface);
-  border:1px solid var(--border);border-radius:10px;padding:9px 11px;font-size:13px}
+.ev{display:flex;align-items:center;gap:var(--esp-2);background:var(--superficie);
+  border:1px solid var(--borde);border-radius:var(--radio-1);
+  padding:var(--esp-2) var(--esp-3);font-size:var(--txt-3)}
 .ev .dot{width:7px;height:7px;border-radius:50%;flex:none}
 .ev .tx{flex:1;line-height:1.3}
-.ev .tx small{display:block;color:var(--muted);font-size:11px;margin-top:1px}
-.ev .x{color:var(--muted);font-size:16px;background:none;border:none;cursor:pointer;padding:2px 6px}
+.ev .tx small{display:block;color:var(--tenue);font-size:var(--txt-1);margin-top:1px}
+/* Deshacer un evento se toca en mitad de un roll: objetivo de 44px, aunque la
+   equis se dibuje pequeña. */
+.ev .x{color:var(--tenue);font-size:var(--txt-4);background:none;border:none;
+  cursor:pointer;min-width:var(--toque);min-height:var(--toque);
+  display:flex;align-items:center;justify-content:center}
 .ev.fail{opacity:.6}
-.empty{color:var(--muted);font-size:13px;padding:6px 2px}
+.empty{color:var(--tenue);font-size:var(--txt-3);padding:6px 2px}
 
-.foot{position:sticky;bottom:0;background:linear-gradient(transparent,var(--plane) 22%);
-  padding:16px;display:flex;gap:9px}
-button.primary{flex:1;font:inherit;font-size:15px;font-weight:600;color:#fff;
-  background:var(--yo);border:none;border-radius:13px;padding:15px;cursor:pointer}
+.foot{position:sticky;bottom:0;background:linear-gradient(transparent,var(--plano) 22%);
+  padding:var(--esp-4);display:flex;gap:var(--esp-2)}
+/* El botón principal es de marca. Texto oscuro sobre el verde, medido. */
+button.primary{flex:1;font:inherit;font-size:var(--txt-4);font-weight:680;
+  color:var(--marca-tinta);background:var(--marca);border:none;
+  border-radius:var(--radio-3);padding:var(--esp-4);cursor:pointer;
+  min-height:var(--toque)}
+button.primary:active{background:var(--marca-fuerte)}
 button.primary:disabled{opacity:.5}
-button.ghost{font:inherit;font-size:14px;color:var(--ink-2);background:var(--surface);
-  border:1px solid var(--border);border-radius:13px;padding:15px 16px;cursor:pointer}
+button.ghost{font:inherit;font-size:var(--txt-3);color:var(--texto-2);
+  background:var(--superficie);border:1px solid var(--borde);
+  border-radius:var(--radio-3);padding:var(--esp-4);cursor:pointer;
+  min-height:var(--toque)}
 
-input,select{font:inherit;font-size:16px;color:var(--ink);background:var(--surface-2);
-  border:1px solid var(--border);border-radius:11px;padding:12px 13px;width:100%}
-label{display:block;font-size:12px;color:var(--muted);margin:12px 0 5px}
+input,select,textarea{font:inherit;font-size:var(--txt-4);color:var(--texto);
+  background:var(--superficie-2);border:1px solid var(--borde);
+  border-radius:var(--radio-2);padding:var(--esp-3);width:100%}
+label{display:block;font-size:var(--txt-2);color:var(--tenue);
+  margin:var(--esp-3) 0 var(--esp-1)}
 
-.hint{font-size:12px;color:var(--muted);line-height:1.5;margin:10px 2px 0}
-.err{font-size:13px;color:var(--bad);margin-top:10px}
+.hint{font-size:var(--txt-2);color:var(--tenue);line-height:1.5;margin:var(--esp-3) 2px 0}
+.err{font-size:var(--txt-3);color:var(--error);margin-top:var(--esp-3)}
 
-nav.tabs{display:flex;gap:6px;border-top:1px solid var(--border);
-  background:var(--plane);position:sticky;bottom:0;padding:8px 12px 14px}
-nav.tabs a{flex:1;text-align:center;font-size:12px;text-decoration:none;color:var(--muted);
-  padding:8px 4px;border-radius:10px}
-nav.tabs a.on{color:var(--ink);background:var(--surface)}
+nav.tabs{display:flex;gap:6px;border-top:1px solid var(--borde);
+  background:var(--plano);position:sticky;bottom:0;padding:var(--esp-2) var(--esp-3) var(--esp-4)}
+nav.tabs a{flex:1;text-align:center;font-size:var(--txt-2);text-decoration:none;
+  color:var(--tenue);padding:var(--esp-3) var(--esp-1);border-radius:var(--radio-1);
+  min-height:var(--toque);display:flex;align-items:center;justify-content:center}
+/* La pestaña activa lleva la marca. Color y filo arriba: el color solo no
+   basta si alguien no lo distingue. */
+nav.tabs a.on{color:var(--marca-texto);background:var(--marca-suave);
+  box-shadow:inset 0 2px 0 var(--marca)}
 
-/* Marcador en vivo del modo observador.
+/* ============================================================
+   Marcador en vivo del modo observador.
+
    Tiene que leerse de reojo, a un metro, desde el borde del tatami: numero
    grande, nombre pequeño, sin decoracion. Se queda pegado arriba para que no
-   se pierda al crecer la lista de eventos. */
-.marcador{position:sticky;top:var(--alto-top);z-index:4;background:var(--plane);
-  border-bottom:1px solid var(--border);margin:-14px -16px 12px;padding:9px 14px 8px;
-  display:flex;align-items:center;gap:8px}
+   se pierda al crecer la lista de eventos.
+
+   Los números van con `--dato-*-texto` y no con `--dato-*`: son texto, y el
+   naranja de relleno sobre el hueso claro se queda en 2,81.
+   ============================================================ */
+.marcador{position:sticky;top:var(--alto-top);z-index:4;background:var(--plano);
+  border-bottom:1px solid var(--borde);margin:calc(var(--esp-4) * -1) calc(var(--esp-4) * -1) var(--esp-3);
+  padding:var(--esp-2) var(--esp-3);display:flex;align-items:center;gap:var(--esp-2)}
 .marcador .lado{flex:1;min-width:0;position:relative}
 .marcador .lado.b{text-align:right}
-.marcador .quien{font-size:11px;color:var(--muted);line-height:1.2;
+.marcador .quien{font-size:var(--txt-1);color:var(--tenue);line-height:1.2;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.marcador .n{font-size:38px;font-weight:700;line-height:1.02;font-variant-numeric:tabular-nums}
-.marcador .lado.a .n{color:var(--yo)}
-.marcador .lado.b .n{color:var(--op)}
+.marcador .n{font-size:var(--txt-6);font-weight:700;line-height:1.02;
+  font-variant-numeric:tabular-nums}
+.marcador .lado.a .n{color:var(--dato-yo-texto)}
+.marcador .lado.b .n{color:var(--dato-op-texto)}
 
 .marcador .medio{flex:none;text-align:center;padding:0 2px}
-.marcador .crono{font-size:18px;font-weight:620;line-height:1.1;
-  font-variant-numeric:tabular-nums;background:none;border:none;color:var(--ink);
-  font-family:inherit;padding:2px 4px;cursor:pointer}
-.marcador .crono.pausa{color:var(--warn)}
+.marcador .crono{font-size:var(--txt-4);font-weight:620;line-height:1.1;
+  font-variant-numeric:tabular-nums;background:none;border:none;color:var(--texto);
+  font-family:inherit;padding:0 var(--esp-2);cursor:pointer;min-height:var(--toque)}
+.marcador .crono.pausa{color:var(--aviso)}
 .marcador .aviso{font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;
-  color:var(--warn);line-height:1;margin-top:1px}
-.marcador .aviso.tenue{color:var(--muted)}
+  color:var(--aviso);line-height:1;margin-top:1px}
+.marcador .aviso.tenue{color:var(--tenue)}
 
-/* El destello de "+3 paso": dice de donde vino el punto y se apaga. */
-/* Ocupa la linea del nombre en vez de superponerse a el: durante los dos
+/* El destello de "+3 paso": dice de donde vino el punto y se apaga.
+   Ocupa la linea del nombre en vez de superponerse a el: durante los dos
    segundos que dura se lee "+4 montada" donde estaba el nombre, y los dos
    textos encimados no compiten. */
-.marcador .flash{position:absolute;top:0;font-size:11.5px;font-weight:640;
+.marcador .flash{position:absolute;top:0;font-size:var(--txt-2);font-weight:640;
   line-height:1.2;white-space:nowrap;pointer-events:none;
-  background:var(--plane);animation:sube 2.2s ease-out forwards}
-.marcador .lado.a .flash{left:0;padding-right:6px;color:var(--yo)}
-.marcador .lado.b .flash{right:0;padding-left:6px;color:var(--op)}
+  background:var(--plano);animation:sube 2.2s ease-out forwards}
+.marcador .lado.a .flash{left:0;padding-right:6px;color:var(--dato-yo-texto)}
+.marcador .lado.b .flash{right:0;padding-left:6px;color:var(--dato-op-texto)}
 @keyframes sube{
   0%{opacity:0;transform:translateY(7px)}
   12%{opacity:1;transform:translateY(0)}
@@ -139,140 +313,143 @@ nav.tabs a.on{color:var(--ink);background:var(--surface)}
 }
 
 /* El tanteo en el resumen final, con el desglose. */
-.tanteo{display:flex;align-items:baseline;gap:8px;font-variant-numeric:tabular-nums}
-.tanteo .n{font-size:30px;font-weight:700;line-height:1}
-.tanteo .a{color:var(--yo)}
-.tanteo .b{color:var(--op)}
-.tanteo .sep{color:var(--muted);font-size:20px}
+.tanteo{display:flex;align-items:baseline;gap:var(--esp-2);font-variant-numeric:tabular-nums}
+.tanteo .n{font-size:var(--txt-6);font-weight:700;line-height:1}
+.tanteo .a{color:var(--dato-yo-texto)}
+.tanteo .b{color:var(--dato-op-texto)}
+.tanteo .sep{color:var(--tenue);font-size:var(--txt-5)}
 
 /* ============================================================
    Pantalla de análisis.
 
-   Va con sus propias variables, calcadas de docs/BJJ-Analisis-DEMO.html, y no
-   con las del resto de la app: es el único sitio con modo claro. El resto de
-   la app es oscura y no se toca. Por defecto hereda el oscuro; `data-viz=claro`
-   la pasa a claro sin afectar a nada más.
+   Antes tenía su propia paleta con variables `--v-*` y su propio interruptor
+   de claro/oscuro, porque era la única pantalla con modo claro. Ya no: el
+   tema es de la app entera y estos tokens son los mismos de arriba. El hueso
+   de Gullo y el fondo del panel aprobado eran casi el mismo color, así que
+   mantener dos paletas parecidas solo servía para que se separaran.
+
+   `.viz` se queda como envoltorio de maquetación —sangra a todo el ancho— y
+   como espacio de nombres de las clases del panel.
    ============================================================ */
-.viz{
-  --v-surface:#1a1a19; --v-plane:#0d0d0d;
-  --v-ink:#fff; --v-ink2:#c3c2b7; --v-muted:#898781;
-  --v-grid:#2c2c2a; --v-axis:#383835; --v-borde:rgba(255,255,255,.10);
-  --v-s1:#3987e5; --v-s2:#d95926;
-  --v-pos:#3987e5; --v-neg:#d03b3b; --v-mid:#383835;
-  background:var(--v-plane);color:var(--v-ink);
-  margin:-14px -16px -24px;padding:14px 16px 24px;min-height:60vh;
-}
-.viz[data-viz="claro"]{
-  color-scheme:light;
-  --v-surface:#fcfcfb; --v-plane:#f9f9f7;
-  --v-ink:#0b0b0b; --v-ink2:#52514e; --v-muted:#898781;
-  --v-grid:#e1e0d9; --v-axis:#c3c2b7; --v-borde:rgba(11,11,11,.10);
-  --v-s1:#2a78d6; --v-s2:#eb6834;
-  --v-pos:#2a78d6; --v-neg:#d03b3b; --v-mid:#f0efec;
-}
+.viz{background:var(--plano);color:var(--texto);
+  margin:calc(var(--esp-4) * -1) calc(var(--esp-4) * -1) calc(var(--esp-6) * -1);
+  padding:var(--esp-4) var(--esp-4) var(--esp-6);min-height:60vh}
 
-.viz .tarjeta{background:var(--v-surface);border:1px solid var(--v-borde);
-  border-radius:12px;padding:14px;margin-top:12px}
-.viz .tarjeta h2{font-size:14px;font-weight:620;margin:0 0 2px;color:var(--v-ink);
+.viz .tarjeta{background:var(--superficie);border:1px solid var(--borde);
+  border-radius:var(--radio-3);padding:var(--esp-4);margin-top:var(--esp-3);
+  box-shadow:var(--sombra-1)}
+.viz .tarjeta h2{font-size:var(--txt-3);font-weight:620;margin:0 0 2px;color:var(--texto);
   text-transform:none;letter-spacing:0}
-.viz .tarjeta p.cap{font-size:12px;color:var(--v-ink2);margin:0 0 12px;line-height:1.4}
+.viz .tarjeta p.cap{font-size:var(--txt-2);color:var(--texto-2);margin:0 0 var(--esp-3);
+  line-height:1.4}
 
-.viz .kpis{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
-.viz .kpi{background:var(--v-surface);border:1px solid var(--v-borde);
-  border-radius:12px;padding:11px 13px}
-.viz .kpi .v{font-size:23px;font-weight:640;letter-spacing:-.01em;
+.viz .kpis{display:grid;grid-template-columns:1fr 1fr;gap:var(--esp-2);margin-top:var(--esp-3)}
+.viz .kpi{background:var(--superficie);border:1px solid var(--borde);
+  border-radius:var(--radio-3);padding:var(--esp-3);box-shadow:var(--sombra-1)}
+.viz .kpi .v{font-size:var(--txt-5);font-weight:640;letter-spacing:-.01em;
   font-variant-numeric:tabular-nums}
-.viz .kpi .l{font-size:11.5px;color:var(--v-ink2);margin-top:1px;line-height:1.25}
+.viz .kpi .l{font-size:var(--txt-1);color:var(--texto-2);margin-top:1px;line-height:1.25}
 
 /* El heatmap se sale de 390px por diseño: se prefiere que la celda siga
    siendo legible y que ruede en horizontal, con la columna de posiciones
    pegada. Encoger las etiquetas hasta que quepan las haría ilegibles. */
 .viz .hmbox{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .viz table.hm{border-collapse:separate;border-spacing:2px}
-.viz table.hm th{font-size:10px;font-weight:500;color:var(--v-muted);padding:0}
+.viz table.hm th{font-size:10px;font-weight:500;color:var(--tenue);padding:0}
 .viz table.hm th.rowh{text-align:right;padding-right:7px;white-space:nowrap;
-  font-size:11px;color:var(--v-ink2);position:sticky;left:0;
-  background:var(--v-surface);z-index:1;max-width:104px;overflow:hidden;
+  font-size:var(--txt-1);color:var(--texto-2);position:sticky;left:0;
+  background:var(--superficie);z-index:1;max-width:104px;overflow:hidden;
   text-overflow:ellipsis}
 .viz table.hm th.colh{height:66px;vertical-align:bottom;padding-bottom:5px}
 .viz table.hm th.colh span{display:inline-block;writing-mode:vertical-rl;
   transform:rotate(180deg)}
-.viz td.cell{width:29px;min-width:29px;height:25px;border-radius:4px;text-align:center;
-  font-size:11px;font-variant-numeric:tabular-nums;background:var(--v-mid);
-  padding:0;border:none;font-family:inherit}
+.viz td.cell{width:29px;min-width:29px;height:25px;border-radius:var(--radio-1);
+  text-align:center;font-size:var(--txt-1);font-variant-numeric:tabular-nums;
+  background:var(--celda-vacia);padding:0;border:none;font-family:inherit}
 .viz td.cell.tocable{cursor:pointer}
-.viz td.cell.zero{background:transparent;box-shadow:inset 0 0 0 1px var(--v-grid)}
-.viz .escala{display:flex;align-items:center;gap:5px;margin-top:12px;
-  font-size:11px;color:var(--v-muted)}
+.viz td.cell.zero{background:transparent;box-shadow:inset 0 0 0 1px var(--rejilla)}
+.viz .escala{display:flex;align-items:center;gap:5px;margin-top:var(--esp-3);
+  font-size:var(--txt-1);color:var(--tenue)}
 .viz .escala i{display:block;width:15px;height:9px;border-radius:2px}
 
-.viz .bars{display:flex;flex-direction:column;gap:8px}
+.viz .bars{display:flex;flex-direction:column;gap:var(--esp-2)}
 .viz .brow{display:grid;grid-template-columns:98px 1fr 40px;align-items:center;
-  gap:8px;font-size:12px}
-.viz .brow .nm{color:var(--v-ink2);text-align:right;white-space:nowrap;
+  gap:var(--esp-2);font-size:var(--txt-2)}
+.viz .brow .nm{color:var(--texto-2);text-align:right;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis}
 .viz .track{position:relative;height:16px}
-.viz .track .mid{position:absolute;top:-2px;bottom:-2px;width:1px;background:var(--v-axis)}
-.viz .track .fill{position:absolute;top:2px;height:12px;border-radius:4px}
-.viz .brow .val{font-variant-numeric:tabular-nums;font-size:12px;color:var(--v-ink)}
+.viz .track .mid{position:absolute;top:-2px;bottom:-2px;width:1px;background:var(--eje)}
+.viz .track .fill{position:absolute;top:2px;height:12px;border-radius:var(--radio-1)}
+.viz .brow .val{font-variant-numeric:tabular-nums;font-size:var(--txt-2);color:var(--texto)}
 
-.viz .leyenda{display:flex;gap:14px;align-items:center;font-size:12px;
-  color:var(--v-ink2);margin-bottom:10px}
+.viz .leyenda{display:flex;gap:var(--esp-3);align-items:center;font-size:var(--txt-2);
+  color:var(--texto-2);margin-bottom:var(--esp-3)}
 .viz .leyenda b{display:inline-block;width:10px;height:10px;border-radius:3px;
   margin-right:5px;vertical-align:-1px}
 
-.viz table.tv{width:100%;border-collapse:collapse;font-size:12px;
+.viz table.tv{width:100%;border-collapse:collapse;font-size:var(--txt-2);
   font-variant-numeric:tabular-nums}
-.viz table.tv th,.viz table.tv td{text-align:left;padding:5px 8px 5px 0;
-  border-bottom:1px solid var(--v-grid)}
-.viz table.tv th{color:var(--v-muted);font-weight:500}
+.viz table.tv th,.viz table.tv td{text-align:left;padding:5px var(--esp-2) 5px 0;
+  border-bottom:1px solid var(--rejilla)}
+.viz table.tv th{color:var(--tenue);font-weight:500}
 
-.viz .nota{font-size:11.5px;color:var(--v-ink2);line-height:1.5;margin-top:12px}
-.viz .filtros{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
-.viz button.f{font:inherit;font-size:12.5px;color:var(--v-ink2);
-  background:var(--v-surface);border:1px solid var(--v-borde);border-radius:999px;
-  padding:7px 12px;cursor:pointer}
-.viz button.f[aria-pressed="true"]{color:var(--v-s1);border-color:var(--v-s1)}
-.viz select.f{font:inherit;font-size:14px;color:var(--v-ink);background:var(--v-surface);
-  border:1px solid var(--v-borde);border-radius:11px;padding:10px 11px;width:100%}
+.viz .nota{font-size:var(--txt-2);color:var(--texto-2);line-height:1.5;margin-top:var(--esp-3)}
+.viz .filtros{display:flex;flex-wrap:wrap;gap:7px;margin-top:var(--esp-3)}
+.viz button.f{font:inherit;font-size:var(--txt-2);color:var(--texto-2);
+  background:var(--superficie);border:1px solid var(--borde);
+  border-radius:var(--radio-pill);padding:var(--esp-3) var(--esp-4);cursor:pointer;
+  min-height:var(--toque)}
+/* Un filtro marcado es una elección, no un dato: va con la marca. */
+.viz button.f[aria-pressed="true"]{color:var(--marca-texto);border-color:var(--marca);
+  background:var(--marca-suave);font-weight:600}
+.viz select.f{font:inherit;font-size:var(--txt-3);color:var(--texto);
+  background:var(--superficie);border:1px solid var(--borde);
+  border-radius:var(--radio-2);padding:var(--esp-3);width:100%;min-height:var(--toque)}
 
-.fila{display:flex;align-items:center;gap:10px;background:var(--surface);
-  border:1px solid var(--border);border-radius:11px;padding:11px 13px;font-size:14px}
+.fila{display:flex;align-items:center;gap:var(--esp-3);background:var(--superficie);
+  border:1px solid var(--borde);border-radius:var(--radio-2);
+  padding:var(--esp-3);font-size:var(--txt-3);box-shadow:var(--sombra-1)}
 .fila .n{flex:1}
-.fila .n small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px}
-.pill{font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);
-  border:1px solid var(--border);border-radius:999px;padding:3px 8px}
+.fila .n small{display:block;color:var(--tenue);font-size:var(--txt-2);margin-top:2px}
+.pill{font-size:var(--txt-1);letter-spacing:.04em;text-transform:uppercase;
+  color:var(--tenue);border:1px solid var(--borde);border-radius:var(--radio-pill);
+  padding:3px var(--esp-2)}
 
 /* ---- Enfoques: lo dicho contra lo hecho ------------------------------- */
-/* Todo va dentro de .viz porque la pantalla de análisis tiene su propia
-   paleta y se invierte en modo claro. Las clases globales (.chip, .fila)
-   usan variables del tema oscuro y aquí quedarían ilegibles. */
-.viz .tarjeta .cap{font-size:12px;color:var(--v-ink2);line-height:1.4}
+.viz .tarjeta .cap{font-size:var(--txt-2);color:var(--texto-2);line-height:1.4}
 .viz .tarjeta label.cap{display:block;margin-bottom:5px}
 
-.viz ul.contraste{list-style:none;padding:0;margin:10px 0 0;
-  display:flex;flex-direction:column;gap:9px}
+.viz ul.contraste{list-style:none;padding:0;margin:var(--esp-3) 0 0;
+  display:flex;flex-direction:column;gap:var(--esp-2)}
 .viz ul.contraste .enf-fila{display:flex;justify-content:space-between;
-  align-items:baseline;gap:10px;font-size:12.5px;color:var(--v-ink)}
+  align-items:baseline;gap:var(--esp-3);font-size:var(--txt-2);color:var(--texto)}
 .viz ul.contraste b{font-variant-numeric:tabular-nums;font-weight:600;
-  font-size:12px;color:var(--v-ink2);white-space:nowrap}
-.viz .raya{height:6px;border-radius:999px;background:var(--v-mid);
-  margin-top:4px;overflow:hidden}
-.viz .raya i{display:block;height:100%;border-radius:999px;background:var(--v-s1)}
+  font-size:var(--txt-2);color:var(--texto-2);white-space:nowrap}
+.viz .raya{height:6px;border-radius:var(--radio-pill);background:var(--celda-vacia);
+  margin-top:var(--esp-1);overflow:hidden}
+.viz .raya i{display:block;height:100%;border-radius:var(--radio-pill);
+  background:var(--dato-yo)}
 
 .viz ul.lista{list-style:none;padding:0;margin:0;
-  display:flex;flex-direction:column;gap:10px}
-.viz ul.lista li{border-top:1px solid var(--v-grid);padding-top:8px;font-size:13px;
-  color:var(--v-ink)}
+  display:flex;flex-direction:column;gap:var(--esp-3)}
+.viz ul.lista li{border-top:1px solid var(--rejilla);padding-top:var(--esp-2);
+  font-size:var(--txt-3);color:var(--texto)}
 
-.viz textarea.f{font:inherit;font-size:14px;color:var(--v-ink);
-  background:var(--v-surface);border:1px solid var(--v-borde);border-radius:11px;
-  padding:10px 11px;resize:vertical}
-.viz button.chip{font:inherit;font-size:12.5px;color:var(--v-ink2);
-  background:var(--v-surface);border:1px solid var(--v-borde);border-radius:999px;
-  padding:6px 11px;cursor:pointer}
-.viz button.chip[aria-pressed="true"]{color:#fff;background:var(--v-s1);
-  border-color:var(--v-s1);font-weight:600}
-.viz button.f.primario{color:#fff;background:var(--v-s1);border-color:var(--v-s1);
-  font-weight:600}
+.viz textarea.f{font:inherit;font-size:var(--txt-3);color:var(--texto);
+  background:var(--superficie);border:1px solid var(--borde);
+  border-radius:var(--radio-2);padding:var(--esp-3);resize:vertical}
+.viz button.chip{font:inherit;font-size:var(--txt-2);color:var(--texto-2);
+  background:var(--superficie);border:1px solid var(--borde);
+  border-radius:var(--radio-pill);padding:var(--esp-2) var(--esp-3);cursor:pointer;
+  min-height:var(--toque)}
+.viz button.chip[aria-pressed="true"]{color:var(--marca-tinta);background:var(--marca);
+  border-color:var(--marca);font-weight:600}
+.viz button.f.primario{color:var(--marca-tinta);background:var(--marca);
+  border-color:var(--marca);font-weight:600}
 .viz button.f:disabled{opacity:.55;cursor:default}
+
+/* ---- Avatares de cinturón --------------------------------------------- */
+.av{display:inline-flex;flex-direction:column;align-items:center;gap:var(--esp-1)}
+.av svg{display:block}
+.av .av-nm{font-size:var(--txt-2);font-weight:560;text-align:center;color:var(--texto)}
+.av .av-cb{font-size:var(--txt-1);color:var(--tenue);text-align:center;line-height:1.3}

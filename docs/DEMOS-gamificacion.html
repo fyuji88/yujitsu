@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>yujitsu · demos de gamificación</title>
+<style>
+:root{color-scheme:light}
+.viz-root{
+  --surface-1:#fcfcfb; --plane:#f9f9f7;
+  --text-primary:#0b0b0b; --text-secondary:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,0.10);
+  --series-1:#2a78d6; --series-2:#eb6834;
+  --div-pos:#2a78d6; --div-neg:#d03b3b; --div-mid:#f0efec;
+  --ok:#2f7d4f;
+}
+@media (prefers-color-scheme:dark){:root:where(:not([data-theme="light"])) .viz-root{
+  color-scheme:dark;
+  --surface-1:#1a1a19; --plane:#0d0d0d;
+  --text-primary:#fff; --text-secondary:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,0.10);
+  --series-1:#3987e5; --series-2:#d95926;
+  --div-pos:#3987e5; --div-neg:#d03b3b; --div-mid:#383835;
+  --ok:#4c9d6e;
+}}
+:root[data-theme="dark"] .viz-root{
+  color-scheme:dark;
+  --surface-1:#1a1a19; --plane:#0d0d0d;
+  --text-primary:#fff; --text-secondary:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,0.10);
+  --series-1:#3987e5; --series-2:#d95926;
+  --div-pos:#3987e5; --div-neg:#d03b3b; --div-mid:#383835;
+  --ok:#4c9d6e;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+.viz-root{background:var(--plane);color:var(--text-primary);min-height:100vh;padding:28px 20px 72px}
+.wrap{max-width:1120px;margin:0 auto}
+header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+h1{font-size:22px;font-weight:650;margin:0 0 4px}
+.sub{color:var(--text-secondary);font-size:13px;margin:0;max-width:62ch;line-height:1.5}
+.demo{display:inline-block;margin-top:10px;font-size:11px;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--text-secondary);border:1px solid var(--border);border-radius:999px;padding:3px 10px}
+button.tgl{font:inherit;font-size:12px;color:var(--text-secondary);background:var(--surface-1);
+  border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer}
+button.tgl:hover{color:var(--text-primary)}
+section{margin-top:34px}
+.shead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+.shead h2{font-size:16px;font-weight:640;margin:0}
+.shead .tag{font-size:11px;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:2px 8px}
+.shead p{font-size:12.5px;color:var(--text-secondary);margin:0;flex-basis:100%;line-height:1.5;max-width:70ch}
+.card{background:var(--surface-1);border:1px solid var(--border);border-radius:12px;padding:18px;margin-top:14px}
+
+/* retos */
+.retos{display:grid;grid-template-columns:repeat(auto-fit,minmax(238px,1fr));gap:12px;margin-top:14px}
+.reto{background:var(--surface-1);border:1px solid var(--border);border-radius:12px;padding:14px 16px;position:relative}
+.reto.hecho{border-color:color-mix(in srgb,var(--ok) 45%,transparent)}
+.reto .rt{font-size:13.5px;font-weight:600;line-height:1.35;padding-right:22px}
+.reto .rr{font-size:11px;color:var(--muted);margin-top:3px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.reto .bar{height:7px;border-radius:99px;background:var(--div-mid);margin-top:12px;overflow:hidden}
+.reto .bar i{display:block;height:100%;border-radius:99px;background:var(--series-1)}
+.reto.hecho .bar i{background:var(--ok)}
+.reto .n{font-size:12px;color:var(--text-secondary);margin-top:7px;font-variant-numeric:tabular-nums}
+.reto .chk{position:absolute;top:13px;right:14px;font-size:13px;color:var(--ok)}
+.reto.fallo .chk{color:var(--muted)}
+
+/* mapa */
+.mapa{display:flex;flex-direction:column;gap:16px}
+.grupo h3{font-size:11.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--muted);margin:0 0 8px}
+.celdas{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:7px}
+.pos{border-radius:8px;padding:9px 10px;font-size:12px;line-height:1.3;min-height:52px;
+  display:flex;flex-direction:column;justify-content:space-between;cursor:default}
+.pos.off{box-shadow:inset 0 0 0 1px var(--grid);color:var(--muted);background:transparent}
+.pos .pn{font-weight:560}
+.pos .pd{font-size:10.5px;opacity:.85;margin-top:4px;font-variant-numeric:tabular-nums}
+.scale{display:flex;align-items:center;gap:6px;margin-top:16px;font-size:11px;color:var(--muted)}
+.scale i{display:block;width:16px;height:9px;border-radius:2px}
+
+/* h2h */
+.destacados{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+@media(max-width:640px){.destacados{grid-template-columns:1fr}}
+.dest{background:var(--surface-1);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+.dest .et{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.dest .nm{font-size:21px;font-weight:640;margin-top:4px;letter-spacing:-.01em}
+.dest .dt{font-size:12.5px;color:var(--text-secondary);margin-top:6px;line-height:1.45}
+.dest.nem{border-left:3px solid var(--div-neg)}
+.dest.cli{border-left:3px solid var(--div-pos)}
+.legend{display:flex;gap:14px;align-items:center;font-size:12px;color:var(--text-secondary);margin-bottom:12px}
+.legend b{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.bars{display:flex;flex-direction:column;gap:11px}
+.brow{display:grid;grid-template-columns:120px 1fr 62px;align-items:center;gap:10px;font-size:12px}
+@media(max-width:560px){.brow{grid-template-columns:86px 1fr 56px}}
+.brow .nm{color:var(--text-secondary);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brow .nm em{font-style:normal;color:var(--muted);font-size:10.5px;display:block}
+.track{position:relative;height:18px}
+.track .mid{position:absolute;top:-2px;bottom:-2px;width:1px;background:var(--axis)}
+.track .fill{position:absolute;top:3px;height:12px;border-radius:4px}
+.brow .val{font-variant-numeric:tabular-nums;font-size:12px;color:var(--text-primary);text-align:right}
+.nota{font-size:12px;color:var(--text-secondary);margin-top:14px;line-height:1.55;max-width:74ch}
+.nota code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;
+  background:var(--div-mid);border-radius:4px;padding:1px 5px}
+footer{margin-top:40px;font-size:11.5px;color:var(--muted);line-height:1.6;max-width:74ch}
+</style></head>
+<body><div class="viz-root"><div class="wrap">
+
+<header>
+  <div>
+    <h1>Goku · demos de gamificación</h1>
+    <p class="sub">Tres ideas del backlog, dibujadas con los datos reales que hay ahora mismo en
+      la base: 138 rolls de Goku contra cuatro rivales, entre el 5 de mayo y el 25 de julio.
+      Ninguna de las tres necesita tablas nuevas.</p>
+    <span class="demo">datos simulados · ninguna pantalla construida todavía</span>
+  </div>
+  <button class="tgl" onclick="tema()">Modo oscuro</button>
+</header>
+
+<!-- ============ 6 · RETOS ============ -->
+<section>
+  <div class="shead">
+    <h2>6 · Retos de la semana</h2>
+    <span class="tag">20 – 26 julio</span>
+    <p>Cada reto es una consulta sobre <code>eventos</code> que se valida sola: nadie marca nada a
+      mano. El código de debajo de cada uno es el <code>bjj_tipo_regla</code> que ya existe en el
+      esquema — el diseño estaba medio hecho sin que nos diéramos cuenta.</p>
+  </div>
+  <div class="retos" id="retos"></div>
+  <p class="nota">El reto que no se cumple es el que enseña algo: <strong>ninguna sumisión desde
+    guardia en toda la semana</strong>. Un contador de días entrenados no te habría dicho eso.</p>
+</section>
+
+<!-- ============ 7 · MAPA ============ -->
+<section>
+  <div class="shead">
+    <h2>7 · El mapa de tu juego</h2>
+    <span class="tag" id="mapaKpi"></span>
+    <p>Cada posición se enciende la primera vez que finalizas desde ella, y el tono se oscurece
+      con las veces que lo has repetido. No hace falta dato nuevo: sale del mismo sitio que el
+      heatmap.</p>
+  </div>
+  <div class="card">
+    <div class="mapa" id="mapa"></div>
+    <div class="scale">
+      <span>menos</span><div id="rampa" style="display:flex;gap:2px"></div><span>más finalizaciones</span>
+    </div>
+  </div>
+  <p class="nota">Y aquí está lo que hace que valga la pena: las seis posiciones de Goku son
+    <strong>todas de arriba</strong>. Trece guardias apagadas. Su juego no es incompleto por
+    casualidad — es un pasador que nunca ha finalizado desde abajo, y el mapa lo dice de un
+    vistazo mejor que cualquier porcentaje.</p>
+</section>
+
+<!-- ============ 8 · NÉMESIS ============ -->
+<section>
+  <div class="shead">
+    <h2>8 · Némesis y cliente</h2>
+    <span class="tag">sobre <code>v_h2h</code>, sin SQL nuevo</span>
+    <p>Dos etiquetas automáticas del head-to-head: contra quién no puedes, y a quién siempre
+      pillas. Se calculan con un mínimo de 10 rolls para no coronar a nadie con dos sumisiones
+      de suerte.</p>
+  </div>
+  <div class="destacados">
+    <div class="dest nem">
+      <div class="et">Némesis</div>
+      <div class="nm">Freezer <span style="font-size:12px;font-weight:400;color:var(--muted)">· marrón</span></div>
+      <div class="dt">6 a favor, 9 en contra en 17 rolls. El 40 % de las sumisiones son tuyas —
+        el peor registro que tienes contra nadie. Cinco de las suyas fueron a las piernas.</div>
+    </div>
+    <div class="dest cli">
+      <div class="et">Cliente</div>
+      <div class="nm">Krilin <span style="font-size:12px;font-weight:400;color:var(--muted)">· azul</span></div>
+      <div class="dt">12 a favor, 3 en contra en 15 rolls. El 80 % son tuyas, y le pasas la
+        guardia en tres de cada cuatro rolls.</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="legend">
+      <span><b style="background:var(--div-pos)"></b>sumisiones a favor</span>
+      <span><b style="background:var(--div-neg)"></b>en contra</span>
+    </div>
+    <div class="bars" id="h2h"></div>
+  </div>
+  <p class="nota">Las barras son divergentes con el cero en el centro, la misma gramática que el
+    saldo por guardia del panel de análisis. Vegeta no es la némesis aunque le meta 27: con 93
+    rolls y un 61 % a favor, es simplemente con quien más entrena.</p>
+</section>
+
+<footer>
+  Paleta y componentes tomados de <code>docs/BJJ-Analisis-DEMO.html</code>, el diseño ya aprobado.
+  Rampa secuencial de un solo tono, invertida en modo oscuro; color del texto de cada celda
+  calculado por luminancia del fondo. Los datos salen de <code>v_h2h</code>,
+  <code>v_heatmap_ofensivo</code> y consultas directas sobre <code>eventos</code>.
+</footer>
+
+</div></div>
+<script>
+/* ---------- datos reales, sacados de la base el 29 de julio ---------- */
+const RETOS = [
+  {t:'3 barridas esta semana',        r:'solo_tipo_evento',  hecho:3,  meta:3},
+  {t:'5 pases de guardia',            r:'solo_tipo_evento',  hecho:7,  meta:5},
+  {t:'10 rolls registrados',          r:'conteo_libre',      hecho:14, meta:10},
+  {t:'2 mata leões',                  r:'solo_tecnica',      hecho:1,  meta:2},
+  {t:'Finaliza una desde guardia',    r:'solo_posicion',     hecho:0,  meta:1},
+  {t:'Ataca una pierna',              r:'solo_objetivo',     hecho:0,  meta:1},
+];
+
+const MAPA = [
+  ['Neutral', [['De pie',0],['Clinch / agarre de pie',0]]],
+  ['Guardias', [['Guardia cerrada',0],['Media guardia',0],['Guardia abierta',0],['Guardia mariposa',0],
+    ['De la Riva',0],['De la Riva inversa',0],['Araña / spider',0],['Lasso',0],['Collar y manga',0],
+    ['X-guard',0],['Single leg X / ashi',0],['Guardia sentada',0],['50/50',0]]],
+  ['Dominantes', [['Cien kilos / side control',32],['Montada',15],['Control de espalda',10],
+    ['Norte-sur',5],['Rodilla en barriga',4],['Kesa gatame',1],['Tortuga',0]]],
+  ['Transición', [['Scramble / transición',0],['Otra',0]]],
+];
+const PRIMERA = {'Cien kilos / side control':'5 may','Control de espalda':'9 may','Montada':'12 may',
+  'Norte-sur':'26 may','Rodilla en barriga':'6 jun','Kesa gatame':'7 jul'};
+
+const H2H = [
+  {n:'Vegeta',  c:'negra',  rolls:93, f:42, e:27},
+  {n:'Freezer', c:'marrón', rolls:17, f:6,  e:9},
+  {n:'Krilin',  c:'azul',   rolls:15, f:12, e:3},
+  {n:'Piccolo', c:'morada', rolls:13, f:7,  e:5},
+];
+
+/* ---------- rampa secuencial de un solo tono ---------- */
+const RAMPA_CLARO = ['#e8f1fd','#cde2fb','#aed0f7','#8dbcf1','#6ca7e9','#4f92df','#3a7fd2',
+                     '#2a6cc0','#1e5aab','#164a93','#103c7b','#0c3163','#0d366b'];
+function rampa(){
+  const osc = document.documentElement.getAttribute('data-theme')==='dark' ||
+    (!document.documentElement.getAttribute('data-theme') &&
+      matchMedia('(prefers-color-scheme:dark)').matches);
+  return osc ? RAMPA_CLARO.slice().reverse() : RAMPA_CLARO;
+}
+function lum(hex){
+  const c = hex.slice(1).match(/../g).map(h=>{
+    let v=parseInt(h,16)/255; return v<=.03928? v/12.92 : Math.pow((v+.055)/1.055,2.4);
+  });
+  return .2126*c[0]+.7152*c[1]+.0722*c[2];
+}
+const tinta = bg => lum(bg) > .42 ? '#0b0b0b' : '#ffffff';
+
+/* ---------- pintar ---------- */
+function pintaRetos(){
+  document.getElementById('retos').innerHTML = RETOS.map(x=>{
+    const ok = x.hecho >= x.meta;
+    const pct = Math.min(100, Math.round(100*x.hecho/x.meta));
+    return `<div class="reto ${ok?'hecho':'fallo'}">
+      <div class="chk">${ok?'✓':'○'}</div>
+      <div class="rt">${x.t}</div>
+      <div class="rr">${x.r}</div>
+      <div class="bar"><i style="width:${pct}%"></i></div>
+      <div class="n">${x.hecho} de ${x.meta}${ok?' · completado':''}</div>
+    </div>`;
+  }).join('');
+}
+
+function pintaMapa(){
+  const R = rampa();
+  const max = 32, cont = document.getElementById('mapa');
+  let enc = 0, tot = 0;
+  cont.innerHTML = MAPA.map(([g, items])=>{
+    const celdas = items.map(([n,v])=>{
+      tot++;
+      if(!v) return `<div class="pos off" title="${n} — todavía sin finalizar desde aquí">
+        <div class="pn">${n}</div><div class="pd">—</div></div>`;
+      enc++;
+      const i = Math.min(R.length-1, Math.round(Math.pow(v/max,.55)*(R.length-1)));
+      const bg = R[i];
+      return `<div class="pos" style="background:${bg};color:${tinta(bg)}"
+        title="${n} — ${v} finalizaciones, la primera el ${PRIMERA[n]||'?'}">
+        <div class="pn">${n}</div>
+        <div class="pd">${v} · desde ${PRIMERA[n]||'?'}</div></div>`;
+    }).join('');
+    return `<div class="grupo"><h3>${g}</h3><div class="celdas">${celdas}</div></div>`;
+  }).join('');
+  document.getElementById('mapaKpi').textContent = `${enc} de ${tot} desbloqueadas`;
+  document.getElementById('rampa').innerHTML =
+    R.map(c=>`<i style="background:${c};display:block;width:16px;height:9px;border-radius:2px"></i>`).join('');
+}
+
+function pintaH2H(){
+  const max = Math.max(...H2H.map(x=>Math.max(x.f,x.e)));
+  document.getElementById('h2h').innerHTML = H2H.map(x=>{
+    const wf = 50*x.f/max, we = 50*x.e/max, saldo = x.f-x.e;
+    const pct = Math.round(100*x.f/(x.f+x.e));
+    return `<div class="brow">
+      <div class="nm">${x.n}<em>${x.rolls} rolls · ${x.c}</em></div>
+      <div class="track" title="${x.n}: ${x.f} a favor, ${x.e} en contra (${pct} % tuyas)">
+        <div class="mid" style="left:50%"></div>
+        <div class="fill" style="right:50%;width:${we}%;background:var(--div-neg)"></div>
+        <div class="fill" style="left:50%;width:${wf}%;background:var(--div-pos)"></div>
+      </div>
+      <div class="val">${saldo>0?'+':''}${saldo} · ${pct}%</div>
+    </div>`;
+  }).join('');
+}
+
+function todo(){ pintaRetos(); pintaMapa(); pintaH2H(); }
+function tema(){
+  const r = document.documentElement;
+  const osc = r.getAttribute('data-theme')==='dark' ||
+    (!r.getAttribute('data-theme') && matchMedia('(prefers-color-scheme:dark)').matches);
+  r.setAttribute('data-theme', osc ? 'light' : 'dark');
+  document.querySelector('button.tgl').textContent = osc ? 'Modo oscuro' : 'Modo claro';
+  pintaMapa();
+}
+todo();
+</script>
+</body></html>

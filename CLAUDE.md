@@ -182,6 +182,61 @@ pantalla.** Si empezó hace tres semanas, la pregunta es qué hiciste en esas
 tres semanas, y da igual qué ventana esté seleccionada arriba. La pantalla lo
 dice, porque si no el número parece incoherente con todo lo demás.
 
+**El verde es marca, no es dato.** El acento de Gullo (`#458c50`) va en la
+cabecera, la pestaña activa, el botón principal, los enlaces, la píldora de
+sincronización y el foco. **No entra nunca** en un heatmap, una barra, una celda,
+el marcador ni una leyenda: ahí manda azul `#3987e5` para ti y naranja `#d95926`
+para el rival, y no se tocan.
+
+Las dos razones, y las dos cuentan. Verde contra naranja es el par que se cae
+con el daltonismo más común —cerca del 8 % de los hombres, y un gimnasio de BJJ
+es mayoritariamente hombres—; azul contra naranja sobrevive. Y como el acento
+es tematizable por grupo, si los colores de datos también lo fueran una
+academia podría elegir un color que deje ilegible su propio heatmap.
+
+`npm run test:contraste` lo comprueba: falla si el token de marca aparece en un
+selector de datos, y falla si aparece un segundo verde en la hoja.
+
+**Qué se tematiza y qué no.** Está escrito en la cabecera de `globals.css`, que
+es la única fuente de tokens:
+
+| familia | ejemplo | ¿la cambia el grupo? |
+|---|---|---|
+| `--marca-*` | `--marca`, `--marca-texto`, `--marca-tinta` | **sí**, `grupos.color_acento` |
+| `--dato-*` | `--dato-yo`, `--dato-op`, `--dato-neg` | nunca |
+| estado | `--ok`, `--aviso`, `--error` | nunca |
+| superficies | `--plano`, `--superficie`, `--texto` | no, cambian con el tema |
+
+El grupo elige **un** color. De ahí `aplicarAcento()` (`src/lib/tema.ts`) deriva
+el texto legible midiendo contraste contra el fondo del tema, y la tinta del
+botón eligiendo entre negro y blanco. Por eso una academia puede poner el color
+que quiera sin dejarse la interfaz ilegible. El hex que llega de la base **se
+valida** antes de tocar un `style`: acaba en CSS, y `red;background:url(…)` es
+un valor legal para un `text`.
+
+**Los `--dato-*` son rellenos; para texto están `--dato-yo-texto` y
+`--dato-op-texto`.** El naranja de relleno sobre el hueso claro da 2,81 y no se
+puede leer. Los de texto son pasos de la misma rampa aprobada, no colores
+nuevos.
+
+**Los botones de marca llevan texto oscuro, no blanco.** Blanco sobre el verde
+de Gullo da 4,10 y no pasa AA; el casi-negro da 4,80. Su web lo usa en blanco,
+pero solo con tipografía enorme, donde el listón baja a 3.
+
+**El tema por defecto es el CLARO, y el sistema no decide.** El orden es
+preferencia guardada → claro. `prefers-color-scheme` **no** se mira: una
+instalación nueva en un móvil en oscuro abre igualmente en claro, porque la
+primera impresión es la marca y porque el claro es el tema de los informes y de
+lo que se comparte. El atributo `data-tema` lo pone un script en línea en
+`layout.tsx` antes de pintar; si eso se mueve a React, vuelve el fogonazo
+blanco al abrir.
+
+**El tema se lee de un store, no de un `useState` por componente.** `useTema()`
+usa `useSyncExternalStore`. Con estado por componente parecía funcionar —el CSS
+cuelga del atributo y todo se repinta— pero el heatmap, que es quien de verdad
+lee el tema desde React para invertir la rampa, se quedaba con el valor viejo y
+dibujaba la rampa al revés en oscuro.
+
 **Mezclar gi y no-gi en el mismo heatmap dibuja un juego que no existe.** En gi
 hay agarres y estrangulaciones de solapa que en no-gi no existen, y en no-gi hay
 una rama entera de ataques a las piernas. Por eso el filtro está arriba y no
@@ -219,6 +274,11 @@ src/lib/database.types.ts  tipos del esquema (subconjunto escrito a mano)
 src/components/Marco.tsx   sesión, pestañas, píldora de sincronización
 src/components/Feed.tsx    qué ha pasado en el grupo, con reacciones
 src/components/Enfoque.tsx lo que dices que trabajas, contra lo que hiciste
+src/components/Tema.tsx    el store del tema y el interruptor
+src/components/Avatar.tsx  el cinturón de cada uno, en SVG
+src/lib/tema.ts            resolución del tema y derivación del acento
+src/app/globals.css        LOS TOKENS ← la única fuente de color de la app
+scripts/contraste.mjs      mide los contrastes; falla por debajo de AA
 src/app/login              entrar, crear cuenta, código de 6-10 dígitos
 src/app/auth/callback      vuelta del enlace
 src/app/auth/reset         contraseña nueva
@@ -373,3 +433,37 @@ El proyecto tiene poca red de seguridad automática, así que:
 
 No des por bueno un cambio de logging sin recorrer un roll entero en el
 navegador: la máquina de estados tiene caminos que el typecheck no cubre.
+
+---
+
+## Al terminar cada tanda: escribe en el registro de cambios
+
+Añade una entrada **arriba** en `docs/CAMBIOS.md`. Es parte de la definición de
+terminado, no un extra: sin ella, quien recoja el proyecto la semana siguiente
+—Felipe, el PM o tú mismo en otra sesión— vuelve a discutir cosas ya cerradas y
+propone lo que ya está hecho.
+
+El formato completo está en la cabecera de ese fichero. Lo esencial:
+
+- **Decisiones** que hayas tomado por el camino. Obligatorio. Es lo que ni el
+  `git log` ni el esquema cuentan.
+- **Sabido roto**: lo que dejas a medias o funcionando mal a propósito.
+  Obligatorio. Es lo que más tiempo ahorra al siguiente.
+- Migraciones aplicadas, y qué tachaste o añadiste en `docs/BACKLOG.md`.
+- La lista de ficheros es **opcional**: eso ya está en el `git log`.
+
+Diez líneas por entrada como máximo. Un registro que nadie lee es peor que no
+tenerlo.
+
+## Dónde está la documentación de producto
+
+- `docs/BACKLOG.md` — el backlog vivo, por temática y prioridad. `02-backlog.md`
+  es el anterior y se queda solo como archivo.
+- `docs/CAMBIOS.md` — el registro de cambios.
+- `docs/00-…`, `01-…`, `03-…`, `04-…` — decisiones de producto y diseño por bloque.
+- `docs/PROMPT-*.md` — los encargos escritos, con el contexto y la verificación
+  que se pidió en cada uno.
+- `docs/TEMA-GULLO.html` — el tema visual aprobado. **El verde es marca, no es
+  dato**: azul `#3987e5` (yo) y naranja `#d95926` (rival) no se tematizan nunca.
+- `docs/BJJ-Analisis-DEMO.html` y `docs/BJJ-Log-Prototipo.html` — las referencias
+  de diseño del análisis y del logging.

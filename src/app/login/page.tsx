@@ -249,7 +249,7 @@ export default function Login() {
         <div className="chips" style={{ marginBottom: 4 }}>
           {([['entrar', 'Entrar'], ['alta', 'Crear cuenta']] as const).map(([m, t]) => (
             <button key={m} className="chip" type="button" data-testid={`modo-${m}`}
-              style={modo === m ? { borderColor: 'var(--yo)', color: 'var(--yo)' } : undefined}
+              style={modo === m ? { borderColor: 'var(--marca)', color: 'var(--marca-texto)' } : undefined}
               onClick={() => { setModo(m); setError(null); setClave(''); }}>{t}</button>
           ))}
         </div>

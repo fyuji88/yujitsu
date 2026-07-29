@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>yujitsu · tema Gullo</title>
+<style>
+:root{
+  /* ---- extraídos del logo y la web de Gullo ---- */
+  --g-verde:#458c50;        /* el verde de marca, idéntico en logo, web y fotos */
+  --g-verde-claro:#55a562;  /* aclarado para texto pequeño sobre oscuro (6.4:1) */
+  --g-verde-osc:#33693c;    /* para pulsado y bordes */
+  --g-hueso:#f1f0ee;        /* el fondo claro de su web */
+  --g-naranja:#ff9058;      /* el naranja de sus botones de acción */
+  /* ---- datos: NO se tematizan nunca ---- */
+  --yo:#3987e5; --op:#d95926;
+  /* ---- chrome oscuro de la app ---- */
+  --plano:#0d0d0d; --sup:#1a1a19; --sup2:#232322;
+  --ink:#fff; --ink2:#c3c2b7; --muted:#898781; --border:rgba(255,255,255,.10);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plano);color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;padding:26px 18px 70px}
+.wrap{max-width:1180px;margin:0 auto}
+h1{font-size:23px;font-weight:680;margin:0 0 6px;letter-spacing:-.01em}
+.sub{color:var(--ink2);font-size:13.5px;margin:0;max-width:66ch;line-height:1.55}
+h2{font-size:13px;font-weight:640;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--muted);margin:38px 0 12px}
+p.n{font-size:13px;color:var(--ink2);line-height:1.6;max-width:74ch;margin:10px 0 0}
+p.n b{color:var(--ink)}
+code{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:var(--sup2);
+  padding:1px 5px;border-radius:4px}
+
+/* paleta */
+.pal{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px}
+.sw{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--sup)}
+.sw .c{height:70px;display:flex;align-items:flex-end;justify-content:space-between;padding:8px 10px;
+  font-size:11px;font-variant-numeric:tabular-nums}
+.sw .m{padding:9px 11px;font-size:11.5px;color:var(--ink2);line-height:1.4}
+.sw .m b{display:block;color:var(--ink);font-size:12.5px;margin-bottom:2px}
+
+/* contraste */
+table.ct{border-collapse:collapse;width:100%;max-width:640px;font-size:12.5px;margin-top:6px}
+table.ct th{text-align:left;font-weight:600;color:var(--muted);font-size:11px;
+  text-transform:uppercase;letter-spacing:.05em;padding:6px 10px 6px 0}
+table.ct td{padding:6px 10px 6px 0;border-top:1px solid var(--border);
+  font-variant-numeric:tabular-nums}
+.ok{color:#5cb269;font-weight:600}
+.no{color:#e0685a;font-weight:600}
+
+/* mocks */
+.mocks{display:flex;gap:20px;flex-wrap:wrap;margin-top:14px}
+.phone{width:330px;border:1px solid var(--border);border-radius:20px;overflow:hidden;
+  background:var(--plano);flex:0 0 auto}
+.phone.luz{background:var(--g-hueso);color:#141413;
+  --plano:var(--g-hueso); --sup:#fbfaf9; --sup2:#f4f3f1;
+  --ink:#141413; --ink2:#4d4c49; --muted:#807e79; --border:rgba(20,20,19,.12)}
+.ph-cap{font-size:11px;color:var(--muted);text-align:center;padding:8px 0 0}
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:12px 14px 10px;border-bottom:1px solid var(--border)}
+.brand{display:flex;align-items:center;gap:8px}
+.mark{font-weight:800;font-size:15px;letter-spacing:.09em;color:var(--g-verde-claro)}
+.phone.luz .mark{color:var(--g-verde)}
+.t2{font-size:11px;color:var(--muted)}
+.pill{font-size:10.5px;border-radius:999px;padding:3px 8px;border:1px solid var(--border);
+  color:var(--ink2)}
+.pill.sync{color:var(--g-verde-claro);border-color:rgba(85,165,98,.4)}
+.phone.luz .pill.sync{color:var(--g-verde-osc);border-color:rgba(51,105,60,.35)}
+main{padding:13px 14px 18px}
+.marcador{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;
+  background:var(--sup);border:1px solid var(--border);border-radius:14px;padding:11px 13px}
+.marcador .nm{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.marcador .pt{font-size:29px;font-weight:700;line-height:1;letter-spacing:-.02em}
+.marcador .a .pt{color:var(--yo)} .marcador .b{text-align:right} .marcador .b .pt{color:var(--op)}
+.crono{font-variant-numeric:tabular-nums;font-size:13px;color:var(--ink2);
+  border:1px solid var(--border);border-radius:8px;padding:4px 8px}
+.state{background:var(--sup);border:1px solid var(--border);border-radius:14px;
+  padding:12px 14px;margin-top:9px}
+.state .lbl{font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.state .pos{font-size:19px;font-weight:660;margin-top:3px}
+.state .rol{font-size:12.5px;color:var(--ink2);margin-top:2px}
+h3.sec{font-size:10.5px;font-weight:640;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted);margin:16px 0 8px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+button.act{font:inherit;font-size:14px;font-weight:560;color:var(--ink);text-align:left;
+  background:var(--sup);border:1px solid var(--border);border-radius:12px;
+  padding:12px 12px;min-height:52px;line-height:1.2;display:flex;flex-direction:column;
+  justify-content:center;cursor:pointer}
+button.act .k{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;
+  margin-bottom:3px}
+button.act.yo{background:rgba(57,135,229,.15);border-color:rgba(57,135,229,.35)}
+button.act.op{background:rgba(217,89,38,.15);border-color:rgba(217,89,38,.32)}
+button.pri{font:inherit;font-size:14.5px;font-weight:680;width:100%;margin-top:12px;
+  background:var(--g-verde);color:#0b1a0e;border:none;border-radius:12px;padding:14px;
+  cursor:pointer;letter-spacing:.01em}
+button.pri:active{background:var(--g-verde-osc)}
+button.sec{font:inherit;font-size:13px;width:100%;margin-top:8px;background:transparent;
+  color:var(--g-verde-claro);border:1px solid rgba(85,165,98,.4);border-radius:12px;padding:12px;
+  cursor:pointer}
+.phone.luz button.sec{color:var(--g-verde-osc);border-color:rgba(51,105,60,.35)}
+.tabs{display:flex;border-top:1px solid var(--border);background:var(--sup)}
+.tabs div{flex:1;text-align:center;padding:10px 4px 11px;font-size:10.5px;color:var(--muted)}
+.tabs div.on{color:var(--g-verde-claro);box-shadow:inset 0 2px 0 var(--g-verde)}
+.phone.luz .tabs div.on{color:var(--g-verde-osc)}
+
+/* avatares */
+.avs{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;align-items:flex-start}
+.avs.claro{background:var(--g-hueso);border-radius:14px;padding:16px 14px;color:#141413}
+.avs.claro .cb{color:#807e79}
+.av{display:flex;flex-direction:column;align-items:center;gap:6px;width:92px}
+.av .ini{font-weight:700;font-size:18px;letter-spacing:.02em}
+.av .nm{font-size:12px;font-weight:560;text-align:center}
+.av .bd{font-size:14px;line-height:1}
+.av .cb{font-size:10px;color:var(--muted);text-align:center;line-height:1.3}
+footer{margin-top:44px;font-size:11.5px;color:var(--muted);line-height:1.65;max-width:78ch}
+</style></head><body><div class="wrap">
+
+<h1>Tema Gullo para yujitsu</h1>
+<p class="sub">Colores sacados directamente del logo, de la web y de las fotos que me pasaste — el
+verde sale idéntico en las tres fuentes, así que es el de marca y no una aproximación.</p>
+
+<h2>La paleta de Gullo, medida</h2>
+<div class="pal">
+  <div class="sw"><div class="c" style="background:#458c50;color:#0b1a0e"><span>#458c50</span><span>marca</span></div>
+    <div class="m"><b>Verde Gullo</b>Idéntico en logo, web y fotos. Es el color de la academia.</div></div>
+  <div class="sw"><div class="c" style="background:#55a562;color:#0b1a0e"><span>#55a562</span><span>aclarado</span></div>
+    <div class="m"><b>Verde sobre oscuro</b>El de marca se queda corto de contraste para texto pequeño. Este es su versión legible.</div></div>
+  <div class="sw"><div class="c" style="background:#33693c;color:#fff"><span>#33693c</span><span>pulsado</span></div>
+    <div class="m"><b>Verde oscuro</b>Estados pulsados y bordes.</div></div>
+  <div class="sw"><div class="c" style="background:#f1f0ee;color:#141413"><span>#f1f0ee</span><span>fondo claro</span></div>
+    <div class="m"><b>Hueso</b>El fondo de su web. Casi idéntico al del panel de análisis que ya aprobaste.</div></div>
+  <div class="sw"><div class="c" style="background:#ff9058;color:#0b0b0b"><span>#ff9058</span><span>acción</span></div>
+    <div class="m"><b>Naranja Gullo</b>El de sus botones de "reserva una clase".</div></div>
+</div>
+
+<h2>Lo que dice el contraste, que cambia dos decisiones</h2>
+<table class="ct">
+  <tr><th>Combinación</th><th>Ratio</th><th>AA texto normal</th></tr>
+  <tr><td>Verde <code>#458c50</code> sobre el fondo oscuro</td><td>4,74</td><td class="ok">pasa, justo</td></tr>
+  <tr><td><b>Blanco sobre el verde</b></td><td>4,10</td><td class="no">no pasa</td></tr>
+  <tr><td><b>Negro sobre el verde</b></td><td>4,80</td><td class="ok">pasa</td></tr>
+  <tr><td>Verde sobre su propio hueso</td><td>3,60</td><td class="no">no pasa</td></tr>
+  <tr><td>Verde aclarado <code>#55a562</code> sobre oscuro</td><td>6,43</td><td class="ok">holgado</td></tr>
+  <tr><td>Naranja <code>#ff9058</code> sobre oscuro</td><td>8,68</td><td class="ok">holgado</td></tr>
+</table>
+<p class="n">Dos consecuencias concretas. Una: <b>los botones verdes llevan texto oscuro, no blanco</b> —
+el blanco sobre su verde se queda en 4,1 y no pasa—. Su web lo usa en blanco pero solo con
+tipografía enorme, donde el listón es más bajo. Dos: en la app oscura, el verde de marca sirve para
+rellenos y bordes, pero <b>para texto pequeño y enlaces hace falta el aclarado</b>.</p>
+
+<h2>Y la decisión de fondo: el verde es marca, no es dato</h2>
+<p class="n">Esto es lo que más me importa de toda la propuesta. La app usa <b>azul para ti y naranja
+para el rival</b> en heatmaps, marcador y barras. Si el verde entra ahí, pasan dos cosas malas:
+tienes tres colores fuertes peleándose en la misma pantalla, y <b>verde contra naranja es justo el
+par que se cae con el daltonismo más común</b> — afecta a cerca del 8 % de los hombres, y un
+gimnasio de BJJ es mayoritariamente hombres. Azul contra naranja sobrevive.</p>
+<p class="n">Así que: <b>verde para la identidad</b> —cabecera, pestaña activa, botón principal,
+enlaces, sincronización correcta— y <b>azul y naranja intactos para los datos</b>. Además, cuando el
+tema sea por grupo, esto es lo que impide que una academia elija un color y deje ilegible su propio
+heatmap: el grupo cambia el acento, nunca los colores de datos.</p>
+<p class="n">Un detalle que hay que arreglar de paso: hoy existe <code>--good:#0ca30c</code>, otro
+verde distinto, para la píldora de sincronización. <b>Dos verdes peleando.</b> Ese se funde con el
+de marca y la app se queda con un solo verde.</p>
+
+<h2>Cómo queda</h2>
+<div class="mocks">
+  <div>
+    <div class="phone">
+      <div class="top"><div class="brand"><span class="mark">GULLO</span>
+        <span class="t2">· entreno</span></div><span class="pill sync">al día</span></div>
+      <main>
+        <div class="marcador">
+          <div class="a"><div class="nm">Felipe</div><div class="pt">7</div></div>
+          <div class="crono">04:12</div>
+          <div class="b"><div class="nm">Pablo</div><div class="pt">2</div></div>
+        </div>
+        <div class="state"><div class="lbl">posición</div>
+          <div class="pos">Cien kilos</div><div class="rol">Felipe arriba</div></div>
+        <h3 class="sec">Felipe</h3>
+        <div class="grid">
+          <button class="act yo"><span class="k">sumisión</span>Kimura</button>
+          <button class="act yo"><span class="k">mejora</span>Monta</button>
+        </div>
+        <h3 class="sec">Pablo</h3>
+        <div class="grid">
+          <button class="act op"><span class="k">escapa</span>Recupera guardia</button>
+          <button class="act op"><span class="k">sumisión</span>Intenta</button>
+        </div>
+        <button class="pri">Cerrar el roll</button>
+        <button class="sec">Deshacer lo último</button>
+      </main>
+      <div class="tabs"><div>Feed</div><div class="on">Entreno</div><div>Análisis</div>
+        <div>Quedadas</div><div>Perfil</div></div>
+    </div>
+    <div class="ph-cap">Oscuro · el de dentro del gimnasio</div>
+  </div>
+
+  <div>
+    <div class="phone luz">
+      <div class="top"><div class="brand"><span class="mark">GULLO</span>
+        <span class="t2">· entreno</span></div><span class="pill sync">al día</span></div>
+      <main>
+        <div class="marcador">
+          <div class="a"><div class="nm">Felipe</div><div class="pt">7</div></div>
+          <div class="crono">04:12</div>
+          <div class="b"><div class="nm">Pablo</div><div class="pt">2</div></div>
+        </div>
+        <div class="state"><div class="lbl">posición</div>
+          <div class="pos">Cien kilos</div><div class="rol">Felipe arriba</div></div>
+        <h3 class="sec">Felipe</h3>
+        <div class="grid">
+          <button class="act yo"><span class="k">sumisión</span>Kimura</button>
+          <button class="act yo"><span class="k">mejora</span>Monta</button>
+        </div>
+        <h3 class="sec">Pablo</h3>
+        <div class="grid">
+          <button class="act op"><span class="k">escapa</span>Recupera guardia</button>
+          <button class="act op"><span class="k">sumisión</span>Intenta</button>
+        </div>
+        <button class="pri">Cerrar el roll</button>
+        <button class="sec">Deshacer lo último</button>
+      </main>
+      <div class="tabs"><div>Feed</div><div class="on">Entreno</div><div>Análisis</div>
+        <div>Quedadas</div><div>Perfil</div></div>
+    </div>
+    <div class="ph-cap">Claro · con el hueso de su web, para informes y para compartir</div>
+  </div>
+</div>
+<p class="n">Yo mantendría <b>la app en oscuro</b> —se usa de noche, en pabellones con focos, y gasta
+menos batería en medio de un entreno— y usaría el claro para <b>los informes y las tarjetas
+compartibles</b>, que es donde el hueso de Gullo se ve bien y donde la marca tiene que lucir. De
+paso, ese hueso es casi el mismo que el del panel de análisis que ya aprobaste, así que las dos
+cosas se unifican solas.</p>
+
+<h2>Los avatares: el cinturón antes que la foto</h2>
+<div class="avs" id="avsOsc"></div>
+<div class="avs claro" id="avsClaro"></div>
+<p class="n">Iniciales, <b>aro del color del cinturón</b>, y la insignia del arquetipo debajo. En una
+lista de doce personas esto se lee de un golpe mucho mejor que doce fotos de gente sudada, no gasta
+almacenamiento, no hay nada que moderar y no añade datos personales. <b>La foto va encima como
+opción</b>, no como base: quien quiera, la sube y sustituye las iniciales manteniendo el aro.</p>
+<p class="n">Lo del cinturón negro tenías razón, y la solución era copiar el objeto real. Un cinturón
+lleva <b>una barra donde van los grados</b>: negra en los cinturones de color, y <b>roja en el
+negro</b>. Así que el aro no es un anillo de un solo color, es el cinturón: el color de fondo más su
+barra, con los grados en blanco encima. El negro deja de ser un aro invisible sobre fondo oscuro y
+pasa a tener el rojo que lo identifica — y de paso queda más fiel que lo que tenía antes.</p>
+<p class="n">La misma lógica arregla el otro extremo: <b>el cinturón blanco desaparecía sobre el
+fondo claro</b>, y con la barra negra y un filo finísimo se ve en los dos temas. Mira la segunda fila,
+que es sobre el hueso de Gullo.</p>
+
+<footer>
+  Verde de marca <code>#458c50</code>, medido sobre el PNG del logo y confirmado píxel a píxel en la
+  captura de la web y en las fotos. Ratios de contraste calculados con la fórmula de luminancia
+  relativa de WCAG 2.1. Los colores de datos <code>#3987e5</code> y <code>#d95926</code> son los que
+  ya usa la app y no se tocan.
+</footer>
+</div>
+<script>
+/* Un cinturón de BJJ: el color base, la BARRA donde van los grados —negra en los
+   cinturones de color, ROJA en el negro— y los grados en blanco sobre la barra. */
+const CINTURONES = {
+  blanca: {aro:'#eeede9', barra:'#141413', filo:'rgba(0,0,0,.35)'},
+  azul:   {aro:'#2a6cc0', barra:'#141413', filo:'rgba(0,0,0,.25)'},
+  morada: {aro:'#6f4499', barra:'#141413', filo:'rgba(0,0,0,.25)'},
+  marron: {aro:'#6b4429', barra:'#141413', filo:'rgba(0,0,0,.25)'},
+  negra:  {aro:'#141413', barra:'#d02a2a', filo:'rgba(255,255,255,.30)'},
+};
+const GENTE = [
+  {ini:'FH', nm:'Felipe',  cb:'blanca', gr:2, bd:'🦅🪨'},
+  {ini:'PR', nm:'Pablo',   cb:'azul',   gr:3, bd:'🐍💧'},
+  {ini:'RG', nm:'Raphael', cb:'morada', gr:1, bd:'🦈🌪'},
+  {ini:'MS', nm:'Marc',    cb:'marron', gr:0, bd:'🦀🪨'},
+  {ini:'VG', nm:'Vegeta',  cb:'negra',  gr:4, bd:'🐊🔥'},
+];
+
+function avatar(p, sobreClaro){
+  const c = CINTURONES[p.cb];
+  const R = 30, CX = 38, CY = 38, C = 2*Math.PI*R;
+  const barra = 42;                       // longitud de la barra en unidades de arco
+  const ini = 90 - (barra/C*360)/2;       // centrada abajo
+  // grados: repartidos dentro de la barra
+  let ticks = '';
+  const a0 = ini + 8, a1 = ini + (barra/C*360) - 8;
+  for (let i = 0; i < p.gr; i++){
+    const t = p.gr === 1 ? .5 : i/(p.gr-1);
+    const ang = (a0 + (a1-a0)*t) * Math.PI/180;
+    const x1 = CX + (R-5.5)*Math.cos(ang), y1 = CY + (R-5.5)*Math.sin(ang);
+    const x2 = CX + (R+5.5)*Math.cos(ang), y2 = CY + (R+5.5)*Math.sin(ang);
+    ticks += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}"
+      y2="${y2.toFixed(1)}" stroke="#fff" stroke-width="2.6" stroke-linecap="butt"/>`;
+  }
+  const relleno = sobreClaro ? '#f4f3f1' : '#232322';
+  const tinta   = sobreClaro ? '#141413' : '#fff';
+  return `<div class="av">
+    <svg width="76" height="76" viewBox="0 0 76 76" aria-label="${p.nm}, cinturón ${p.cb}${p.gr?', '+p.gr+' grados':''}">
+      <circle cx="${CX}" cy="${CY}" r="${R-5.5}" fill="${relleno}"/>
+      <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${c.aro}" stroke-width="9"/>
+      <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${c.barra}" stroke-width="9"
+        stroke-dasharray="${barra} ${(C-barra).toFixed(1)}"
+        transform="rotate(${ini.toFixed(1)} ${CX} ${CY})"/>
+      ${ticks}
+      <circle cx="${CX}" cy="${CY}" r="${R+4.6}" fill="none" stroke="${c.filo}" stroke-width="1"/>
+      <circle cx="${CX}" cy="${CY}" r="${R-4.6}" fill="none" stroke="${c.filo}" stroke-width="1"/>
+      <text x="${CX}" y="${CY+1}" text-anchor="middle" dominant-baseline="middle"
+        fill="${tinta}" font-family="system-ui,sans-serif" font-size="17" font-weight="700">${p.ini}</text>
+    </svg>
+    <div class="nm">${p.nm}</div>
+    <div class="bd">${p.bd}</div>
+    <div class="cb">${p.cb}${p.gr ? ' · ' + p.gr + (p.gr===1?' grado':' grados') : ''}</div>
+  </div>`;
+}
+document.getElementById('avsOsc').innerHTML   = GENTE.map(p => avatar(p,false)).join('');
+document.getElementById('avsClaro').innerHTML = GENTE.map(p => avatar(p,true)).join('');
+</script>
+</body></html>

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Marco, type Sesion } from '@/components/Marco';
 import { Enfoque } from '@/components/Enfoque';
+import { useTema } from '@/components/Tema';
+import { contraste } from '@/lib/tema';
 import { supabase } from '@/lib/supabase';
 import { NOMBRE_OBJETIVO } from '@/lib/bjj';
 import type { Objetivo, Posicion, PracticanteRow } from '@/lib/database.types';
@@ -48,15 +50,18 @@ const etiquetaObj = (o: Objetivo) => {
 const MINIMO_PARA_PORCENTAJES = 20;
 
 /**
- * Color del número dentro de la celda, por luminancia del fondo de esa celda.
+ * Color del número dentro de la celda, según el fondo de esa celda concreta.
  * No por índice de la rampa: en modo claro y oscuro el mismo índice tiene
  * luminancias opuestas.
+ *
+ * Se **miden las dos opciones** y gana la que más contraste da. Antes había un
+ * umbral fijo de luminancia (0,42) y los tonos medios de la rampa caían justo
+ * del lado equivocado: un azul medio se llevaba texto blanco y el número
+ * quedaba en 2,5:1, ilegible, sin que nada avisara. Con dos medidas no hay
+ * frontera que ajustar a ojo.
  */
 function tinta(hex: string) {
-  const v = [1, 3, 5]
-    .map((i) => parseInt(hex.substr(i, 2), 16) / 255)
-    .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
-  return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2] > 0.42 ? '#0b0b0b' : '#ffffff';
+  return contraste('#0b0b0b', hex) >= contraste('#ffffff', hex) ? '#0b0b0b' : '#ffffff';
 }
 
 interface Celda {
@@ -103,7 +108,10 @@ function Panel({ sesion }: { sesion: Sesion }) {
   const [autor, setAutor] = useState(sesion.practicante.id);
   const [modalidad, setModalidad] = useState<Modalidad>('todo');
   const [ventana, setVentana] = useState<Ventana>('todo');
-  const [tema, setTema] = useState<'oscuro' | 'claro'>('oscuro');
+  // El tema es de la app entera, no de esta pantalla. Antes había aquí un
+  // interruptor propio porque el análisis era lo único con modo claro; con el
+  // tema global, dos interruptores solo servirían para contradecirse.
+  const [tema] = useTema();
   const [tablas, setTablas] = useState(false);
   const [datos, setDatos] = useState<Datos | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -159,21 +167,15 @@ function Panel({ sesion }: { sesion: Sesion }) {
   const k = datos?.kpi;
 
   return (
-    <div className="viz" data-viz={tema === 'claro' ? 'claro' : undefined}>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <select className="f" value={autor} data-testid="selector-practicante"
-          onChange={(e) => setAutor(e.target.value)} aria-label="Practicante">
-          {roster.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.nombre}{p.id === sesion.practicante.id ? ' (tú)' : ''}
-            </option>
-          ))}
-        </select>
-        <button className="f" data-testid="tema" style={{ whiteSpace: 'nowrap' }}
-          onClick={() => setTema((t) => (t === 'claro' ? 'oscuro' : 'claro'))}>
-          {tema === 'claro' ? '🌙' : '☀'}
-        </button>
-      </div>
+    <div className="viz">
+      <select className="f" value={autor} data-testid="selector-practicante"
+        onChange={(e) => setAutor(e.target.value)} aria-label="Practicante">
+        {roster.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.nombre}{p.id === sesion.practicante.id ? ' (tú)' : ''}
+          </option>
+        ))}
+      </select>
 
       <div className="filtros">
         {(['todo', 'gi', 'nogi'] as const).map((m) => (
@@ -485,7 +487,7 @@ function Divergente(
               <div className="track">
                 <span className="mid" style={{ left: '50%' }} />
                 <span className="fill" style={{
-                  background: positivo ? 'var(--v-pos)' : 'var(--v-neg)',
+                  background: positivo ? 'var(--dato-yo)' : 'var(--dato-neg)',
                   ...(positivo ? { left: '50%' } : { right: '50%' }),
                   width: `${pct}%`,
                 }} />
@@ -522,38 +524,38 @@ function Evolucion({ filas }: { filas: Semana[] }) {
       <h2>Evolución semanal</h2>
       <p className="cap">Sumisiones a favor y en contra, semana a semana.</p>
       <div className="leyenda">
-        <span><b style={{ background: 'var(--v-s1)' }} />A favor</span>
-        <span><b style={{ background: 'var(--v-s2)' }} />En contra</span>
+        <span><b style={{ background: 'var(--dato-yo)' }} />A favor</span>
+        <span><b style={{ background: 'var(--dato-op)' }} />En contra</span>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto' }} role="img"
         aria-label="Sumisiones a favor y en contra por semana">
         {marcas.map((t) => (
           <g key={t}>
-            <line x1={PL} x2={W - PR} y1={Y(t)} y2={Y(t)} stroke="var(--v-grid)" strokeWidth={1} />
-            <text x={PL - 7} y={Y(t) + 3.5} textAnchor="end" fontSize={10.5} fill="var(--v-muted)">{t}</text>
+            <line x1={PL} x2={W - PR} y1={Y(t)} y2={Y(t)} stroke="var(--rejilla)" strokeWidth={1} />
+            <text x={PL - 7} y={Y(t) + 3.5} textAnchor="end" fontSize={10.5} fill="var(--tenue)">{t}</text>
           </g>
         ))}
-        <path d={camino('contra')} fill="none" stroke="var(--v-s2)" strokeWidth={2} strokeLinejoin="round" />
-        <path d={camino('favor')} fill="none" stroke="var(--v-s1)" strokeWidth={2} strokeLinejoin="round" />
+        <path d={camino('contra')} fill="none" stroke="var(--dato-op)" strokeWidth={2} strokeLinejoin="round" />
+        <path d={camino('favor')} fill="none" stroke="var(--dato-yo)" strokeWidth={2} strokeLinejoin="round" />
         {filas.map((e, i) => (
           <g key={e.semana}>
-            <circle cx={X(i)} cy={Y(e.favor)} r={4} fill="var(--v-s1)"
-              stroke="var(--v-surface)" strokeWidth={2}>
+            <circle cx={X(i)} cy={Y(e.favor)} r={4} fill="var(--dato-yo)"
+              stroke="var(--superficie)" strokeWidth={2}>
               <title>{`Semana del ${e.semana}: ${e.rolls} rolls, ${e.favor} a favor`}</title>
             </circle>
-            <circle cx={X(i)} cy={Y(e.contra)} r={4} fill="var(--v-s2)"
-              stroke="var(--v-surface)" strokeWidth={2}>
+            <circle cx={X(i)} cy={Y(e.contra)} r={4} fill="var(--dato-op)"
+              stroke="var(--superficie)" strokeWidth={2}>
               <title>{`Semana del ${e.semana}: ${e.contra} en contra`}</title>
             </circle>
           </g>
         ))}
         {/* Etiqueta directa solo en el último punto. */}
         <text x={X(ult) - 4} y={Y(filas[ult].favor) - 10} textAnchor="end" fontSize={11.5}
-          fill="var(--v-ink)">{filas[ult].favor} a favor</text>
+          fill="var(--texto)">{filas[ult].favor} a favor</text>
         <text x={X(ult) - 4} y={Y(filas[ult].contra) + 18} textAnchor="end" fontSize={11.5}
-          fill="var(--v-ink)">{filas[ult].contra} en contra</text>
-        <text x={PL} y={H - 6} fontSize={10.5} fill="var(--v-muted)">{filas[0].semana.slice(5)}</text>
-        <text x={W - PR} y={H - 6} fontSize={10.5} fill="var(--v-muted)" textAnchor="end">
+          fill="var(--texto)">{filas[ult].contra} en contra</text>
+        <text x={PL} y={H - 6} fontSize={10.5} fill="var(--tenue)">{filas[0].semana.slice(5)}</text>
+        <text x={W - PR} y={H - 6} fontSize={10.5} fill="var(--tenue)" textAnchor="end">
           {filas[ult].semana.slice(5)}
         </text>
       </svg>
@@ -576,10 +578,10 @@ function Tecnicas({ filas }: { filas: Tecnica[] }) {
             <div className="nm">{r.nom}</div>
             <div className="track">
               <span className="fill" style={{
-                background: 'var(--v-grid)', left: 0, width: `${(r.tot / max) * 100}%`,
+                background: 'var(--rejilla)', left: 0, width: `${(r.tot / max) * 100}%`,
               }} />
               <span className="fill" style={{
-                background: 'var(--v-s1)', left: 0, width: `${(r.ok / max) * 100}%`,
+                background: 'var(--dato-yo)', left: 0, width: `${(r.ok / max) * 100}%`,
               }} />
             </div>
             <div className="val">{r.ok}/{r.tot}</div>

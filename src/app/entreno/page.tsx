@@ -408,7 +408,7 @@ function Flujo({ sesion }: { sesion: Sesion }) {
         <h1>Nuevo entreno</h1>
         <p className="hint">Se abre una vez al llegar. Después, cada roll es un toque.</p>
         {quedadaHoy && (
-          <p className="hint" data-testid="quedada-hoy" style={{ color: 'var(--yo)' }}>
+          <p className="hint" data-testid="quedada-hoy" style={{ color: 'var(--marca-texto)' }}>
             Hoy hay <b>{quedadaHoy.titulo}</b>
             {quedadaHoy.lugar && <> en {quedadaHoy.lugar}</>} y estás apuntado:
             lo que registres se guarda en esa quedada.
@@ -449,7 +449,7 @@ function Flujo({ sesion }: { sesion: Sesion }) {
           {(['gi', 'nogi'] as const).map((m) => (
             <button key={m} className="chip" data-testid={`obs-mod-${m}`}
               style={modalidadObs === m
-                ? { borderColor: 'var(--yo)', color: 'var(--yo)' } : undefined}
+                ? { borderColor: 'var(--marca)', color: 'var(--marca-texto)' } : undefined}
               onClick={() => setModalidadObs(m)}>
               {m === 'gi' ? 'Gi' : 'No-gi'}
             </button>
@@ -461,7 +461,7 @@ function Flujo({ sesion }: { sesion: Sesion }) {
           {salidas.map((p) => (
             <button key={p} className="chip" data-testid={`salida-${p}`}
               style={posInicio === p
-                ? { borderColor: 'var(--yo)', color: 'var(--yo)' } : undefined}
+                ? { borderColor: 'var(--marca)', color: 'var(--marca-texto)' } : undefined}
               onClick={() => setPosInicio(p)}>
               {NOMBRE_POSICION[p]}
             </button>
@@ -476,7 +476,7 @@ function Flujo({ sesion }: { sesion: Sesion }) {
           si lo cambias, luego se pregunta quién empieza arriba.
         </p>
 
-        <h2 className="sec" style={{ color: 'var(--yo)' }}>Primer practicante</h2>
+        <h2 className="sec" style={{ color: 'var(--dato-yo-texto)' }}>Primer practicante</h2>
         <div className="chips">
           {roster.map((p) => (
             <button className="chip" key={p.id} data-testid={`obsA-${p.nombre}`}
@@ -503,7 +503,7 @@ function Flujo({ sesion }: { sesion: Sesion }) {
       : roster.filter((p) => p.id !== sesion.practicante.id);
     return (
       <>
-        <h2 className="sec" style={observando ? { color: 'var(--op)' } : undefined}>
+        <h2 className="sec" style={observando ? { color: 'var(--dato-op-texto)' } : undefined}>
           {observando ? `${nombreA} contra…` : '¿Con quién ruedas?'}
         </h2>
         <div className="chips">
@@ -545,12 +545,12 @@ function Flujo({ sesion }: { sesion: Sesion }) {
         <h2 className="sec">¿Quién empieza arriba?</h2>
         <div className="chips">
           <button className="chip" data-testid="arriba-a"
-            style={{ borderColor: 'var(--yo)' }}
+            style={{ borderColor: 'var(--dato-yo)' }}
             onClick={() => { setRolInicio('arriba'); empezarRoll('arriba'); }}>
             {practA.nombre}
           </button>
           <button className="chip" data-testid="arriba-b"
-            style={{ borderColor: 'var(--op)' }}
+            style={{ borderColor: 'var(--dato-op)' }}
             onClick={() => { setRolInicio('abajo'); empezarRoll('abajo'); }}>
             {oponente.nombre}
           </button>
@@ -645,7 +645,7 @@ function Flujo({ sesion }: { sesion: Sesion }) {
             )
             : (
               <>
-                <h2 className="sec" style={observando ? { color: 'var(--yo)' } : undefined}>
+                <h2 className="sec" style={observando ? { color: 'var(--dato-yo-texto)' } : undefined}>
                   {nombreA}
                 </h2>
                 <div className="grid">
@@ -656,7 +656,7 @@ function Flujo({ sesion }: { sesion: Sesion }) {
                     </button>
                   ))}
                 </div>
-                <h2 className="sec" style={observando ? { color: 'var(--op)' } : undefined}>
+                <h2 className="sec" style={observando ? { color: 'var(--dato-op-texto)' } : undefined}>
                   {nombreB}
                 </h2>
                 <div className="grid">
@@ -703,7 +703,7 @@ function Flujo({ sesion }: { sesion: Sesion }) {
             <span className="n a">{marcador.a}</span>
             <span className="sep">–</span>
             <span className="n b">{marcador.b}</span>
-            <span style={{ fontSize: 13, color: 'var(--ink-2)', marginLeft: 6 }}>
+            <span style={{ fontSize: 13, color: 'var(--texto-2)', marginLeft: 6 }}>
               {observando ? `${nombreA} · ${nombreB}` : `tú · ${nombreB}`}
             </span>
           </div>
@@ -851,7 +851,7 @@ function Desglose({ marcador, a, b }: { marcador: Marcador; a: string; b: string
       {marcador.desglose.map((d) => (
         <div className="ev" key={`${d.indice}-${d.clave}`}>
           <span className="dot" style={{
-            background: d.actor === 'yo' ? 'var(--yo)' : 'var(--op)',
+            background: d.actor === 'yo' ? 'var(--dato-yo)' : 'var(--dato-op)',
           }} />
           <span className="tx">
             {d.actor === 'yo' ? a : b} · {d.etiqueta}
@@ -920,7 +920,7 @@ function Timeline(
       {eventos.map((e, i) => (
         <div className={`ev${e.completado ? '' : ' fail'}`} key={i}>
           <span className="dot" style={{
-            background: e.actor === 'yo' ? 'var(--yo)' : 'var(--op)',
+            background: e.actor === 'yo' ? 'var(--dato-yo)' : 'var(--dato-op)',
           }} />
           <span className="tx">
             {e.actor === 'yo' ? nombreA : nombreB} · {

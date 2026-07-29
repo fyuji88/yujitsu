@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Marco, type Sesion } from '@/components/Marco';
+import { Avatar } from '@/components/Avatar';
 import { supabase } from '@/lib/supabase';
 import type { Cinturon, PracticanteRow } from '@/lib/database.types';
 
@@ -120,10 +121,7 @@ function Lista({ sesion }: { sesion: Sesion }) {
         )}
         {filas.map((p) => (
           <div className="fila" key={p.id}>
-            <span className="dot" style={{
-              width: 8, height: 8, borderRadius: '50%',
-              background: p.usa_sistema ? 'var(--yo)' : 'var(--muted)', flex: 'none',
-            }} />
+            <Avatar nombre={p.nombre} cinturon={p.cinturon} grados={p.grados ?? 0} />
             <span className="n">
               {p.nombre}
               <small>
@@ -149,9 +147,9 @@ function Lista({ sesion }: { sesion: Sesion }) {
       </div>
 
       <p className="hint">
-        El punto azul son los que usan la app: con ellos el head-to-head se cruza y
-        un roll registrado por uno cuenta para los dos. Los grises son fichas de
-        contacto — cuentan igual como oponentes.
+        La etiqueta <b>app</b> marca a los que tienen cuenta: con ellos el
+        head-to-head se cruza y un roll registrado por uno cuenta para los dos.
+        Los demás son fichas de contacto — cuentan igual como oponentes.
       </p>
 
       <div style={{ marginTop: 18 }}>

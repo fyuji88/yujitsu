@@ -153,9 +153,9 @@ export function Feed({ practicanteId }: { practicanteId: string }) {
                     onClick={() => void reaccionar(i, e)}
                     style={{
                       font: 'inherit', fontSize: 13, cursor: 'pointer',
-                      background: r?.mia ? 'var(--yo-soft)' : 'transparent',
-                      border: `1px solid ${r?.mia ? 'var(--yo)' : 'var(--border)'}`,
-                      borderRadius: 999, padding: '2px 7px', color: 'var(--ink-2)',
+                      background: r?.mia ? 'var(--marca-suave)' : 'transparent',
+                      border: `1px solid ${r?.mia ? 'var(--marca)' : 'var(--borde)'}`,
+                      borderRadius: 999, padding: '2px 7px', color: 'var(--texto-2)',
                       opacity: r ? 1 : 0.55,
                     }}>
                     {e}{r ? ` ${r.cuantos}` : ''}
