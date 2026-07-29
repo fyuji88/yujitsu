@@ -22,6 +22,14 @@ MARC_ID = '88888888-8888-8888-8888-888888888888'
 # apuntar a otro sitio con la variable CAPTURA.
 SALIDA = os.environ.get('CAPTURA', '/tmp/capturado.json')
 
+# El unico codigo que acepta /auth/v1/verify. Cualquier otro se rechaza como
+# lo haria GoTrue, para poder probar tambien el camino del codigo mal tecleado.
+CODIGO_BUENO = '123456'
+
+# Cuentas registradas: email -> contraseña. Sirve para distinguir entrar de
+# crear cuenta, que es justo lo que la pantalla de entrada separa.
+CUENTAS = {'e2e@bjjtracker.test': 'contrasena-e2e'}
+
 TECNICAS = [
     {'id': '9f319790-39b0-4274-a946-80a580850791', 'slug': 'mata_leao'},
     {'id': '2d869a77-1b4e-411c-ab68-f1a221c338f6', 'slug': 'triangulo'},
@@ -109,7 +117,7 @@ class H(BaseHTTPRequestHandler):
     def cors(self):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Headers', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS')
+        self.send_header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS')
         self.send_header('Access-Control-Expose-Headers', '*')
 
     def responder(self, code, body):
@@ -141,10 +149,60 @@ class H(BaseHTTPRequestHandler):
 
     def do_POST(self):
         u = urlparse(self.path)
+
         if u.path == '/auth/v1/token':
+            c = self.cuerpo() or {}
+            # Sin email es el atajo que usan los scripts de prueba para
+            # conseguir una sesion sin pasar por la pantalla.
+            if not c.get('email'):
+                return self.responder(200, SESION)
+            if CUENTAS.get(c.get('email')) != c.get('password'):
+                return self.responder(400, {
+                    'error': 'invalid_grant',
+                    'error_description': 'Invalid login credentials',
+                    'msg': 'Invalid login credentials',
+                })
             return self.responder(200, SESION)
-        if u.path.startswith('/auth/v1/otp'):
+
+        if u.path.startswith('/auth/v1/signup'):
+            c = self.cuerpo() or {}
+            if c.get('email') in CUENTAS:
+                return self.responder(422, {
+                    'error': 'user_already_exists',
+                    'error_description': 'User already registered',
+                    'msg': 'User already registered',
+                })
+            CUENTAS[c.get('email')] = c.get('password')
+            # Se imita un proyecto con "confirmar correo" activado: hay usuario
+            # pero todavia no hay sesion, asi que la app tiene que pedir el codigo.
+            return self.responder(200, {**USUARIO, 'email': c.get('email'), 'session': None})
+
+        if u.path.startswith('/auth/v1/recover'):
             return self.responder(200, {})
+
+        if u.path.startswith('/auth/v1/otp'):
+            c = self.cuerpo() or {}
+            # create_user=false es "entrar": si el correo no existe, GoTrue no
+            # crea nada y contesta que no se permiten altas por esta via.
+            if c.get('create_user') is False and c.get('email') not in CUENTAS:
+                return self.responder(400, {
+                    'error': 'otp_disabled',
+                    'error_description': 'Signups not allowed for otp',
+                    'msg': 'Signups not allowed for otp',
+                })
+            return self.responder(200, {})
+
+        # verifyOtp: la entrada por codigo de 6 digitos. Es el camino que no
+        # depende de abrir un enlace, asi que conviene poder recorrerlo aqui.
+        if u.path.startswith('/auth/v1/verify'):
+            cuerpo = self.cuerpo() or {}
+            if str(cuerpo.get('token', '')) != CODIGO_BUENO:
+                return self.responder(403, {
+                    'error': 'invalid_grant',
+                    'error_description': 'Token has expired or is invalid',
+                    'msg': 'Token has expired or is invalid',
+                })
+            return self.responder(200, SESION)
 
         # Las RPC. El modo observador no escribe tablas: llama a
         # registrar_roll_observado(), que en la base real hace sesion + roll +
@@ -187,6 +245,16 @@ class H(BaseHTTPRequestHandler):
     def volcar(self):
         with open(SALIDA, 'w') as f:
             json.dump(CAPTURADO, f, indent=1)
+
+    def do_PUT(self):
+        """updateUser: aqui solo se usa para poner una contraseña nueva."""
+        u = urlparse(self.path)
+        if u.path.startswith('/auth/v1/user'):
+            c = self.cuerpo() or {}
+            if c.get('password'):
+                CUENTAS[USUARIO['email']] = c['password']
+            return self.responder(200, USUARIO)
+        return self.responder(404, {'message': 'no'})
 
     def do_PATCH(self):
         u = urlparse(self.path)
