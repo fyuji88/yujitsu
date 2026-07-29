@@ -63,8 +63,17 @@ parte en dos. Hace falta o bien un roster compartido por academia, o una funció
 fichas. No es urgente con dos usuarios, pero se convierte en el problema número uno el día que
 entre gente de la academia.
 
+**Los grupos (`bjj_14`) lo desbloquean por los dos lados.** El "roster compartido
+por academia" ya existe: es la lista de miembros del grupo, y una ficha creada
+dentro del grupo la ven todos, así que el segundo Marc deja de aparecer solo. Y
+para los duplicados que ya existan, fusionar es ahora una operación con un
+ámbito claro —dos fichas del mismo grupo— en vez de una búsqueda a ciegas por
+toda la tabla. Sigue faltando escribirla.
+
 **Reclamar ficha.** Cuando Marc se instale la app, su historial ya existe como contacto. Hay que
 poder decir "esta ficha soy yo": pasar `user_id` de null a su id, conservando todos los rolls.
+Con grupos, el permiso para hacerlo es evidente: que un admin del grupo lo
+confirme. Sin grupos no había forma de decidir quién podía autorizarlo.
 
 ---
 
@@ -163,11 +172,15 @@ autenticado, o el selector devolvería tablas vacías. La escritura no se tocó.
 
 ### Lo que queda pendiente de esto
 
-**Cerrar la lectura cuando entre gente de la academia.** Hoy cualquier
-autenticado lee los datos de cualquiera, y además las tablas crudas por
-PostgREST. La versión futura es un `perfil_publico` por practicante, o
-visibilidad limitada a la gente con la que has rodado. Se cierra con una
-migración y nadie pierde nada — por eso se abrió sin miedo.
+~~**Cerrar la lectura cuando entre gente de la academia.**~~ — **hecho**
+(`bjj_15`). Ya no lee cualquiera: se lee lo de la gente con la que compartes
+grupo, vía `private.practicantes_visibles()`. Se cerró exactamente como estaba
+previsto, con una migración y sin que nadie perdiera nada.
+
+La primera versión de esa política se escribió con un predicado por fila y
+tardaba **631 ms** en 679 eventos. Reescrita como `in (select …)` sobre
+conjuntos: **9 ms**. Si alguien vuelve a tocar esas políticas, que mida antes
+de dar por bueno el resultado.
 
 **Comparar dos practicantes lado a lado.** El selector enseña a uno cada vez, a
 propósito. Comparar bien —mismos ejes, misma escala de color, misma ventana—
@@ -176,6 +189,48 @@ conclusiones falsas, y hacerlo mal es peor que no hacerlo.
 
 **Los puntos IBJJF no están en esta pantalla.** El marcador vive en el logging.
 Llevarlos al análisis —"dominas 8-2 de media contra Pablo"— es su propio bloque.
+
+---
+
+## 2 quater · ~~Bloque social~~ — HECHO (29 julio 2026)
+
+~~Grupos con roles, quedadas con inscripciones, informe, feed y enfoques.~~
+
+Seis migraciones (`bjj_14` … `bjj_19`) y cuatro pantallas. Lo que cambia de
+verdad: hasta aquí la app era un cuaderno personal que además dejaba observar;
+ahora tiene una unidad social —el grupo— y todo lo demás cuelga de ella.
+
+| | Qué es | Migración |
+|---|---|---|
+| **Grupos** | academia o pandilla, con admin y código de unión | `bjj_14` |
+| **Lectura por grupo** | ves lo de la gente con la que compartes grupo | `bjj_15` |
+| **Quedadas** | open mat con plazas, lista de espera y token de invitación | `bjj_16` |
+| **Feed** | qué ha pasado en el grupo, con reacciones | `bjj_17` |
+| **Informe** | resumen congelado de la quedada, con títulos | `bjj_18` |
+| **Enfoques** | lo que dices que trabajas, contra lo que hiciste | `bjj_19` |
+
+**Lo que hace distinto al informe:** se calcula una vez y se guarda en jsonb.
+Un resumen que cambia cuando alguien corrige un evento de hace un mes no es un
+recuerdo de esa noche, es una consulta. Regenerarlo es explícito.
+
+**Lo que hace distinto a los enfoques:** las posiciones y las técnicas van
+estructuradas, no solo en texto libre. Por eso la app puede decir "dijiste De
+la Riva y la has jugado en 2 de 34 rolls". Con texto libre eso no existe.
+
+### Lo que queda pendiente de esto
+
+**El informe todavía no tiene de qué tirar en producción.** Ninguna quedada
+tiene rolls colgados, porque las quedadas son de ayer y los 247 rolls son de
+antes. El primer open mat que se registre desde la app lo llena solo.
+
+**Los títulos se reparten por |z| sobre las métricas de esa quedada.** Con
+cuatro asistentes eso es casi un reparto por orden. Con veinte tiene sentido;
+con cuatro, hay que mirar si las frases siguen sonando a verdad.
+
+**Enfoques solo se ven en Análisis.** Es donde tienen sentido —pegados a los
+números que los contradicen—, pero un enfoque también es algo que quieres ver
+del compañero al abrir su ficha. La ficha de practicante no existe todavía como
+pantalla propia.
 
 ---
 
@@ -216,8 +271,11 @@ la gente de verdad.
    sella cada evento con el segundo del cronómetro). Falta decidir cómo se cierra
    el último tramo y qué cuenta como disputa.
 7. ~~**Heatmaps y head-to-head en la app**~~ — hecho.
-8. **`de_rodillas` en `bjj_posicion`** — vocabulario, lo cierran Felipe y Pablo.
-9. **Sugerencias de técnicas** — cuando haya gente fuera de vosotros dos usándolo.
+8. ~~**Bloque social**~~ — hecho: grupos, quedadas, informe, feed y enfoques.
+9. **`de_rodillas` en `bjj_posicion`** — vocabulario, lo cierran Felipe y Pablo.
+10. **Sugerencias de técnicas** — cuando haya gente fuera de vosotros dos usándolo.
 
 Duplicados, reclamar ficha y restringir el modo observador al roster entran todos
-a la vez: el día que entre la primera persona de la academia.
+a la vez: el día que entre la primera persona de la academia. Los grupos ya dan
+el marco para los tres —quién puede autorizar qué—, así que ahora es trabajo de
+escribirlo, no de decidirlo.

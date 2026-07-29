@@ -69,13 +69,25 @@ fuertes y débiles, head-to-head, evolución semanal y técnicas. Con selector d
 practicante, filtro gi/nogi y ventana temporal. El diseño aprobado es
 `docs/BJJ-Analisis-DEMO.html`; la pantalla es su puerto a React.
 
+**Bloque social terminado y desplegado.** La app dejó de ser un cuaderno
+personal: ahora hay una unidad social —el **grupo**— y todo cuelga de ella.
+
+- **Grupos** con admin y código de unión (`bjj_14`). Todo el mundo está en uno.
+- **La lectura va por grupo** (`bjj_15`): ves lo de la gente con la que
+  compartes grupo, no lo de cualquier autenticado.
+- **Quedadas** con plazas, lista de espera y token de invitación (`bjj_16`).
+- **Feed** del grupo con reacciones (`bjj_17`).
+- **Informe de la quedada** (`bjj_18`): ranking y títulos, congelado en jsonb.
+- **Enfoques** (`bjj_19`): lo que dices que trabajas, contrastado con lo que
+  hiciste. Vive dentro de Análisis, pegado a los KPIs.
+
 - Supabase: proyecto `idzlxkxeadrcolcnmoeo`, org `yujitsu`, eu-west-1, plan gratuito
 - Vercel: `yujitsu-eight.vercel.app`, plan Hobby
 - GitHub: `fyuji88/yujitsu`, privado, rama `main`
-- 12 migraciones aplicadas (`bjj_01` … `bjj_12`), copia en `db/`
+- 19 migraciones aplicadas (`bjj_01` … `bjj_19`), copia en `db/`
 
-**Casi sin datos reales.** El diccionario (24 posiciones, 63 técnicas) y un roll
-de prueba de Felipe.
+**Datos reales, pero pocos.** El diccionario (24 posiciones, 63 técnicas), el
+grupo "Gullo" y unos 250 rolls entre Felipe, Pablo, Nicolas y Sasza.
 
 ---
 
@@ -93,11 +105,17 @@ editar aparece solo en tu ficha y en los contactos que creaste tú — la misma
 condición que la política de Postgres. Si la UI ofrece más, el usuario ve errores
 en vez de botones ausentes.
 
-**Nada escribe directo contra Supabase salvo `practicantes`.** Sesiones, rolls y
-eventos pasan siempre por `encolar()` en `src/lib/db.ts`. El roll observado pasa
-por `encolarRollObservado()`, que es la misma cola con otro destino: en vez de
-`upsert` contra tablas, una llamada a `registrar_roll_observado()`. La regla de
-fondo no cambia — nada llega a la red sin pasar por IndexedDB.
+**Los datos del roll no llegan a la red sin pasar por IndexedDB.** Sesiones,
+rolls y eventos pasan siempre por `encolar()` en `src/lib/db.ts`. El roll
+observado pasa por `encolarRollObservado()`, que es la misma cola con otro
+destino: en vez de `upsert` contra tablas, una llamada a
+`registrar_roll_observado()`.
+
+Lo demás —`practicantes`, `grupos`, `miembros_grupo`, `quedadas`,
+`inscripciones`, `reacciones`, `enfoques`— sí escribe directo, y es
+deliberado: son cosas que se hacen sentado y con cobertura, no en mitad de un
+roll con el móvil en la bolsa. La cola existe por el tatami, no por gusto de
+tener cola. Si añades algo que se toca **rodando**, va por `encolar()`.
 
 **El modo observador solo puede escribir por RPC.** La RLS impide que un tercero
 toque las sesiones de otros, así que `registrar_roll_observado()` es SECURITY
@@ -127,22 +145,42 @@ cosas que son del usuario y no del dispositivo:
 
 La caché de técnicas sí se queda: el diccionario es igual para todos.
 
-**La lectura de sesiones, rolls y eventos está abierta a cualquier
-autenticado.** Es lo que hace posible el selector de practicante del análisis, y
-está decidido a sabiendas (`bjj_13`): un roll es de dos, así que buena parte de
-los datos de cada uno ya eran visibles para el otro. **La escritura no se
-tocó**: cada uno escribe lo suyo, y los terceros solo por
-`registrar_roll_observado()`. Si tocas políticas, mantén esa separación —
-abrirla al escribir sí sería un fallo grave.
+**La lectura de sesiones, rolls y eventos va por grupo.** Durante un tiempo
+estuvo abierta a cualquier autenticado (`bjj_13`), que era el precio del
+selector de practicante del análisis. Ya no: desde `bjj_15` se lee lo de la
+gente con la que compartes grupo, y el filtro es
+`private.practicantes_visibles()`.
 
-Ojo: eso abre también las **tablas crudas** por PostgREST, no solo las vistas.
-Con dos amigos es aceptable; con gente de la academia dentro, no.
+**La escritura no se ha tocado nunca**: cada uno escribe lo suyo, y los
+terceros solo por `registrar_roll_observado()`. Si tocas políticas, mantén esa
+separación — abrirla al escribir sí sería un fallo grave.
+
+Esas políticas van **por conjuntos**, `in (select private.…_visibles())`, y no
+con un predicado por fila. No es estilo: la primera versión con predicado por
+fila tardaba 631 ms en 679 eventos y la de conjuntos 9 ms. Si las reescribes,
+mide antes de darlas por buenas.
 
 **El análisis no agrega en React.** Todo sale ya sumado de `analisis()` en
 Postgres, que existe porque las vistas `v_heatmap_*` agregan sin conservar
 `modalidad` ni `fecha` y por eso no dan el filtro gi/nogi. Si hace falta un
 corte nuevo, se añade en SQL. Lo único que calcula la pantalla es el máximo de
 la rampa de color, que es dibujo y no dato.
+
+**Un enfoque está activo cuando `hasta is null`**, no cuando su fecha de fin
+llega hasta hoy. Con la otra regla, "darlo por terminado" ponía `hasta` = hoy y
+el enfoque seguía saliendo como activo el resto del día: el botón no hacía lo
+que dice. Y así `hasta` no necesita pinzas —ni `max(desde, ayer)` ni casos
+especiales para el que empezó hoy— y el periodo guardado es verdad: desde el
+día que lo escribiste hasta el día que lo cerraste.
+
+Cambiar de enfoque **cierra el anterior, nunca lo borra**. El historial es la
+mitad del valor: saber que en mayo estuviste con De la Riva y en junio con
+media guardia es lo que hace que esto no sea una nota en el móvil.
+
+**El contraste del enfoque mira el periodo del enfoque, no el filtro de la
+pantalla.** Si empezó hace tres semanas, la pregunta es qué hiciste en esas
+tres semanas, y da igual qué ventana esté seleccionada arriba. La pantalla lo
+dice, porque si no el número parece incoherente con todo lo demás.
 
 **Mezclar gi y no-gi en el mismo heatmap dibuja un juego que no existe.** En gi
 hay agarres y estrangulaciones de solapa que en no-gi no existen, y en no-gi hay
@@ -179,11 +217,18 @@ src/lib/db.ts              IndexedDB (Dexie) + cola de salida
 src/lib/sync.ts            vaciado de la cola
 src/lib/database.types.ts  tipos del esquema (subconjunto escrito a mano)
 src/components/Marco.tsx   sesión, pestañas, píldora de sincronización
-src/app/login              entrada por magic link
+src/components/Feed.tsx    qué ha pasado en el grupo, con reacciones
+src/components/Enfoque.tsx lo que dices que trabajas, contra lo que hiciste
+src/app/login              entrar, crear cuenta, código de 6-10 dígitos
 src/app/auth/callback      vuelta del enlace
+src/app/auth/reset         contraseña nueva
 src/app/practicantes       alta y edición del roster
 src/app/entreno            el logging: tu roll y el modo observador
+src/app/analisis           heatmaps, head-to-head, evolución, enfoque
+src/app/grupo              feed, ficha del grupo, miembros, unirse/crear
+src/app/quedadas           próximas y pasadas, plazas, informe
 db/                        el esquema SQL, igual que lo desplegado
+db/pruebas/                los tests en SQL, uno por bloque
 docs/                      decisiones de producto y backlog
 ```
 
@@ -307,6 +352,17 @@ El proyecto tiene poca red de seguridad automática, así que:
   NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 \
   NEXT_PUBLIC_SUPABASE_ANON_KEY=stub npm run dev
   ```
+
+  **Con `PGURL` y `PSQL` puestos deja de imitar y habla con el Postgres local**,
+  y además **con la RLS puesta**: pone el claim y hace `set local role
+  authenticated` en cada consulta. Eso es lo que hace que un fallo de privacidad
+  salga recorriendo la app y no en el móvil de alguien — la primera vez que se
+  activó, cazó la pantalla de grupo enseñando un grupo del que no eras miembro.
+
+  Las tablas y funciones que cruzan el puente están en `TABLAS_PUENTE` y
+  `RPC_PUENTE`. Una tabla que no esté en la lista no da error: contesta `[]`
+  desde la imitación en memoria, que se parece bastante a "no hay datos". Si un
+  recorrido enseña vacíos que no te cuadran, mira ahí antes que en la app.
 
 - Para cambios de esquema, probar contra un Postgres local antes de aplicar la
   migración al proyecto real. Sin Docker también se puede: ver `db/README.md`.
