@@ -46,7 +46,7 @@ jobs:
       PGDATABASE: bjj
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Cliente de Postgres
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
@@ -76,7 +76,7 @@ jobs:
       - name: El marcador contra el fixture compartido
         run: psql -v ruta="$PWD/src/lib/__fixtures__/puntos.json" -f db/pruebas/puntos.sql
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: npm
