@@ -18,6 +18,31 @@ Qué es obligatorio y qué no:
 
 ---
 
+## 2026-08-03 (noche) · Una sola fuente para "intentos por técnica"
+
+**Migración:** `bjj_30_una_sola_fuente` (`db/25_una_sola_fuente.sql`), aplicada a
+producción. 19/19 vistas con `security_invoker`, `analisis()` responde.
+
+`bjj_29` dejó dos sitios calculando el mismo recuento: `v_tecnicas_practicante`
+y el bloque `tec` de `analisis()`, que lo rehacía porque la vista no llevaba
+`modalidad` ni `fecha` y la pantalla filtra por gi/nogi. Ahora la vista las
+lleva y **`analisis()` lee de ella**. La vista es el único sitio donde se define
+qué cuenta como intento de una técnica.
+
+**Verificado comparando el `tec` de `analisis()` antes y después**, para los tres
+filtros (todo, gi, nogi): mismos md5. Si hubieran salido distintos, la vista y
+el panel no estaban contando lo mismo — que es exactamente lo que esto viene a
+hacer imposible.
+
+**Decisión: la modalidad es la de la SESIÓN**, no la del roll. Es lo que ya
+hacía `analisis()` con `modalidad_sesion`; cambiarlo aquí habría movido números
+sin que nadie lo pidiera.
+
+**Sabido roto:** sigue faltando generar `database.types.ts` desde la base, y
+sellar los eventos espejo. Los dos en el backlog en alta y media.
+
+---
+
 ## 2026-08-03 (tarde) · El chip de precisar, y el stub deja de mentir
 
 **Migración:** ninguna. `bjj_29` ya estaba aplicada.
