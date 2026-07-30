@@ -10,11 +10,10 @@
  * da error en pantalla.
  *
  * ESTE RECORRIDO ABRE UNA SESION Y CIERRA UN ROLL de verdad, porque el ciclo
- * que interesa es el real y no una simulacion de el. No ensucia la semilla: el
- * stub CAPTURA las escrituras en `$CAPTURA` en vez de aplicarlas a Postgres,
- * asi que los numeros exactos que comprueba `analisis.js` siguen saliendo. Si
- * algun dia el stub pasara a escribir de verdad, este recorrido tendria que
- * borrar su sesion al acabar — la cascada se lleva rolls y eventos.
+ * que interesa es el real. Y desde que `sesiones`, `rolls` y `eventos` estan en
+ * el puente del stub, eso llega a Postgres: por eso BORRA su sesion al acabar.
+ * Sin esa limpieza los numeros exactos que comprueba `analisis.js` se mueven
+ * solos, y el fallo aparece lejos de su causa.
  */
 const { chromium } = require('playwright-core');
 const path = require('node:path');
@@ -127,6 +126,26 @@ const ESPIA = `
   const fin = await wake();
   comprobar(fin.vivos === 0,
     `al salir del roll se suelta: ${fin.pedidos} pedidos, ${fin.sueltas} sueltas`);
+
+  // ---------- dejar la semilla como estaba ----------
+  // Este recorrido ESCRIBE de verdad contra Postgres desde que `sesiones`,
+  // `rolls` y `eventos` estan en el puente del stub. Borra EXACTAMENTE la
+  // sesion que abrio —su id esta en localStorage—, nunca "las de hoy": la
+  // semilla tambien tiene sesiones de hoy y borrarlas la romperia.
+  const limpiado = await page.evaluate(async () => {
+    const guardada = localStorage.getItem('bjj.sesion-abierta');
+    if (!guardada) return 'no habia sesion que borrar';
+    const { id: sid } = JSON.parse(guardada);
+    const { data: rolls } = await window.__sb.from('rolls').select('id').eq('sesion_id', sid);
+    for (const r of rolls ?? []) {
+      await window.__sb.from('eventos').delete().eq('roll_id', r.id);
+      await window.__sb.from('rolls').delete().eq('id', r.id);
+    }
+    await window.__sb.from('sesiones').delete().eq('id', sid);
+    localStorage.removeItem('bjj.sesion-abierta');
+    return `${(rolls ?? []).length} rolls y su sesion`;
+  });
+  ok(`la semilla queda como estaba: ${limpiado}`);
 
   console.log(`\n######## PANTALLA ENCENDIDA: ${n} comprobaciones ########`);
   await ctx.close();

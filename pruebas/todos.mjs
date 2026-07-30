@@ -34,6 +34,7 @@ const RECORRIDOS = [
   ['enfoques.js', 'los enfoques: contraste contra la RPC, historial, permisos'],
   ['logros.js', 'los logros: coleccion, ranking del mes y feed sin inundar'],
   ['pantalla.js', 'la pantalla encendida: se pide al rodar y se suelta al acabar'],
+  ['precisar.js', 'precisar: el chip, y el invariante contra Postgres de verdad'],
 ];
 
 async function vivo(url) {

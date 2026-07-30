@@ -25,10 +25,22 @@ from urllib.parse import urlparse, parse_qs
 # Solo lectura y solo para lo que la pantalla de analisis necesita.
 PSQL = os.environ.get('PSQL')
 PGURL = os.environ.get('PGURL')
-TABLAS_PUENTE = ('practicantes', 'tecnicas', 'equipos', 'miembros_equipo',
+# ,  y  entran aqui desde que un bug de produccion
+# demostro lo que costaba dejarlas fuera: el cliente estuvo escribiendo
+#  y  contra un esquema que los habia renombrado, y
+# los SEIS recorridos daban verde porque el stub apuntaba esas escrituras en vez
+# de aplicarlas. Un recorrido que no escribe de verdad da confianza falsa sobre
+# todo lo que escribe.
+#
+# El precio es que los recorridos que escriben tienen que limpiar lo suyo, o la
+# semilla deja de ser determinista y  empieza a fallar solo.
+TABLAS_PUENTE = ('sesiones', 'rolls', 'eventos',
+                 'practicantes', 'tecnicas', 'equipos', 'miembros_equipo',
                  'quedadas', 'inscripciones', 'v_mi_quedada_hoy', 'reacciones',
-                 'enfoques', 'logros', 'v_logros_practicante', 'v_logros_mes')
+                 'enfoques', 'logros', 'v_logros_practicante', 'v_logros_mes',
+                 'v_tecnicas_practicante')
 RPC_PUENTE = ('analisis', 'analisis_rolls_celda', 'unirse_con_codigo',
+              'precisar_tecnica',
               'crear_equipo', 'regenerar_codigo', 'apuntarse_a_quedada',
               'cancelar_inscripcion', 'quedada_por_token', 'feed',
               'enfoque_contraste')

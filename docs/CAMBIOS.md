@@ -18,6 +18,48 @@ Qué es obligatorio y qué no:
 
 ---
 
+## 2026-08-03 (tarde) · El chip de precisar, y el stub deja de mentir
+
+**Migración:** ninguna. `bjj_29` ya estaba aplicada.
+
+**El chip de precisar, terminado.** Al cerrar un roll propio, cada técnica que
+**tiene** variantes ofrece "Sigue siendo Kimura" + sus variantes, en lote y sin
+bloquear. Orden: primero lo que está en tu enfoque activo, luego lo que más
+usas (de `v_tecnicas_practicante`), luego el resto. Para las 64 técnicas sin
+variantes el bloque no existe — que es lo que impide que precisar sea un peaje.
+
+**El stub ya escribe de verdad.** `sesiones`, `rolls` y `eventos` entran en
+`TABLAS_PUENTE`. Dejarlas fuera es lo que permitió que seis recorridos dieran
+verde con producción rota: el stub apuntaba lo que la app escribiría sin
+aplicarlo. El precio es que los recorridos que escriben tienen que limpiar lo
+suyo, y ahora `pantalla.js` y `precisar.js` borran **exactamente su sesión** por
+id — nunca "las de hoy", porque la semilla también tiene sesiones de hoy.
+
+**`pruebas/precisar.js`**, séptimo recorrido: 13 comprobaciones, y la que
+importa mide el invariante **contra Postgres**: el total de la mecánica no se
+mueve (37 → 37) y aparece 1 tarikoplata donde había una kimura. Eso no lo podía
+comprobar ningún recorrido en modo captura.
+
+**Dos fallos que salieron al probarlo, y ninguno lo habría visto el typecheck:**
+- `precisar()` por la vía de la cola corregía la fila encolada pero **nada
+  disparaba la subida**: la corrección se quedaba esperando y el análisis seguía
+  diciendo "kimura" un rato largo. Ahora empuja la cola.
+- El manejador **se tragaba el error** y revertía la marca en silencio: parecía
+  que habías precisado y no había pasado nada. Ahora lo dice.
+
+**Sabido roto:**
+- **El chip solo está en rolls propios.** Los eventos de un roll observado los
+  crea la RPC en el servidor y el cliente no tiene sus ids. Hace falta la
+  pantalla de historial, que no existe.
+- **`v_tecnicas_practicante` sigue sin modalidad ni fecha.** Ya tiene un
+  consumidor real —el orden de los chips— pero el panel de análisis sigue
+  calculando lo mismo por su cuenta dentro de `analisis()`. Son dos sitios
+  computando "intentos por técnica", que es como empiezan las dos fuentes de la
+  verdad. El arreglo es una migración que le añada `modalidad` y `fecha` y haga
+  que `analisis()` lea de ella. **No está hecho y es lo primero de lo siguiente.**
+
+---
+
 ## 2026-08-03 · Mecánicas: el catálogo deja de ser una lista plana
 
 **Migración:** `bjj_29_mecanicas` (`db/24_mecanicas.sql`). Etiqueta 29 porque 28

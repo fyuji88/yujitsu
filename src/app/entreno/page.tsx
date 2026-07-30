@@ -4,9 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Marco, type Sesion } from '@/components/Marco';
 import { supabase } from '@/lib/supabase';
 import { TEXTOS } from '@/lib/textos/es';
+import { SIGUE_SIENDO, VARIANTES } from '@/lib/textos/tecnicas.es';
 import { usarPantallaEncendida } from '@/lib/pantalla';
 import {
-  CLAVE_SESION, CLAVE_TECNICAS, encolar, encolarRollObservado, nuevoId,
+  CLAVE_SESION, CLAVE_TECNICAS, encolar, encolarRollObservado, nuevoId, precisar,
 } from '@/lib/db';
 import { retenerCola, vaciarCola } from '@/lib/sync';
 import {
@@ -70,6 +71,9 @@ interface Instantanea {
   subPendiente: SubPendiente | null;
 }
 
+/** Una variante del catálogo, para los chips de precisar. */
+interface Variante { id: string; slug: string; nombre: string }
+
 interface SubPendiente {
   slug: string;
   objetivo: string;
@@ -86,6 +90,19 @@ function Flujo({ sesion }: { sesion: Sesion }) {
   const [abierta, setAbierta] = useState<SesionAbierta | null>(null);
   const [roster, setRoster] = useState<PracticanteRow[]>([]);
   const [tecnicas, setTecnicas] = useState<Record<string, string>>({});
+  /**
+   * Las variantes de cada mecánica, por slug de la madre. Vacío para las 64 que
+   * no tienen: por eso el chip no existe en el 90% de los rolls.
+   */
+  const [variantes, setVariantes] = useState<Record<string, Variante[]>>({});
+  /** Cuánto usas cada variante, para ordenar los chips. De v_tecnicas_practicante. */
+  const [usoVariante, setUsoVariante] = useState<Record<string, number>>({});
+  /** Las técnicas del enfoque activo: van primero, que es el sentido del enfoque. */
+  const [enEnfoque, setEnEnfoque] = useState<Set<string>>(new Set());
+  /** Los ids de los eventos del roll que se acaba de cerrar, en el mismo orden. */
+  const [idsEventos, setIdsEventos] = useState<string[]>([]);
+  /** evento -> técnica elegida. Solo para pintar cuál está marcada. */
+  const [precisado, setPrecisado] = useState<Record<string, string>>({});
   const [fase, setFase] = useState<
     'inicio' | 'observadorA' | 'oponente' | 'quienArriba' | 'roll' | 'fin'
   >('inicio');
@@ -163,13 +180,46 @@ function Flujo({ sesion }: { sesion: Sesion }) {
     (async () => {
       const { data } = await supabase().from('practicantes').select('*').order('nombre');
       if (data) setRoster(data as PracticanteRow[]);
-      const { data: t } = await supabase().from('tecnicas').select('id,slug');
+      const { data: t } = await supabase()
+        .from('tecnicas').select('id,slug,nombre,variante_de');
       if (t) {
-        const m = Object.fromEntries((t as { id: string; slug: string }[])
-          .map((x) => [x.slug, x.id]));
+        const filas = t as { id: string; slug: string; nombre: string; variante_de: string | null }[];
+        const m = Object.fromEntries(filas.map((x) => [x.slug, x.id]));
         setTecnicas(m);
         localStorage.setItem(CLAVE_TECNICAS, JSON.stringify(m));
+
+        // Las variantes, indexadas por el SLUG de la madre, que es lo que
+        // lleva el evento borrador.
+        const porId = Object.fromEntries(filas.map((x) => [x.id, x]));
+        const v: Record<string, Variante[]> = {};
+        for (const x of filas) {
+          if (!x.variante_de) continue;
+          const madre = porId[x.variante_de];
+          if (!madre) continue;
+          (v[madre.slug] ??= []).push({ id: x.id, slug: x.slug, nombre: x.nombre });
+        }
+        setVariantes(v);
       }
+
+      // Cuánto usa cada variante, para ordenar los chips. Sale de
+      // v_tecnicas_practicante, que es la única fuente de ese recuento.
+      const { data: uso } = await supabase()
+        .from('v_tecnicas_practicante')
+        .select('tecnica_id,intentos')
+        .eq('practicante_id', sesion.practicante.id);
+      if (uso) {
+        setUsoVariante(Object.fromEntries(
+          (uso as { tecnica_id: string; intentos: number }[])
+            .map((x) => [x.tecnica_id, x.intentos])));
+      }
+
+      // El enfoque activo. Si esta semana tu objetivo es la tarikoplata, tiene
+      // que ser la PRIMERA opción que ves al precisar una kimura.
+      const { data: enf } = await supabase()
+        .from('enfoques').select('tecnicas')
+        .eq('practicante_id', sesion.practicante.id)
+        .is('hasta', null).limit(1).maybeSingle();
+      if (enf) setEnEnfoque(new Set((enf as { tecnicas: string[] }).tecnicas ?? []));
     })();
   }, []);
 
@@ -345,9 +395,12 @@ function Flujo({ sesion }: { sesion: Sesion }) {
       origen: 'propio',
       registrado_por: sesion.practicante.id,
     });
+    const ids: string[] = [];
     for (const ev of eventos) {
+      const evId = nuevoId();
+      ids.push(evId);
       await encolar('eventos', {
-        id: nuevoId(),
+        id: evId,
         roll_id: rollId,
         actor: ev.actor,
         tipo: ev.tipo,
@@ -359,6 +412,8 @@ function Flujo({ sesion }: { sesion: Sesion }) {
         segundo_roll: ev.segundo ?? null,
       });
     }
+    setIdsEventos(ids);
+    setPrecisado({});
     const s = { ...abierta, rolls: abierta.rolls + 1 };
     localStorage.setItem(CLAVE_SESION, JSON.stringify(s));
     setAbierta(s);
@@ -408,6 +463,33 @@ function Flujo({ sesion }: { sesion: Sesion }) {
     const args = { ...ultimo, p_duracion_min: Math.min(60, Math.max(0, min)) };
     await encolarRollObservado(args);
     setUltimo(args);
+  }
+
+  /**
+   * Precisar una técnica del roll recién cerrado.
+   *
+   * Se apunta en `precisado` ANTES de esperar a la red: el chip tiene que
+   * responder al toque, no al servidor. Si algo falla, `precisar()` lanza y se
+   * revierte la marca — es lo único que puede fallar aquí y no debe quedarse
+   * mintiendo en pantalla.
+   */
+  async function elegirPrecision(evId: string, tecnicaId: string | undefined) {
+    if (!tecnicaId) return;
+    const antes = precisado[evId];
+    setPrecisado((p) => ({ ...p, [evId]: tecnicaId }));
+    try {
+      const via = await precisar(evId, tecnicaId);
+      // Si fue por la COLA, hay que empujarla: si no, la correccion se queda
+      // esperando a la siguiente sincronizacion y el analisis sigue diciendo
+      // 'kimura' un rato largo. No se pierde nada, pero parece que no ha
+      // pasado — y un chip que no hace nada visible deja de tocarse.
+      if (via === 'cola') void vaciarCola();
+    } catch (e) {
+      // Se revierte la marca Y se dice por que. Tragarse el error dejaba el
+      // chip mintiendo: parecia que habia precisado y no habia pasado nada.
+      setPrecisado((p) => ({ ...p, [evId]: antes ?? '' }));
+      console.error('precisar fallo:', e instanceof Error ? e.message : e);
+    }
   }
 
   const terminar = () => (observando ? terminarObservado() : terminarPropio());
@@ -707,6 +789,29 @@ function Flujo({ sesion }: { sesion: Sesion }) {
       : (res === 'sumision_favor' ? 'Sumisión a favor'
         : res === 'sumision_contra' ? 'Sumisión en contra' : 'Sin sumisión');
     const espeja = observando && oponente?.usa_sistema;
+
+    /**
+     * Qué se puede precisar de este roll: los eventos cuya técnica tiene
+     * variantes. En LOTE, no una pantalla por evento: si la sesión tuvo tres
+     * kimuras se ofrecen juntas.
+     *
+     * El orden de las opciones no es alfabético y no es un detalle: primero lo
+     * que estás trabajando, luego lo que más usas, luego el resto.
+     */
+    const aPrecisar = eventos
+      .map((ev, i) => ({ evId: idsEventos[i], slug: ev.tecnicaSlug }))
+      .filter((x): x is { evId: string; slug: string } =>
+        !!x.evId && !!x.slug && (variantes[x.slug]?.length ?? 0) > 0)
+      .map((x) => ({
+        ...x,
+        opciones: [...variantes[x.slug]].sort((a, b) => {
+          const ea = enEnfoque.has(a.id) ? 1 : 0;
+          const eb = enEnfoque.has(b.id) ? 1 : 0;
+          if (ea !== eb) return eb - ea;
+          return (usoVariante[b.id] ?? 0) - (usoVariante[a.id] ?? 0);
+        }),
+      }));
+
     return (
       <>
         <div className="state">
@@ -759,6 +864,56 @@ function Flujo({ sesion }: { sesion: Sesion }) {
           <p className="hint">
             Se ha guardado en el móvil y sale hacia Supabase en cuanto haya red.
           </p>
+        )}
+
+        {/* ---------------------------------------------------------------
+            PRECISAR. Solo aparece si alguna técnica del roll TIENE variantes:
+            para las 64 que no, este bloque no existe.
+
+            NUNCA BLOQUEA. No es un modal, no es obligatorio, y un roll sin
+            precisar es un roll perfectamente válido. En cuanto precisar sea un
+            peaje la gente deja de registrar, y eso es lo único que mata este
+            producto.
+
+            Solo en rolls propios: los eventos de un roll observado los crea la
+            RPC en el servidor y aquí no tenemos sus ids. Desde el historial sí
+            se podrán, cuando exista esa pantalla.
+        ---------------------------------------------------------------- */}
+        {!observando && aPrecisar.length > 0 && (
+          <>
+            <h2 className="sec">¿Alguna era más concreta?</h2>
+            <p className="hint" style={{ marginTop: 0 }}>
+              Opcional. Sirve para que un objetivo de tarikoplata se cumpla
+              cuando registras «kimura» con el cronómetro corriendo.
+            </p>
+            {aPrecisar.map(({ evId, slug, opciones }) => (
+              <div key={evId} style={{ marginTop: 10 }}>
+                <div className="lbl" style={{ marginBottom: 4 }}>
+                  {slug.replace(/_/g, ' ')}
+                </div>
+                <div className="chips">
+                  <button className="chip" data-testid={`precisar-${evId}-madre`}
+                    style={!precisado[evId]
+                      ? { borderColor: 'var(--marca)', color: 'var(--marca-texto)' }
+                      : undefined}
+                    onClick={() => void elegirPrecision(evId, tecnicas[slug])}>
+                    {SIGUE_SIENDO(slug.replace(/_/g, ' '))}
+                  </button>
+                  {opciones.map((v) => (
+                    <button className="chip" key={v.id}
+                      data-testid={`precisar-${evId}-${v.slug}`}
+                      style={precisado[evId] === v.id
+                        ? { borderColor: 'var(--marca)', color: 'var(--marca-texto)' }
+                        : undefined}
+                      onClick={() => void elegirPrecision(evId, v.id)}>
+                      {VARIANTES[v.slug]?.nombre ?? v.nombre}
+                      {enEnfoque.has(v.id) && <small>enfoque</small>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </>
         )}
 
         <div style={{ display: 'flex', gap: 9, marginTop: 18 }}>
