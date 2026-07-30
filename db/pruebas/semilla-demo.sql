@@ -85,12 +85,31 @@ delete from rolls;
 delete from sesiones;
 delete from practicantes where user_id is null;
 
--- La ficha con cuenta se recicla en vez de borrarse: `user_id` la ata al
--- usuario del stub, y volver a crearla exigiría tocar auth.users.
-update practicantes
-   set nombre = 'Goku', cinturon = 'negra', grados = 3, peso_kg = 62,
-       academia = 'Kame House', usa_sistema = true
- where user_id is not null;
+-- ------------------------------------------------------------
+-- La cuenta con la que entra el navegador.
+--
+-- La semilla la GARANTIZA en vez de darla por hecha, y no es paranoia:
+-- `db/pruebas/puntos.sql` hace `truncate practicantes cascade` y
+-- `delete from auth.users` para montar su propio mundo. Después de correrlo el
+-- usuario del stub ya no existe, `private.practicante_actual()` devuelve null,
+-- y la app abre pero no se reconoce: la colección a cero y el análisis vacío.
+-- El síntoma no se parece nada a la causa.
+--
+-- Este uuid es el que usa `stub-supabase.py` (constante `USER_ID`). Si cambia
+-- allí, cambia aquí.
+-- ------------------------------------------------------------
+insert into auth.users (id, email)
+values ('55555555-5555-5555-5555-555555555555', 'e2e@bjjtracker.test')
+    on conflict (id) do nothing;
+
+-- Fuera las fichas de otras cuentas que se hayan quedado por el medio, y la
+-- que el trigger `bjj_08` acaba de crear para esta.
+delete from practicantes where user_id is not null;
+
+insert into practicantes (nombre, cinturon, grados, peso_kg, academia,
+                          usa_sistema, user_id)
+values ('Goku', 'negra', 3, 62, 'Kame House', true,
+        '55555555-5555-5555-5555-555555555555');
 
 insert into practicantes (id, nombre, cinturon, grados, peso_kg, academia, usa_sistema)
 select ('dbdb0000-0000-0000-0000-' || lpad(n::text, 12, '0'))::uuid,

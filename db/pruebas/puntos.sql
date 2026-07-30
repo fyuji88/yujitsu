@@ -14,6 +14,17 @@
 --
 --  `pg_read_file` pide superusuario. Es a proposito: esto es un script de
 --  pruebas contra un Postgres local y no se ejecuta nunca en produccion.
+--
+--  ¡OJO! ESTE SCRIPT ARRASA LA BASE. Hace `truncate practicantes cascade` para
+--  montar su propio mundo, y con el cascade se lleva sesiones, rolls y eventos
+--  — o sea, el juego de datos de demo entero. Si lo ejecutas, despues hay que
+--  volver a sembrar:
+--
+--    psql ... -v confirmar=si -f db/pruebas/semilla-demo.sql
+--
+--  Se dice aqui porque el sintoma llega mucho despues y no se parece a la
+--  causa: el recorrido del analisis empieza a fallar por numeros que no
+--  cuadran, y uno se pone a mirar los predicados.
 -- ============================================================
 \set ON_ERROR_STOP on
 
