@@ -18,6 +18,38 @@ Qué es obligatorio y qué no:
 
 ---
 
+## 2026-07-31 (noche) · El catálogo de logros, cuadrado
+
+**Migraciones:** ninguna. Solo documentación y una herramienta.
+
+Se cruzaron las **cuatro fuentes** del catálogo —`docs/logros-catalogo.sql`, la
+migración, `src/lib/textos/logros.es.ts` y la base de producción— para ver si el
+renombrado había dejado algo descolgado.
+
+**Ninguna clave cambió.** `sin_marcar` y `de_vuelta` conservan la suya; solo
+cambió el nombre visible, y coincide en las cuatro. Eso es lo que importa: la
+clave es lo que se guarda, y si hubiera cambiado se habrían roto los iconos, las
+vistas y todo lo que la gente ya tenía conseguido.
+
+**Dos diferencias, las dos decisiones ya tomadas y no deriva:** el catálogo de
+diseño seguía con `el_ultimo_en_irse` y sin `doble_sesion`. Se actualizó, con el
+porqué de la baja escrito donde estaba la fila — incluidas las tres alternativas
+que se descartaron, para que nadie la reabra sin saber qué se miró.
+
+**Decisiones:**
+- **El renombrado se deja escrito en la cabecera del catálogo**, no solo en el
+  registro: quien abra ese fichero dentro de seis meses tiene que ver que SIN
+  MARCAR y FLAWLESS VICTORY son el mismo logro, o creerá que falta uno.
+- **El comparador se queda en el repositorio** (`scripts/comparar-logros.py`).
+  Cuatro copias del mismo catálogo se separan solas — ya pasó una vez, en menos
+  de un día. Lo que hay que mirar siempre es la sección de CLAVES: un nombre
+  distinto es un despiste, una clave distinta rompe datos.
+
+**Sabido roto:** nada nuevo. Sigue pendiente el `grant all` por defecto de
+Supabase a `anon` sobre el resto de tablas, y calibrar las rarezas cuando haya
+rolls reales.
+
+
 ## 2026-07-31 (tarde) · Se cierra la lectura anónima, y tres decisiones de Felipe
 
 **Migraciones:** `bjj_22_cerrar_lectura_anonima`, `bjj_23_ambito_dia` y

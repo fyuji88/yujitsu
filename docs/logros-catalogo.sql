@@ -15,6 +15,14 @@
 --     "Veces conseguido" = número de instancias del ámbito en las que
 --     el predicado se cumplió, no número de eventos.
 --
+--  RENOMBRADOS. Dos logros cambiaron de nombre VISIBLE el 31 de julio, a
+--  peticion de Felipe: `sin_marcar` paso de SIN MARCAR a FLAWLESS VICTORY, y
+--  `de_vuelta` de DE VUELTA a HIGHLANDER. LAS CLAVES NO SE TOCARON, que es lo
+--  que hace que los iconos, las vistas y todo lo ya conseguido sigan
+--  apuntando donde apuntaban. El nombre que ve la gente no sale de aqui ni de
+--  la base: sale de `src/lib/textos/logros.es.ts`, y esta columna es comodidad
+--  al depurar.
+--
 --  2. `requiere_observador` marca los logros que se definen por la
 --     AUSENCIA de algo. Se inflan solos con no registrar el evento, así
 --     que solo cuentan si el roll tiene `origen = 'observador'`. Los de
@@ -133,9 +141,23 @@ insert into logros
  'constancia', 'comun', 'semana', false, false, '{}',
  '>=3 fechas distintas con al menos un roll propio registrado, dentro de la misma semana ISO.'),
 
-('el_ultimo_en_irse', 'EL ÚLTIMO EN IRSE', 'Tuyo es el último roll registrado de la quedada',
- 'constancia', 'comun', 'quedada', false, false, '{}',
- 'El roll con el mayor orden de la quedada es del practicante.'),
+-- FUERA: `el_ultimo_en_irse`. Su predicado era "el roll con el mayor orden de
+-- la quedada es del practicante", y `rolls.orden` es el orden DENTRO DE LA
+-- SESION de cada uno, no de la quedada: cada persona numera los suyos 1..n. No
+-- premiaba irse el ultimo, premiaba haber rodado mas —que ya lo cuenta EL
+-- NOTARIO— y empataba a todo el que llegara al mismo numero.
+--
+-- Las tres alternativas eran peores que no tenerlo, y conviene dejar escrito
+-- por que: (a) el ultimo `created_at` mide quien tenia mejor cobertura, no
+-- quien se fue el ultimo, porque la cola sube cuando puede — y un logro que
+-- miente es peor que un logro que falta; (b) una hora de fin pide un dato nuevo
+-- en el peor momento posible, cuando todo el mundo esta recogiendo; (c)
+-- quitarlo, que es lo que se hizo. La virtud que perseguia ya la cubren EL
+-- NOTARIO y SEMANA COMPLETA.
+
+('doble_sesion', 'DOBLE SESIÓN', 'Registras dos sesiones el mismo día',
+ 'constancia', 'poco_comun', 'dia', false, false, '{}',
+ '>=2 sesiones propias con rolls registrados en la misma fecha. Entra en el hueco que deja el_ultimo_en_irse: es derivable hoy, no pide ningun dato nuevo, y premia exactamente la conducta que interesa.'),
 
 -- ---------- CACHONDEO ----------
 -- Solo se evalúan y se muestran si grupos.modo_cachondeo = true.
