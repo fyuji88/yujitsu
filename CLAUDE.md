@@ -456,6 +456,24 @@ El proyecto tiene poca red de seguridad automática, así que:
   `-v confirmar=si` y se planta si `auth.users` tiene más de tres cuentas.
 - Para cambios de esquema, probar contra un Postgres local antes de aplicar la
   migración al proyecto real. Sin Docker también se puede: ver `db/README.md`.
+- **A producción se llega por `psql`**, con las credenciales en `.env.local`
+  (`SUPABASE_DB_HOST`, `_PORT`, `_NAME`, `_USER`, `_PASSWORD`). Es el pooler de
+  sesión, que es IPv4; la conexión directa es solo IPv6 y desde una red
+  corporativa no suele salir.
+
+  ```bash
+  val() { grep -m1 "^$1=" .env.local | cut -d= -f2- | tr -d ''; }
+  export PGPASSWORD="$(val SUPABASE_DB_PASSWORD)"
+  psql -h "$(val SUPABASE_DB_HOST)" -p "$(val SUPABASE_DB_PORT)"        -U "$(val SUPABASE_DB_USER)" -d "$(val SUPABASE_DB_NAME)" -f db/XX.sql
+  ```
+
+  Se leen así, con `cut`, y no con `eval`: una contraseña con comillas o
+  símbolos rompe el `eval` entero y el error no se parece en nada a la causa.
+
+  Esto existe porque aplicar una migración por el MCP obliga a escribir el SQL
+  entero en el mensaje —ochocientas líneas son unos nueve mil tokens— y eso se
+  come el contexto justo al final de una sesión larga, que es cuando toca
+  desplegar. Con `-f` el coste es cero.
 - El bucle que más ha valido la pena: recorrer la app en el navegador contra el
   stub, coger el payload que capturó y **replicarlo tal cual contra Postgres**.
   Así se comprueba que lo que la app genera de verdad lo acepta el esquema de
