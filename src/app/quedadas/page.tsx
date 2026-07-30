@@ -255,7 +255,7 @@ function Panel({ sesion }: { sesion: Sesion }) {
               {libres != null && (libres > 0
                 ? ` · ${libres} ${libres === 1 ? 'plaza libre' : 'plazas libres'}`
                 : ' · sin plazas')}
-              {mia?.estado === 'lista_espera' && ` · estás el ${mia.orden}º en espera`}
+              {mia?.estado === 'lista_espera' && ` · estás el ${mia.orden_en_lista}º en espera`}
             </div>
 
             <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
@@ -291,7 +291,7 @@ function Panel({ sesion }: { sesion: Sesion }) {
                           {i.es_externo && <small>de fuera del equipo</small>}
                         </span>
                         <span className="pill">
-                          {i.estado === 'apuntado' ? 'viene' : `espera ${i.orden}`}
+                          {i.estado === 'apuntado' ? 'viene' : `espera ${i.orden_en_lista}`}
                         </span>
                       </div>
                     ))}

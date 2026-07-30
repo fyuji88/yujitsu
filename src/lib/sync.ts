@@ -45,12 +45,43 @@ export function observarSync(f: Escucha) {
  * upsert en vez de insert: reenviar una fila ya enviada no es un error, es
  * exactamente lo que queremos que pase tras perder la conexión.
  */
+/**
+ * Traduce una fila encolada ANTES de bjj_27 al vocabulario de ahora.
+ *
+ * POR QUE HACE FALTA, y es la misma lección que el puente de `p_grupo`: lo que
+ * hay en IndexedDB se serializó con los nombres de columna del día en que se
+ * encoló. `bjj_27` renombró `sesiones.tipo` → `formato` y `rolls.orden` →
+ * `orden_en_sesion`, así que una sesión o un roll que llevara esperando desde
+ * antes llega con nombres que ya no existen: PostgREST contesta 4xx, `sync.ts`
+ * no reintenta los 4xx, y el roll se pierde.
+ *
+ * Esto pasó de verdad — el cliente estuvo escribiendo `tipo` y `orden` contra
+ * el esquema renombrado, y ni el typecheck ni los recorridos podían verlo
+ * porque los tipos son un subconjunto escrito a mano y el stub CAPTURA las
+ * escrituras en vez de aplicarlas. Se destapó replicando contra Postgres lo que
+ * el cliente escribe de verdad.
+ *
+ * Se puede quitar cuando nadie tenga cola pendiente, igual que el puente.
+ */
+function alVocabularioDeAhora(tabla: TablaRemota, fila: unknown): unknown {
+  const f = { ...(fila as Record<string, unknown>) };
+  if (tabla === 'sesiones' && 'tipo' in f) {
+    f.formato = f.tipo;
+    delete f.tipo;
+  }
+  if (tabla === 'rolls' && 'orden' in f) {
+    f.orden_en_sesion = f.orden;
+    delete f.orden;
+  }
+  return f;
+}
+
 async function enviarFilas(
   tabla: TablaRemota, lote: EnvioPendiente[],
 ): Promise<string | null> {
   const { error } = await supabase()
     .from(tabla)
-    .upsert(lote.map((p) => p.fila), { onConflict: 'id' });
+    .upsert(lote.map((p) => alVocabularioDeAhora(tabla, p.fila)), { onConflict: 'id' });
   if (error) return error.message;
 
   await local.outbox.bulkDelete(lote.map((p) => p.id));

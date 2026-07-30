@@ -13,6 +13,7 @@
  * rechaza por clave primaria en vez de duplicarla.
  */
 import Dexie, { type Table } from 'dexie';
+import { supabase } from './supabase';
 import type {
   ArgsRollObservado, EventoInsert, RollInsert, SesionInsert,
 } from './database.types';
@@ -125,4 +126,34 @@ export async function pendientes() {
 
 export async function contarPendientes() {
   return local.outbox.count();
+}
+
+/**
+ * Precisar una técnica: bajar de la mecánica madre a una variante.
+ *
+ * DOS CAMINOS, Y NO ES UN CAPRICHO. Al cerrar el roll los eventos todavía están
+ * en la cola: no existen en el servidor, así que `precisar_tecnica()` no puede
+ * tocarlos —le pasarías un id que allí no existe—. Pero el id lo genera el
+ * cliente, así que el evento que suba después ya lleva la técnica buena.
+ *
+ *   - si el evento sigue en la cola  → se corrige ahí y sube ya preciso;
+ *   - si ya subió                    → RPC, que es la única vía: no hay RLS por
+ *                                      columna, así que abrir `update` sobre
+ *                                      eventos dejaría reescribir el marcador.
+ *
+ * Devuelve por dónde fue, que es lo que la pantalla necesita para saber si
+ * enseñar "precisado por ti" o esperar a la siguiente sincronización.
+ */
+export async function precisar(eventoId: string, tecnicaId: string): Promise<'cola' | 'rpc'> {
+  const pendiente = await local.outbox.get(eventoId);
+  if (pendiente && pendiente.tabla === 'eventos') {
+    const fila = { ...(pendiente.fila as EventoInsert), tecnica_id: tecnicaId };
+    await local.outbox.put({ ...pendiente, fila });
+    return 'cola';
+  }
+  const { error } = await supabase().rpc('precisar_tecnica', {
+    p_evento_id: eventoId, p_tecnica_id: tecnicaId,
+  });
+  if (error) throw new Error(error.message);
+  return 'rpc';
 }

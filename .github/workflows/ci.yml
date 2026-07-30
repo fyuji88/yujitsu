@@ -81,6 +81,13 @@ jobs:
       - name: Las politicas de RLS
         run: psql -f db/pruebas/rls.sql
 
+      # Las mecanicas: los dos guardias del un-solo-nivel, los cuatro permisos
+      # de precisar_tecnica y el invariante (el total de la mecanica no se
+      # mueve al precisar). Se monta su propio escenario, asi que no necesita
+      # la semilla.
+      - name: Las mecanicas y precisar
+        run: psql -v ON_ERROR_STOP=1 -f db/pruebas/mecanicas.sql
+
       - name: El marcador contra el fixture compartido
         run: psql -v ruta="$PWD/src/lib/__fixtures__/puntos.json" -f db/pruebas/puntos.sql
 

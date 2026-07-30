@@ -18,6 +18,88 @@ Qué es obligatorio y qué no:
 
 ---
 
+## 2026-08-03 · Mecánicas: el catálogo deja de ser una lista plana
+
+**Migración:** `bjj_29_mecanicas` (`db/24_mecanicas.sql`). Etiqueta 29 porque 28
+es el puente; el fichero es el 24º de `db/`. **NO aplicada a producción**: se
+despliega aparte, junto con el panel de análisis plegado, que es lo único del
+cliente que la necesita. Probada desde cero y sobre la base local con datos.
+
+**Antes que nada: había un bug en producción y lo destapó esta tanda.** Desde
+`bjj_27`, el cliente seguía escribiendo `sesiones.tipo` y `rolls.orden`, que ese
+renombrado había convertido en `formato` y `orden_en_sesion`. O sea que **cada
+sesión y cada roll propio fallaban al sincronizar**. No lo vio nadie porque
+`database.types.ts` es un subconjunto **escrito a mano** —así que TypeScript da
+verde: el tipo es la única fuente que consulta— y porque el stub **captura** las
+escrituras en vez de aplicarlas, así que los seis recorridos también daban
+verde. Salió replicando contra Postgres lo que el cliente escribe de verdad, que
+es el bucle que CLAUDE.md ya decía que era el que más valía.
+
+Tres arreglos, y el tercero es el que importa:
+1. Los tipos y sus usos, corregidos.
+2. `sync.ts` traduce las filas encoladas con nombres viejos antes de enviarlas,
+   igual que el puente de `p_grupo`: lo que ya estaba en la cola llevaba los
+   nombres dentro y el arreglo del cliente solo no lo rescataba.
+3. **Quinta comprobación en `comprobar-vocabulario.py`**: cada campo de los
+   `*Insert` tiene que existir como columna. Probada viéndola fallar con el bug
+   real. Esto es lo que cierra la clase entera, no el caso.
+
+**La jerarquía, en un solo nivel y garantizada por la base.** `variante_de` +
+`nivel` generado + FK compuesta contra `(id, nivel)` con `nivel_referido`
+constante 0. No hay nietos, y tampoco se puede degradar una madre que ya tiene
+variantes — las dos violaciones probadas en `db/pruebas/mecanicas.sql`.
+`mecanica_id = coalesce(variante_de, id)` hace que toda técnica tenga mecánica,
+así que los agregados son `group by mecanica_id` sin un solo `case`.
+
+**Decisión: `armbar_triangulo` se emparenta aunque suene a posición.** La regla
+dice que la posición nunca crea una variante, y "desde triángulo" lo es. Se
+emparenta porque **esa fila ya existía**: la regla completa es no crear filas
+que la rompan, y a las que ya están darles la mejor madre que haya. Discutible,
+y por eso queda escrito. `kimura_de_reloj` no se creó, y `baratoplata` se queda
+suelta porque su parentesco es discutido.
+
+**Decisión: `precisar` tiene dos caminos.** Al cerrar el roll los eventos siguen
+en la cola y no existen en el servidor, así que la RPC no puede tocarlos; pero
+el id lo genera el cliente, así que corregir la fila encolada hace que suba ya
+precisa. Si ya subió, RPC. Está en `precisar()` en `src/lib/db.ts`.
+
+**Decisión: la pantalla de análisis pliega desde `analisis()`, no desde
+`v_tecnicas_practicante`.** La vista se creó como pedía el encargo, pero sus
+columnas no llevan modalidad ni fecha, y el panel tiene filtro gi/nogi: usarla
+ahí mezclaría gi y no-gi en silencio, que es justo lo que CLAUDE.md prohíbe. La
+vista queda como el agregado sin filtrar.
+
+**El despliegue va en dos**, y esta vez a propósito. El arreglo del bug de
+sincronización **no depende de `bjj_29`** —esas columnas las renombró `bjj_27`,
+que ya está en producción— así que sale solo y ya. El panel plegado sí la
+necesita, y hasta que la migración esté aplicada no se despliega: al revés
+rompería el panel de técnicas, que es la lección de la tanda anterior.
+
+**Sabido roto:**
+- **`bjj_29` está escrita y probada pero no aplicada**, y con ella se queda sin
+  desplegar `src/app/analisis/page.tsx` (el panel plegado). Van juntas: primero
+  la migración, después el push.
+- **El chip de precisar NO está en la pantalla.** El SQL, la RPC y el helper del
+  cliente están hechos y probados; falta el paso por el que se toca. Es lo único
+  del encargo que queda sin terminar, y lo digo claro porque sin él la fase 2 no
+  se usa.
+- **Precisar no propaga al roll espejo.** Los eventos espejo no tienen enlace
+  entre sí —solo `par_id` a nivel de roll— y emparejarlos por `created_at` no
+  vale: en los datos sembrados todos los eventos de un roll comparten sello.
+  Así que si A precisa su kimura, la copia de B sigue diciendo kimura. Se miró
+  y se descartó: inventar un emparejamiento frágil es peor.
+- Precisar puede conceder un **`juguete_nuevo` retroactivo**. Es correcto —lo
+  ganaste, el dato llegó tarde— pero si aparece en el feed días después, esto es
+  por qué.
+- Los valores de `control` son **provisionales** hasta la revisión con el equipo
+  de Felipe. Van en un bloque propio y marcado para que corregirlos sea un
+  `update` de una línea. Ojo con las llaves de pierna: `heel_hook` va en brazo y
+  `kneebar` en cuerpo, que no es lo que dice el instinto.
+
+**Backlog:** añadido el chip de precisar y la propagación al espejo.
+
+---
+
 ## 2026-08-02 (tarde) · Puente para la cola vieja
 
 **Migración:** `bjj_28_puente_roll_observado` (`db/23_puente_roll_observado.sql`),

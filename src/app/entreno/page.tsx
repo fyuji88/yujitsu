@@ -262,7 +262,7 @@ function Flujo({ sesion }: { sesion: Sesion }) {
       practicante_id: sesion.practicante.id,
       fecha: s.fecha,
       modalidad,
-      tipo,
+      formato: tipo,
       academia: sesion.practicante.academia,
       // Si hay una quedada hoy en tu equipo y estás apuntado, viene sola: en el
       // caso normal son cero toques. "Roll libre" es lo que sale si no hay.
@@ -337,7 +337,7 @@ function Flujo({ sesion }: { sesion: Sesion }) {
       id: rollId,
       sesion_id: abierta.id,
       oponente_id: oponente.id,
-      orden: abierta.rolls + 1,
+      orden_en_sesion: abierta.rolls + 1,
       modalidad: abierta.modalidad,
       posicion_inicio: 'de_pie',
       rol_inicio: 'neutral',

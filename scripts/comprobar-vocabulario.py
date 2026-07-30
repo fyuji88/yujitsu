@@ -229,6 +229,49 @@ for etiqueta, ficheros in sorted(repetidas.items()):
 if not repetidas:
     print('    %d etiquetas, ninguna repetida' % len(etiquetas))
 
+# ------------------------------- 5 · lo que el cliente dice que va a escribir
+print('')
+print('5 - Los *Insert de database.types.ts existen como columnas')
+#
+# ESTA ES LA QUE FALTABA, y su ausencia costo un bug en produccion.
+#
+# `src/lib/database.types.ts` es un subconjunto del esquema ESCRITO A MANO. Si
+# una migracion renombra una columna y el fichero no se entera, TypeScript no
+# dice nada —el tipo es la unica fuente que consulta— y los recorridos en
+# navegador tampoco, porque el stub CAPTURA las escrituras en vez de aplicarlas.
+# El fallo aparece en el movil de alguien, semanas despues, como un roll que no
+# sube.
+#
+# Paso de verdad: bjj_27 renombro `sesiones.tipo` -> `formato` y `rolls.orden`
+# -> `orden_en_sesion`, y el cliente siguio escribiendo los viejos. Cada sesion
+# y cada roll propio fallaba al sincronizar.
+tipos = os.path.join(RAIZ, 'src', 'lib', 'database.types.ts')
+with open(tipos, encoding='utf-8') as f:
+    fuente = f.read()
+
+# `XxxInsert` -> la tabla que le toca. Solo los Insert: los Row se leen, y leer
+# una columna que no existe si lo caza el typecheck contra la respuesta.
+TABLA_DE = {'SesionInsert': 'sesiones', 'RollInsert': 'rolls', 'EventoInsert': 'eventos'}
+malas = []
+for interfaz, tabla in sorted(TABLA_DE.items()):
+    m = re.search(r'export interface %s \{(.*?)\n\}' % interfaz, fuente, re.S)
+    if not m:
+        malas.append('no encuentro la interfaz %s' % interfaz)
+        continue
+    campos = set(re.findall(r'^\s{2}([a-z_]+)\??:', m.group(1), re.M))
+    reales = set(consultar(
+        "select column_name from information_schema.columns"
+        " where table_schema = 'public' and table_name = '%s';" % tabla))
+    sobran = sorted(campos - reales)
+    if sobran:
+        malas.append('%s declara campos que no son columnas de %s: %s'
+                     % (interfaz, tabla, ', '.join(sobran)))
+    print('    %-14s -> %-10s %d campos, %s'
+          % (interfaz, tabla, len(campos),
+             'todos existen' if not sobran else 'FALLO: ' + ', '.join(sobran)))
+
+fallos += malas
+
 # ---------------------------------------------------------------------- final
 print('')
 if fallos:

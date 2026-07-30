@@ -107,7 +107,7 @@ export interface InscripcionRow {
   quedada_id: string;
   practicante_id: string;
   estado: EstadoInscripcion;
-  orden: number | null;
+  orden_en_lista: number | null;
   es_externo: boolean;
   created_at: string;
 }
@@ -125,7 +125,8 @@ export interface SesionInsert {
    */
   quedada_id?: string | null;
   modalidad: Modalidad;
-  tipo: TipoSesion;
+  /** Clase de entrenamiento. Se llamaba `tipo`; lo renombró bjj_27. */
+  formato: TipoSesion;
   duracion_min?: number | null;
   tematica?: string | null;
   energia?: number | null;
@@ -137,7 +138,8 @@ export interface RollInsert {
   id: string;
   sesion_id: string;
   oponente_id: string | null;
-  orden: number | null;
+  /** Orden DENTRO DE LA SESIÓN de su dueño. Se llamaba `orden`; bjj_27. */
+  orden_en_sesion: number | null;
   modalidad: Modalidad;
   duracion_min?: number | null;
   posicion_inicio: Posicion;
