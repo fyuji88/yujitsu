@@ -12,8 +12,13 @@
 --  igual que lo haria la app. Asi la misma prueba cubre la RPC, el espejo, el
 --  orden de los eventos y la puntuacion, en vez de solo la ultima.
 --
---  `pg_read_file` pide superusuario. Es a proposito: esto es un script de
---  pruebas contra un Postgres local y no se ejecuta nunca en produccion.
+--  EL FIXTURE SE LEE EN EL CLIENTE, no en el servidor. Antes usaba
+--  `pg_read_file`, que se ejecuta DENTRO de Postgres: con la base en la misma
+--  maquina funciona y no se nota nada, pero en CI el servidor es un contenedor
+--  que no ve el disco del runner, y el fichero "no existe". El backtick de psql
+--  lo lee del lado de quien lanza el script, que es donde esta.
+--
+--  De paso deja de hacer falta ser superusuario para correr esto.
 --
 --  ¡OJO! ESTE SCRIPT ARRASA LA BASE. Hace `truncate practicantes cascade` para
 --  montar su propio mundo, y con el cascade se lleva sesiones, rolls y eventos
@@ -28,7 +33,8 @@
 -- ============================================================
 \set ON_ERROR_STOP on
 
-create temp table fixture as select pg_read_file(:'ruta')::jsonb as j;
+\set contenido `cat :ruta`
+create temp table fixture as select :'contenido'::jsonb as j;
 
 truncate practicantes cascade;
 delete from auth.users;
