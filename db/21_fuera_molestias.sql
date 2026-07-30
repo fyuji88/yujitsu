@@ -1,0 +1,24 @@
+-- ============================================================
+--  BJJ TRACKER — Fuera `molestias`   ·   Migracion bjj_26
+-- ============================================================
+--
+--  `sesiones.molestias` era texto libre para apuntar lesiones. Eso es DATO DE
+--  SALUD, categoria especial del articulo 9 del RGPD: pide base legal propia,
+--  consentimiento explicito y un cuidado que esta app no da ni pretende dar.
+--
+--  Y no lo usa nadie. Cero filas en produccion con el campo relleno, y la
+--  interfaz nunca llego a ofrecerlo — solo existia la columna y su tipo en
+--  TypeScript. O sea que la exposicion era pura deuda: todo el riesgo legal y
+--  ninguna de las ventajas.
+--
+--  POR ESO SE HACE AHORA Y NO "algun dia". Hoy borrar la columna es gratis.
+--  Con datos dentro habria que decidir que se hace con ellos, avisar a quien
+--  los escribio, y probablemente conservar un registro de que se borraron. El
+--  momento barato de quitar una categoria especial de datos es antes de tener
+--  la primera fila.
+--
+--  Si algun dia hace falta seguimiento de lesiones, se diseña aparte y con
+--  consentimiento explicito, no como una casilla de texto libre en la sesion.
+-- ============================================================
+
+alter table sesiones drop column if exists molestias;

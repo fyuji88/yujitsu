@@ -18,6 +18,61 @@ Qué es obligatorio y qué no:
 
 ---
 
+## 2026-08-01 (tarde) · Copias de seguridad, y fuera `molestias`
+
+**Migraciones:** `bjj_26_fuera_molestias`, aplicada a producción. Datos
+intactos: 253 rolls, 65 sesiones.
+
+**1 · Copias de seguridad.** `scripts/copia.sh` vuelca producción a un `.gz`
+comprobado, con rotación de las 8 últimas. `scripts/restaurar.sh` la devuelve a
+una base local. **No sustituye al plan Pro** —depende de que el portátil se
+encienda— pero convierte "lo perdemos todo" en "perdemos como mucho una
+semana".
+
+**Y la copia se restauró de verdad, cuatro veces, porque las tres primeras no
+servían.** Una copia que nunca se ha restaurado no es una copia:
+
+- La v1 usaba `--table`, que saca **solo esas tablas**: sin tipos, sin
+  funciones, sin esquema. 80 KB con 17 bloques COPY que parecían perfectos y
+  daban **49 errores** al restaurar.
+- La v2 volcaba `auth.users` **después** de `public`, que la referencia por
+  clave foránea. 77 errores.
+- La v3 se dejaba el esquema **`private`**, donde viven los ayudantes de la
+  RLS, así que no se podía recrear ni una política.
+- Y volcar `auth.users` con `pg_dump` arrastraba el trigger
+  `crear_ficha_al_registrarse`, que **al restaurar se dispara** y crea una
+  ficha por usuario encima de las que trae la copia. Ahora de esa tabla solo se
+  llevan `id` y `email`, que es lo único que hace falta para que
+  `practicantes.user_id` resuelva.
+
+La prueba final: la copia restaurada tiene **exactamente** las mismas cifras que
+producción **y pasa los 55 casos de la batería de RLS**. Es una réplica, no un
+montón de filas.
+
+**2 · Fuera `molestias`.** Texto libre de lesiones en `sesiones`, o sea dato de
+salud del artículo 9 del RGPD. **Cero filas en producción** y la interfaz nunca
+llegó a ofrecerlo: era todo el riesgo legal y ninguna de las ventajas. Hoy
+borrarlo es gratis; con datos dentro habría que decidir qué se hace con ellos y
+avisar a quien los escribió.
+
+**Decisiones:**
+- El restaurador reutiliza `db/ci/00_bootstrap.sql`. Que el CI y la
+  restauración compartan bootstrap no es casualidad: los dos necesitan lo
+  mismo, un Postgres que se parezca a Supabase.
+- La restauración repone los privilegios **por defecto**, no solo los actuales.
+  Sin eso, la copia parece igual pero una tabla nueva no le llegaría a
+  `authenticated` — lo cazó el caso 29 de la batería corriéndola **contra la
+  copia**, que es justo para lo que sirve correrla ahí.
+
+**Sabido roto:**
+- **La tarea semanal no está registrada.** El script está
+  (`scripts/programar-copia.ps1`) pero registrarla toca la máquina, fuera del
+  repositorio, y lo lanza Felipe: `powershell -ExecutionPolicy Bypass -File
+  scripts\programar-copia.ps1`. **Hasta entonces las copias son manuales**, o
+  sea que hoy no hay copia automática de nada.
+- Sigue sin haber plan Pro. Esto es el cinturón de repuesto, no el cinturón.
+
+
 ## 2026-08-01 · `anon` a cero, CI, y el disparador de la calibración
 
 **Migraciones:** `bjj_25_anon_sin_privilegios`, **aplicada a producción**. Datos

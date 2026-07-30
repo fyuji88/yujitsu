@@ -37,7 +37,7 @@ quinta es la que te dice si se está muriendo despacio.
 | | Iniciativa |
 |---|---|
 | 🔴 **Alta** | **Arreglar el login.** `@supabase/ssr` fuerza PKCE y pisa el `flowType: 'implicit'`; PKCE no funciona con enlaces abiertos en otro navegador. Usar `createClient` directamente y añadir código de 6 dígitos. Prompt escrito. **Hasta que esto esté, Pablo solo entra si abre el enlace donde lo pidió.** |
-| 🔴 **Alta** | **Copias de seguridad.** El plan gratuito no tiene ninguna, y con ~240 rolls dentro eso ya es un riesgo real. Pasar a Pro o `pg_dump` semanal fuera de Supabase. Pro arregla de paso la pausa por inactividad, que mata a un gimnasio que se va de vacaciones en agosto. |
+| 🟡 Media | **Pasar Supabase a Pro** para tener copias diarias y recuperación a un punto en el tiempo. Baja de alta a media porque ya hay red: `scripts/copia.sh` + `scripts/restaurar.sh`, con la restauración probada de verdad. Falta que Felipe registre la tarea semanal (`scripts/programar-copia.ps1`); hasta entonces las copias son manuales. |
 | 🔴 **Alta** | **La cola no puede perder nada.** Reintentos con espera creciente, nada descartado en silencio, e indicador visible de "3 rolls sin subir". En un producto de captura, perder una sesión una vez es el final. |
 | 🔴 **Alta** | **Recolector de errores** (Sentry gratuito). Hoy te enteras de los fallos si alguien te los cuenta. Estás operando a ciegas. |
 | 🔴 **Alta** | **Aviso de versión nueva** dentro de la app, nunca recarga silenciosa y jamás en mitad de un roll. Y **migraciones compatibles hacia atrás**: expandir → migrar → contraer. Hoy se hacen cambios que rompen clientes viejos. |
@@ -51,7 +51,7 @@ quinta es la que te dice si se está muriendo despacio.
 | | Iniciativa |
 |---|---|
 | 🔴 **Alta** | **Pruebas de RLS automáticas.** La RLS es todo tu perímetro: no hay servidor, el navegador habla directo con Postgres. Que corran en cada cambio, no a mano. Es la acción de seguridad con más retorno que existe aquí. |
-| 🔴 **Alta** | **Quitar o proteger `molestias`.** Es texto libre de lesiones en `sesiones`, o sea **dato de salud**, categoría especial del RGPD. Y no puede salir nunca en un informe ni en el feed. |
+| ~~🔴 Alta~~ | ~~**Quitar o proteger `molestias`**~~ — **hecho** (`bjj_26`): columna borrada. Era dato de salud del artículo 9 del RGPD, con cero filas y sin interfaz que lo ofreciera. |
 | 🔴 **Alta** | **Solo mayores de edad, dicho explícitamente**, y aviso de privacidad de una página. Las academias viven en parte de las clases infantiles; en cuanto entre una, alguien querrá registrar niños. |
 | 🔴 **Alta** | **Visibilidad del perfil en tres niveles** (privado / grupo / público, con "grupo" por defecto) y un segundo interruptor para los puntos débiles. Entra **junto con el bloque de grupos**: si la gente entra antes de que exista el control, ya has publicado sus datos sin preguntar. |
 | 🔴 **Alta** | **Suelo de cohorte en los agregados.** Ningún promedio se muestra con menos de 5 practicantes, **aplicado por celda y en SQL**. Con un gimnasio pequeño, tu número más la media del resto despeja los de los demás: es una ecuación, no una filtración exótica. |

@@ -454,6 +454,12 @@ El proyecto tiene poca red de seguridad automática, así que:
   de prueba con nombres realistas acaba en una captura pareciendo un
   head-to-head de verdad. **Borra sesiones, rolls y eventos**, así que pide
   `-v confirmar=si` y se planta si `auth.users` tiene más de tres cuentas.
+- **Antes de tocar el esquema de producción, una copia**: `scripts/copia.sh`.
+  Y `scripts/restaurar.sh` la devuelve a una base local. Correr el restaurador
+  de vez en cuando **en frío** no es paranoia: las tres primeras versiones del
+  script de copia producían ficheros con muy buena pinta que no se podían
+  restaurar, y solo se supo restaurándolos. La prueba de que una copia sirve es
+  que la copia restaurada pasa `db/pruebas/rls.sql`.
 - Para cambios de esquema, probar contra un Postgres local antes de aplicar la
   migración al proyecto real. Sin Docker también se puede: ver `db/README.md`.
 - **A producción se llega por `psql`**, con las credenciales en `.env.local`
@@ -462,7 +468,8 @@ El proyecto tiene poca red de seguridad automática, así que:
   corporativa no suele salir.
 
   ```bash
-  val() { grep -m1 "^$1=" .env.local | cut -d= -f2- | tr -d ''; }
+  val() { grep -m1 "^$1=" .env.local | cut -d= -f2- | tr -d '
+'; }
   export PGPASSWORD="$(val SUPABASE_DB_PASSWORD)"
   psql -h "$(val SUPABASE_DB_HOST)" -p "$(val SUPABASE_DB_PORT)"        -U "$(val SUPABASE_DB_USER)" -d "$(val SUPABASE_DB_NAME)" -f db/XX.sql
   ```

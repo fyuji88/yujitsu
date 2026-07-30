@@ -130,7 +130,6 @@ export interface SesionInsert {
   tematica?: string | null;
   energia?: number | null;
   animo?: number | null;
-  molestias?: string | null;
   notas?: string | null;
 }
 
