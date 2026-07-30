@@ -206,6 +206,23 @@ begin
   perform pl_ev(r, 'oponente', 'barrida', 'guardia_cerrada', 'abajo', 'ninguno', true, 30);
   perform pl_toca(v_yo, 'sin_marcar', r::text, false, 'el rival barrio y puntuo');
 
+  -- Y LA GUARDA DE VOLUMEN, que es el bug que tenia. Un roll donde no pasa
+  -- nada posicional da cero puntos a los DOS, asi que sin guarda se lo
+  -- llevaban los dos por no hacer nada. Aqui solo hay intentos de sumision:
+  -- el rival no marca, pero el roll no se ha movido.
+  r := pl_roll(v_gi, 46, 'observador');
+  perform pl_ev(r, 'yo', 'sumision', 'guardia_cerrada', 'abajo', 'codo', false, 30, t1);
+  perform pl_ev(r, 'oponente', 'sumision', 'guardia_cerrada', 'arriba', 'cuello', false, 60);
+  perform pl_toca(v_yo, 'sin_marcar', r::text, false, 'no paso nada posicional');
+
+  -- Con un solo evento posicional ya cuenta: el que barre una vez y no encaja
+  -- nada se lo ha ganado.
+  r := pl_roll(v_gi, 47, 'observador');
+  perform pl_ev(r, 'yo', 'barrida', 'guardia_cerrada', 'abajo', 'ninguno', true, 30);
+  perform pl_ev(r, 'oponente', 'sumision', 'guardia_cerrada', 'arriba', 'cuello', false, 60);
+  perform pl_toca(v_yo, 'sin_marcar', r::text, true, 'una barrida basta de actividad');
+
+
   -- ============================================================
   --  ATAQUE
   -- ============================================================
@@ -399,6 +416,13 @@ begin
   perform pl_toca(v_coach, 'ojo_del_coach', date_trunc('month', d)::date::text,
                   true, 'y con la decima, si');
 
+  -- DOBLE SESION. `v_gi` y `v_nogi` son del mismo dia y a estas alturas los dos
+  -- tienen rolls. Ojo con el sitio: puesto mas arriba fallaba, porque el roll
+  -- de la sesion nogi todavia no existia — los asserts miran el estado DEL
+  -- MOMENTO, no el final.
+  perform pl_toca(v_yo, 'doble_sesion', d::text, true, 'dos sesiones el mismo dia');
+  perform pl_toca(v_virgen, 'doble_sesion', d::text, false, 'solo una sesion ese dia');
+
   -- SEMANA COMPLETA. Tres dias distintos en la misma semana. `v_gi` y
   -- `v_nogi` son el mismo dia, asi que hacen falta dos dias mas.
   perform pl_toca(v_yo, 'semana_completa', date_trunc('week', d)::date::text,
@@ -504,7 +528,7 @@ declare v_n int; f record;
 begin
   select count(*) into v_n from pl_fallos;
   if v_n = 0 then
-    raise notice 'PASS  los 27 logros, cada uno con su caso que cumple y su caso que no';
+    raise notice 'PASS  los 28 logros, cada uno con su caso que cumple y su caso que no';
   else
     for f in select que from pl_fallos loop
       raise notice 'FALLO %', f.que;

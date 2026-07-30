@@ -151,6 +151,10 @@ export const TRAZOS_LOGRO: Record<string, string[]> = {
     'M18 10v10',
     'M6 15h12',
   ],
+  doble_sesion: [
+    'M4 4h11v11H4z',
+    'M9 9h11v11H9z',
+  ],
 };
 
 /** El de reserva: un círculo. Mejor un hueco con forma que un hueco vacío. */

@@ -103,8 +103,8 @@ quinta es la que te dice si se está muriendo despacio.
 | 🟢 Baja | **Modo torneo** con cronómetro reglamentario. Sale casi gratis desde el marcador, pero es otra conversación. |
 
 | 🔴 **Alta** | **La batería de RLS en CI**, corriendo en cada push. Ya existe (`db/pruebas/rls.sql`, 45 casos) y sale con código distinto de cero si algo falla; lo que falta es el runner de GitHub Actions con un Postgres de servicio que aplique `db/*.sql` y la ejecute. Sin esto, la red de seguridad solo protege a quien se acuerda de correrla. |
-| 🔴 **Alta** | **Cerrar la lectura de `practicantes` a `anon`.** Hoy la política es `TO public USING (true)` y la clave anónima va en el bundle: cualquiera saca el roster con un `curl`. Lo detecta el caso 21 de la batería, que se deja fallando a propósito hasta que Felipe decida. |
-| 🟡 Media | **Que un invitado externo vea la quedada a la que está apuntado** sin necesitar el enlace. Hoy solo la ve por `quedada_por_token()`; la política de `quedadas` va por grupo. Caso 41 de la batería. |
+| ~~🔴 Alta~~ | ~~**Cerrar la lectura de `practicantes` a `anon`**~~ — **hecho** (`bjj_22`), y con ella `retos` y `reto_participaciones`. Queda **repasar el `grant all` por defecto de Supabase**: `anon` conserva INSERT/UPDATE/DELETE/SELECT sobre el resto de tablas. Hoy lo tapa la RLS, pero es superficie de la que no conviene depender. |
+| ~~🟡 Media~~ | ~~**Que un invitado externo vea su quedada**~~ — **hecho** (`bjj_22`): una inscripción da acceso a esa quedada y a su informe, y a nada más. |
 
 # 6 · Diseño y UX
 
@@ -130,6 +130,8 @@ Paleta de Gullo medida del logo: verde **`#458c50`**, hueso `#f1f0ee`, naranja
 | 🟢 Baja | **Tipografía de display** parecida al wordmark de Gullo. La **escala tipográfica ya está declarada** (seis pasos, `--txt-1` … `--txt-6`), igual que la de espaciado de 4px, los radios y las sombras. |
 
 | 🟢 Baja | **Un reto cuya regla sea "consigue el logro X N veces".** Los retos ya tienen ventana, objetivo y progreso guardado; los logros ya son un predicado contable. Engancharlos es barato y da retos que se validan solos, sin que nadie tenga que arbitrar. |
+
+| 🟡 Media | **Calibrar las rarezas de los logros con datos reales.** La diana: común entre el 10 % y el 25 % de los rolls, poco común entre el 3 % y el 10 %, raro por debajo del 2 %. Lo que se salga por arriba se endurece. Hoy no se puede medir: los datos de Goku salen de un generador que solo emite evento cuando pasa algo. |
 
 # 7 · Datos y ciencia de datos
 

@@ -97,6 +97,33 @@ begin
   return n;
 end $$;
 
+/**
+ * ¿`anon` tiene tapada esta tabla?
+ *
+ * "Tapada" puede ser dos cosas y las dos valen: que no haya `grant` —y salta
+ * 42501— o que lo haya pero ninguna politica le deje ver nada. Un `count(*)`
+ * pelado solo cubre la segunda, y en la primera revienta la transaccion.
+ */
+create or replace function pr_tapado(p_rel text) returns boolean
+language plpgsql as $$
+declare n bigint;
+begin
+  execute format('select count(*) from %I', p_rel) into n;
+  return n = 0;
+exception when insufficient_privilege then
+  return true;
+end $$;
+
+create or replace function pr_por_que(p_rel text) returns text
+language plpgsql as $$
+declare n bigint;
+begin
+  execute format('select count(*) from %I', p_rel) into n;
+  return n || ' filas visibles';
+exception when insufficient_privilege then
+  return 'sin permiso, ni llega a la politica';
+end $$;
+
 -- ============================================================
 --  EL ESCENARIO
 --
@@ -274,7 +301,18 @@ select pr_caso('lectura', 'anon NO ve sesiones',
   (select count(*)::text || ' filas' from sesiones));
 select pr_caso('lectura', 'anon NO ve rolls', (select count(*) from rolls) = 0);
 select pr_caso('lectura', 'anon NO ve eventos', (select count(*) from eventos) = 0);
-select pr_caso('lectura', 'anon NO ve practicantes', (select count(*) from practicantes) = 0);
+-- Los tres que estaban en `USING (true)` para `public` hasta `bjj_22`. Ahora
+-- ni siquiera hay `grant`, asi que salta 42501 antes de mirar politica alguna:
+-- por eso se comprueban con captura de excepcion y no con un `count(*)` pelado.
+select pr_caso('lectura', 'anon NO ve practicantes',
+  pr_tapado('practicantes'), pr_por_que('practicantes'));
+select pr_caso('lectura', 'anon NO ve retos',
+  pr_tapado('retos'), pr_por_que('retos'));
+select pr_caso('lectura', 'anon NO ve reto_participaciones (progreso por persona)',
+  pr_tapado('reto_participaciones'), pr_por_que('reto_participaciones'));
+select pr_caso('lectura', 'pero el diccionario sigue abierto: posiciones',
+  not pr_tapado('posiciones'));
+select pr_caso('lectura', 'y tambien tecnicas', not pr_tapado('tecnicas'));
 select pr_caso('lectura', 'anon NO ve grupos', (select count(*) from grupos) = 0);
 select pr_admin();
 
@@ -527,16 +565,11 @@ select pr_caso('rpc', 'ninguna funcion SECURITY DEFINER es ejecutable por anon',
 -- ============================================================
 select pr_es(:UEXT);
 
--- Este caso FALLA hoy, y se deja fallando a proposito. `quedadas_lectura_grupo`
--- solo deja ver las quedadas de TUS grupos, y un invitado externo no es miembro
--- de ninguno. En la app se apaña por el otro lado —con el enlace de invitacion,
--- que pasa por `quedada_por_token()` y es SECURITY DEFINER—, asi que no es un
--- agujero de seguridad: es que sin el enlace a mano no vuelve a encontrar el
--- plan al que dijo que iba. Lo decide Felipe: o se abre la lectura a quien
--- tenga inscripcion, o se asume que el enlace es la unica puerta.
+-- LA REGLA, desde `bjj_22`: una inscripcion da acceso A ESE EVENTO y a su
+-- informe. Nada mas. Ni el feed, ni los datos de otros miembros, ni otras
+-- quedadas. El acceso sigue al evento, no al grupo.
 select pr_caso('externo', 'el invitado ve la quedada a la que esta apuntado',
-  (select count(*) from quedadas where id = :QUEDADA) > 0,
-  'la politica va por grupo y el invitado no es miembro de ninguno');
+  (select count(*) from quedadas where id = :QUEDADA) > 0);
 
 -- Y la puerta que si funciona, para que quede claro que la de arriba es una
 -- carencia de producto y no una fuga.
@@ -550,6 +583,11 @@ select pr_caso('externo', 'el invitado NO ve los rolls de los del grupo',
     where s.practicante_id = :A1) = 0);
 select pr_caso('externo', 'el invitado NO ve las sesiones de los del grupo',
   (select count(*) from sesiones where practicante_id = :A1) = 0);
+select pr_caso('externo', 'el invitado NO ve OTRAS quedadas del grupo',
+  (select count(*) from quedadas where grupo_id = :GRUPOA and id <> :QUEDADA) = 0);
+select pr_caso('externo', 'el invitado NO ve el roster del grupo',
+  (select count(*) from practicantes where id = :A2) = 0,
+  've ' || (select count(*)::text from practicantes) || ' practicantes');
 
 select pr_admin();
 

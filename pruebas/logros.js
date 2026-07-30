@@ -54,7 +54,7 @@ function comprobar(cond, m) {
   await page.getByTestId('familia-defensa').waitFor();
 
   const total = await page.locator('.logro').count();
-  comprobar(total === 27, `estan los 27 del catalogo, no solo los conseguidos (${total})`);
+  comprobar(total === 28, `estan los 28 del catalogo, no solo los conseguidos (${total})`);
 
   const conseguidos = await page.locator('.logro.on').count();
   const apagados = total - conseguidos;
@@ -79,7 +79,7 @@ function comprobar(cond, m) {
 
   // Pictogramas, no emoji: cada casilla lleva su SVG de linea.
   const svgs = await page.locator('.logro svg path').count();
-  comprobar(svgs >= 27, `${svgs} trazos SVG: son pictogramas, no emoji`);
+  comprobar(svgs >= 28, `${svgs} trazos SVG: son pictogramas, no emoji`);
 
   // ---------- El ranking ----------
   await page.goto(`${APP}/grupo`);

@@ -39,6 +39,7 @@ export const LOGROS_ES: Record<string, TextoLogro> = {
   artista: { nombre: 'EL ARTISTA', descripcion: 'Tres sumisiones distintas en la misma quedada' },
   sin_gi_sin_problema: { nombre: 'SIN GI, SIN PROBLEMA', descripcion: 'Finalizas en gi y en nogi la misma semana' },
   notario: { nombre: 'EL NOTARIO', descripcion: 'Registras todos los rolls de la quedada, sin dejarte ninguno' },
+  doble_sesion: { nombre: 'DOBLE SESIÓN', descripcion: 'Registras dos sesiones el mismo día' },
   semana_completa: { nombre: 'SEMANA COMPLETA', descripcion: 'Registras en tres días distintos de la misma semana' },
   ojo_del_coach: { nombre: 'OJO DEL COACH', descripcion: 'Diez rolls registrados como observador en un mes' },
   donante: { nombre: 'DONANTE', descripcion: 'Encajas tres sumisiones en un roll' },

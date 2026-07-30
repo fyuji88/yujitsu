@@ -18,6 +18,66 @@ Qué es obligatorio y qué no:
 
 ---
 
+## 2026-07-31 (tarde) · Se cierra la lectura anónima, y tres decisiones de Felipe
+
+**Migraciones:** `bjj_22_cerrar_lectura_anonima`, `bjj_23_ambito_dia` y
+`bjj_24_logros_flawless_y_doble_sesion`. **Aplicadas a producción.** Datos
+intactos: 251 rolls, 1403 eventos, 9 practicantes.
+
+**1 · Cerrada la lectura anónima.** Tres políticas estaban en `USING (true)`
+para `public`. Demostrado en local con filas de verdad antes de tocar nada:
+como `anon`, `reto_participaciones` devolvía **"Goku (7)"** — nombre y progreso.
+Ahora las tres van por grupo y además se revocó el `grant`, así que `anon` ni
+llega a la política. `posiciones` y `tecnicas` siguen abiertas: son el
+diccionario. Se comprobó antes que **nadie las leía sin autenticar**, ni la app
+ni el enlace del invitado — `quedada_por_token()` devuelve contadores, no
+nombres.
+
+**2 · EL ÚLTIMO EN IRSE, fuera.** En su hueco entra **DOBLE SESIÓN** (dos
+sesiones el mismo día), derivable hoy sin ningún dato nuevo. Constancia sigue
+siendo de cuatro.
+
+**3 · El invitado externo: el acceso sigue al evento, no al grupo.** Una
+inscripción da su quedada y su informe, y nada más.
+
+**4 · FLAWLESS VICTORY tenía un bug de definición**, no de calibración: un roll
+donde no pasa nada da cero puntos a los dos y **se lo llevaban los dos**. Ahora
+pide al menos un evento posicional. Los umbrales no se tocan hasta que haya
+rolls reales.
+
+**Decisiones:**
+- La guarda es de **1 evento posicional y no 2**: con 2 se caían rolls
+  legítimos —quien barre una vez y no encaja nada se lo ha ganado— y el bug a
+  tapar era solo el roll vacío. La guarda más floja que cierra el agujero.
+- **`practicantes` se estrechó también entre autenticados**, que no estaba en el
+  encargo. Lo obligó la regla del invitado: con `USING (true)` para
+  `authenticated`, apuntarse a un open mat te daba el roster entero. Lo cazó el
+  caso 51 de la batería.
+- **`v_feed` pasa a filtrar por grupo en la propia vista.** Al dar acceso al
+  invitado a su quedada se le colaron dos elementos del feed. Antes el
+  aislamiento lo daban de rebote las políticas de cada tabla de origen, y de
+  rebote es como se escapan las cosas. Se renombró la vista a `v_feed_crudo` y
+  se envolvió, para no duplicar el union de ocho ramas.
+- `ALTER TYPE ... ADD VALUE` va en su propia migración: Postgres no deja usar
+  un valor de enum en la misma transacción en que se crea, y las migraciones se
+  aplican envueltas en una.
+
+**Batería de RLS: 51 casos, 51 pasan.** Los dos que estaban en rojo ayer se han
+cerrado, y se añadieron seis casos nuevos — los tres agujeros de `anon`, que el
+diccionario siga abierto, y los límites del invitado (ni otras quedadas, ni el
+roster).
+
+**Sabido roto:**
+- **`anon` conserva `INSERT`/`UPDATE`/`DELETE`/`SELECT` sobre el resto de las
+  tablas**: es el `grant all` por defecto de Supabase. Hoy no hace daño porque
+  ninguna política de escritura le aplica, pero es mucha superficie de la que
+  depender. Solo se revocaron las tres que tenían agujero de lectura. El repaso
+  completo está en el backlog.
+- Los umbrales de rareza siguen **sin calibrar**, a propósito. La diana para
+  cuando haya datos reales: común 10–25 % de los rolls, poco común 3–10 %, raro
+  por debajo del 2 %.
+
+
 ## 2026-07-31 · Batería automática de pruebas de RLS
 
 **Migraciones:** ninguna. No se ha tocado ni una política, ni una tabla, ni una

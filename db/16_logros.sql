@@ -241,6 +241,7 @@ create or replace view v_logros_conseguidos
 with (security_invoker = on) as
 with base as (
   select r.id            as roll_id,
+         r.sesion_id,
          s.practicante_id,
          s.fecha,
          s.quedada_id,
@@ -344,11 +345,19 @@ select b.practicante_id, 'cuello_de_acero', b.roll_id::text, b.fecha, b.origen, 
                     and e.objetivo = 'cuello' and e.completado)
 
 union all
--- SIN MARCAR
+-- FLAWLESS VICTORY. Con guarda de volumen: en el roll tuvo que PASAR algo.
+--
+-- Sin ella, un roll tranquilo en el que no pasa nada da cero puntos a los dos
+-- y se lo llevaban LOS DOS. Es el mismo agujero que tenia IMPASABLE, y se tapa
+-- igual: un logro definido por una ausencia necesita que la situacion haya
+-- existido de verdad.
 select b.practicante_id, 'sin_marcar', b.roll_id::text, b.fecha, b.origen, b.modalidad
   from base b
   join v_puntos_roll p on p.roll_id = b.roll_id and p.autor_id = b.practicante_id
  where p.puntos_oponente = 0
+   and (select count(*) from ev e where e.roll_id = b.roll_id
+         and e.tipo in ('barrida','pase_guardia','derribo','toma_espalda',
+                        'transicion')) >= 1
 
 -- ---------- ATAQUE ----------
 
@@ -525,6 +534,15 @@ select b.registrado_por, 'ojo_del_coach', b.mes::text, min(b.fecha),
  where b.registrado_por is not null and b.origen = 'observador'
  group by b.registrado_por, b.mes
 having count(distinct coalesce(b.roll_grupo_id::text, b.roll_id::text)) >= 10
+
+union all
+-- DOBLE SESION. Aparecer dos veces el mismo dia. Ambito `dia`: `ref_id` es la
+-- fecha, igual que la semana y el mes llevan la suya.
+select b.practicante_id, 'doble_sesion', b.fecha::text, min(b.fecha),
+       null::bjj_origen_roll, null::bjj_modalidad
+  from base b
+ group by b.practicante_id, b.fecha
+having count(distinct b.sesion_id) >= 2
 
 union all
 -- SEMANA COMPLETA. Tres dias distintos con algo registrado.

@@ -1,0 +1,14 @@
+-- ============================================================
+--  BJJ TRACKER — El ambito `dia`   ·   Migracion bjj_23
+-- ============================================================
+--
+--  Un fichero para una linea, y con motivo: Postgres no deja USAR un valor de
+--  enum en la misma transaccion en que se AÑADE —"unsafe use of new value"— y
+--  las migraciones se aplican envueltas en una transaccion. Junto con el
+--  `insert` que lo usa, la migracion entera se caia.
+--
+--  `bjj_ambito_logro` es el unico enum de la app que no es vocabulario
+--  compartido: no lo miran los heatmaps ni el marcador, solo la vista de
+--  logros. Ampliarlo no arrastra nada.
+-- ============================================================
+alter type bjj_ambito_logro add value if not exists 'dia';
