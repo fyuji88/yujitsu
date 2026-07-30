@@ -1,5 +1,10 @@
 -- ============================================================
---  BJJ TRACKER — Ajustes del catalogo de logros   ·   Migracion bjj_23
+--  BJJ TRACKER — Ajustes del catalogo de logros   ·   Migracion bjj_24
+--
+--  (La etiqueta decia bjj_23, que ya era de `18_ambito_dia.sql`. La buena es
+--  bjj_24, que es la que registra produccion en
+--  supabase_migrations.schema_migrations. Corregido en bjj_28, cuando el
+--  comprobador de vocabulario empezo a mirar tambien esto.)
 -- ============================================================
 --
 --  Tres cosas, y las tres son de DEFINICION, no de calibracion. Los umbrales

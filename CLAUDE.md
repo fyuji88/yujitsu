@@ -37,10 +37,11 @@ espejo (`rolls.par_id`) y el parámetro `p_grupo` de la RPC del observador, que
 era el par y no el gimnasio—, y de paso `rolls.orden` → `orden_en_sesion`,
 `inscripciones.orden` → `orden_en_lista` y `sesiones.tipo` → `formato`.
 
-`scripts/comprobar-vocabulario.py` lo vigila en CI: nombres repetidos con tipos
-distintos, nombres prohibidos, y `security_invoker` en las 18 vistas. **Solo ve
-la mitad**: dos columnas `text` que signifiquen cosas distintas se le escapan.
-De esa otra mitad se encarga esta regla, no la máquina.
+`scripts/comprobar-vocabulario.py` lo vigila en CI, con cuatro comprobaciones:
+nombres repetidos con tipos distintos, nombres prohibidos, `security_invoker` en
+las 18 vistas, y etiquetas `bjj_NN` duplicadas entre migraciones. **Solo ve una
+parte**: dos columnas `text` que signifiquen cosas distintas se le escapan, y
+tampoco mira nombres de parámetro. De eso se encarga esta regla, no la máquina.
 
 Las excepciones van a `scripts/excepciones-vocabulario.txt` **con el motivo
 escrito**. Hoy solo hay una, `estado`: es el mismo concepto —el estado del ciclo
@@ -62,6 +63,36 @@ migración: para eso están separadas.
 Y al revés: `quedadas` **no** puede llamarse `open_mat` en la base, porque
 `open_mat` ya es uno de los seis valores de `bjj_tipo_sesion` — sería otra vez
 una palabra con dos significados.
+
+### Ninguna comprobación se da por buena hasta haberla visto fallar
+
+Una prueba que nunca ha estado en rojo no es una prueba: es una línea que
+tranquiliza. Antes de dar por buena una comprobación —un test, un aserto de un
+recorrido, un paso de CI— hay que **romperla a propósito** y verla protestar.
+Si no protesta, no estaba comprobando nada.
+
+No es teoría, aquí ha pasado tres veces:
+
+- La comprobación de `security_invoker` escrita contra `reloptions like
+  '%security_invoker=true%'`. Postgres lo guarda como `=on`, así que devolvía
+  cero filas **siempre** y daba verde sin mirar nada.
+- En `pruebas/logros.js`, `los logros no ahogan el feed` pasaba con "0 de 40"
+  cuando el renombrado dejó `f.tipo` en `undefined`. Contaba cero de todo y lo
+  llamaba éxito.
+- `analisis-tema.js` esperaba 1200 ms fijos; cuando el panel tardaba más se
+  saltaba a todos los practicantes y decía "max undefined" — parecía un fallo
+  de la rampa de color y era de la espera.
+
+Y por eso `scripts/comprobar-vocabulario.py` se corrió contra el esquema
+**anterior** al renombrado —24 fallos— antes de darlo por bueno, y la cuarta
+comprobación se escribió viendo primero cómo cazaba el `bjj_23` duplicado de
+verdad.
+
+Corolario: **di también lo que la comprobación no ve.** El comprobador de
+vocabulario no mira nombres de parámetro, y por eso `private.es_admin(p_grupo)`
+y el puente de `bjj_28` pasan sin despeinarse. Un comprobador que se vende como
+completo convierte "lo he mirado" en "el CI está verde", y esas dos frases no
+significan lo mismo.
 
 ---
 
@@ -141,7 +172,7 @@ personal: ahora hay una unidad social —el **equipo**— y todo cuelga de ella.
 - Supabase: proyecto `idzlxkxeadrcolcnmoeo`, org `yujitsu`, eu-west-1, plan gratuito
 - Vercel: `yujitsu-eight.vercel.app`, plan Hobby
 - GitHub: `fyuji88/yujitsu`, privado, rama `main`
-- 27 migraciones aplicadas (`bjj_01` … `bjj_27`), copia en `db/`
+- 28 migraciones aplicadas (`bjj_01` … `bjj_28`), copia en `db/`
 
 **Datos reales, pero pocos.** El diccionario (24 posiciones, 63 técnicas), el
 equipo "Gullo" y unos 250 rolls entre Felipe, Pablo, Nicolas y Sasza.

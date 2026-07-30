@@ -33,10 +33,16 @@ la maquina. Un comprobador que se vende como completo es peor que ninguno:
 convierte "lo he mirado" en "el CI esta verde", y esas dos frases no significan
 lo mismo.
 
-Las comprobaciones 2 y 3 si son exhaustivas dentro de lo suyo — la lista de
-nombres prohibidos y el `security_invoker` de las vistas son cerradas.
+Las comprobaciones 2, 3 y 4 si son exhaustivas dentro de lo suyo — la lista de
+nombres prohibidos, el `security_invoker` de las vistas y las etiquetas de
+migracion son cerradas.
+
+Y tampoco mira NOMBRES DE PARAMETRO: `private.es_admin(p_grupo)` y el puente
+`registrar_roll_observado(p_grupo, ...)` de bjj_28 pasan esta comprobacion sin
+despeinarse. Los dos estan ahi a proposito y anotados en docs/CAMBIOS.md.
 """
 import os
+import re
 import subprocess
 import sys
 
@@ -189,6 +195,39 @@ for v in abiertas:
     print('    FALLO  ' + v)
 if not abiertas:
     print('    %s de %s vistas, todas' % (total[0], total[0]))
+
+# ------------------------------------------- 4 · etiquetas de migracion unicas
+print('')
+print('4 - Cada migracion reclama una etiqueta bjj_NN distinta')
+#
+# Esta no consulta la base: lee `db/*.sql`. La etiqueta vive en un comentario y
+# por eso se desincroniza sin que nada proteste — dos ficheros diciendo ser la
+# misma migracion, o una que no existe.
+#
+# Lo cazo Felipe a ojo, no yo: `db/18_ambito_dia.sql` y
+# `db/19_logros_flawless_y_doble_sesion.sql` decian los dos `bjj_23`, y `bjj_24`
+# no aparecia por ningun lado. La verdad estaba en produccion, en
+# `supabase_migrations.schema_migrations`, que registra
+# `bjj_24_logros_flawless_y_doble_sesion`. Un numero de migracion que miente es
+# exactamente el mismo problema que un nombre de columna que miente: no falla,
+# despista.
+etiquetas = {}
+db = os.path.join(RAIZ, 'db')
+for fichero in sorted(os.listdir(db)):
+    if not fichero.endswith('.sql'):
+        continue
+    with open(os.path.join(db, fichero), encoding='utf-8') as f:
+        hallado = re.search(r'\bbjj_(\d{2})\b', f.read())
+    if hallado:
+        etiquetas.setdefault('bjj_' + hallado.group(1), []).append(fichero)
+
+repetidas = {e: fs for e, fs in etiquetas.items() if len(fs) > 1}
+for etiqueta, ficheros in sorted(repetidas.items()):
+    fallos.append('%s la reclaman %d ficheros: %s'
+                  % (etiqueta, len(ficheros), ', '.join(ficheros)))
+    print('    FALLO  %s <- %s' % (etiqueta, ', '.join(ficheros)))
+if not repetidas:
+    print('    %d etiquetas, ninguna repetida' % len(etiquetas))
 
 # ---------------------------------------------------------------------- final
 print('')

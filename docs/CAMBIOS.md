@@ -18,10 +18,67 @@ Qué es obligatorio y qué no:
 
 ---
 
+## 2026-08-02 (tarde) · Puente para la cola vieja
+
+**Migración:** `bjj_28_puente_roll_observado` (`db/23_puente_roll_observado.sql`),
+aplicada a producción. Datos intactos: 253 rolls, 65 sesiones, 1415 eventos.
+
+**El problema, que era peor de lo que escribí ayer.** `bjj_27` renombró
+`p_grupo` → `p_par`, y ese nombre viaja **serializado en IndexedDB**. Un roll
+observado pendiente de un cliente viejo recibía PGRST202 — un 4xx — y `sync.ts`
+no reintenta los 4xx: lo manda a "necesita atención". Eso es **perder un roll ya
+registrado**, que es el único fallo que este producto no se puede permitir. Lo
+correcto no era confiar en que los cuatro sincronizaran a tiempo.
+
+**Decisión: una segunda `registrar_roll_observado` con los nombres viejos que
+solo delega.** PostgREST resuelve la RPC por el **conjunto de nombres** del
+cuerpo, y los dos conjuntos son disjuntos, así que cada cliente cae en su
+función sin ambigüedad. Con esto el despliegue deja de estar acoplado.
+
+**Y un obstáculo que hubo que rodear:** Postgres identifica una función por
+(nombre, **tipos**), no por nombres de parámetro — crear la misma firma da
+`already exists with same argument types`. Comprobado, no supuesto. El puente
+declara `p_duracion_min` como `integer` en vez de `smallint`, que es el cambio
+más inocuo posible, y castea al delegar para que la resolución interna encuentre
+coincidencia exacta y no se llame a sí misma.
+
+**Verificado en producción**, con el bloque abortando al final para no dejar
+nada: un cliente viejo (`p_grupo`) crea los dos rolls espejo; el cliente nuevo
+(`p_par`) reconoce ese mismo par y devuelve `creado=false`; reintentar por el
+puente tampoco duplica; dos filas con ese `par_id` tras tres llamadas. Y por
+REST, los dos conjuntos de nombres dan 42501 en vez de PGRST202 — o sea que
+PostgREST los resuelve — y `anon` no puede ejecutar ninguna función.
+
+**La etiqueta `bjj_23` la reclamaban dos ficheros.** `db/18_ambito_dia.sql` y
+`db/19_logros_flawless_y_doble_sesion.sql` decían las dos `bjj_23`, y `bjj_24`
+no aparecía por ningún lado. La verdad estaba en producción:
+`supabase_migrations.schema_migrations` registra
+`bjj_24_logros_flawless_y_doble_sesion`. Corregido el comentario de `db/19`, que
+era el que mentía. Lo vio Felipe, no yo — y por eso ahora lo mira el script.
+
+**El comprobador tiene ya cuatro comprobaciones**: divergencia de tipo, nombres
+prohibidos, `security_invoker` en las 18 vistas, y etiquetas de migración
+duplicadas. Las cuatro vistas fallar antes de darlas por buenas.
+
+**Sabido roto:**
+- **El puente reintroduce `p_grupo` a propósito y hay que borrarlo.** La
+  condición está en `docs/BACKLOG.md`: cuando ninguno de los cuatro tenga cola
+  pendiente. El comprobador **no** lo caza, porque no mira nombres de parámetro
+  — igual que no caza `private.es_admin(p_grupo)`.
+- El `version` de `bjj_27` en `supabase_migrations` quedó `20260730154429`, que
+  ordena **antes** que bjj_21…bjj_25 (sellados `20260731…`). No afecta al
+  esquema, que ya está aplicado, pero ese registro no sirve para replicar el
+  orden. El orden bueno es el alfabético de `db/*.sql`, que es el que usa el CI.
+
+---
+
 ## 2026-08-02 · Una palabra, un concepto
 
-**Migración:** `bjj_27_vocabulario` (`db/22_vocabulario.sql`), **aplicada a
-producción**. Datos intactos: 253 rolls, 1415 eventos, 65 sesiones, 9 fichas, y
+**Migración:** etiqueta **`bjj_27_vocabulario`**, en el fichero
+**`db/22_vocabulario.sql`** — el encargo la llamaba `bjj_22`, pero `bjj_22` ya
+era `db/17_cerrar_lectura_anonima.sql`. Los números de fichero y los de
+migración llevan desacoplados desde hace tiempo: el fichero es el 22º de `db/` y
+la migración la 27ª. **Aplicada a producción**. Datos intactos: 253 rolls, 1415 eventos, 65 sesiones, 9 fichas, y
 los 253 rolls con `par_id`. Copia previa tomada **y restaurada** antes de tocar
 nada — cuadraba fila por fila.
 
