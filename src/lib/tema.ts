@@ -142,10 +142,10 @@ export function guardarTema(t: Tema) {
 }
 
 /**
- * Aplica el acento del grupo. Todo lo demás se deriva de él: el color de
+ * Aplica el acento del equipo. Todo lo demás se deriva de él: el color de
  * texto legible, la tinta de dentro del botón y los rellenos suaves.
  *
- * El grupo elige **el acento**, nunca la paleta entera — ni los colores de
+ * El equipo elige **el acento**, nunca la paleta entera — ni los colores de
  * datos, ni los de estado.
  */
 export function aplicarAcento(acentoCrudo: string | null | undefined, tema: Tema) {
@@ -162,7 +162,7 @@ export function aplicarAcento(acentoCrudo: string | null | undefined, tema: Tema
 
   // La barra del navegador y de la PWA va del color de marca, no del fondo:
   // instalada, la franja de arriba es lo primero que se ve, y ahí es donde la
-  // academia se reconoce. Se mueve con el acento del grupo.
+  // academia se reconoce. Se mueve con el acento del equipo.
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', acento);
 }
 

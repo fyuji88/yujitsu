@@ -80,7 +80,7 @@ end $$;
 do $$
 declare
   c        jsonb;
-  v_grupo  uuid;
+  v_equipo  uuid;
   v_res    jsonb;
   v_esp_a  int;
   v_esp_b  int;
@@ -90,12 +90,12 @@ declare
 begin
   for c in select jsonb_array_elements(j->'casos') from fixture loop
     v_n := v_n + 1;
-    v_grupo := md5(c->>'nombre')::uuid;
+    v_equipo := md5(c->>'nombre')::uuid;
     v_esp_a := (c->'esperado'->>'a')::int;
     v_esp_b := (c->'esperado'->>'b')::int;
 
     v_res := registrar_roll_observado(
-      v_grupo,
+      v_equipo,
       'aaaaaaaa-0000-0000-0000-000000000001'::uuid,
       'bbbbbbbb-0000-0000-0000-000000000002'::uuid,
       current_date, 'nogi', 6::smallint,
@@ -154,15 +154,15 @@ end $$;
 \echo '=== Idempotencia despues de recrear la RPC'
 do $$
 declare
-  v_grupo uuid := md5('todas_las_acciones_que_puntuan')::uuid;
+  v_equipo uuid := md5('todas_las_acciones_que_puntuan')::uuid;
   v_antes int; v_despues int; v_ev_antes int; v_ev_despues int;
 begin
-  select count(*) into v_antes from rolls where roll_grupo_id = v_grupo;
+  select count(*) into v_antes from rolls where par_id = v_equipo;
   select count(*) into v_ev_antes from eventos e
-    join rolls r on r.id = e.roll_id where r.roll_grupo_id = v_grupo;
+    join rolls r on r.id = e.roll_id where r.par_id = v_equipo;
 
   perform registrar_roll_observado(
-    v_grupo,
+    v_equipo,
     'aaaaaaaa-0000-0000-0000-000000000001'::uuid,
     'bbbbbbbb-0000-0000-0000-000000000002'::uuid,
     current_date, 'nogi', 6::smallint,
@@ -170,9 +170,9 @@ begin
     'no_registrado'::bjj_resultado_roll,
     '[]'::jsonb);
 
-  select count(*) into v_despues from rolls where roll_grupo_id = v_grupo;
+  select count(*) into v_despues from rolls where par_id = v_equipo;
   select count(*) into v_ev_despues from eventos e
-    join rolls r on r.id = e.roll_id where r.roll_grupo_id = v_grupo;
+    join rolls r on r.id = e.roll_id where r.par_id = v_equipo;
 
   if v_despues <> v_antes or v_ev_despues <> v_ev_antes then
     raise exception 'FALLO: el reintento duplico (rolls % -> %, eventos % -> %)',
@@ -186,12 +186,12 @@ end $$;
 \echo '=== Un roll que empieza en guardia cerrada con A abajo'
 do $$
 declare
-  v_grupo uuid := 'cccccccc-0000-0000-0000-00000000000c';
+  v_equipo uuid := 'cccccccc-0000-0000-0000-00000000000c';
   v_res jsonb;
   v_pa record; v_pb record;
 begin
   v_res := registrar_roll_observado(
-    v_grupo,
+    v_equipo,
     'aaaaaaaa-0000-0000-0000-000000000001'::uuid,
     'bbbbbbbb-0000-0000-0000-000000000002'::uuid,
     current_date, 'gi', 4::smallint,

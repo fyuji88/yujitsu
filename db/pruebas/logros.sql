@@ -24,7 +24,7 @@ begin;
 create or replace function pl_ses(p_pract uuid, p_fecha date, p_mod bjj_modalidad,
                                   p_quedada uuid default null)
 returns uuid language sql as $$
-  insert into sesiones (practicante_id, fecha, modalidad, tipo, quedada_id)
+  insert into sesiones (practicante_id, fecha, modalidad, formato, quedada_id)
   values (p_pract, p_fecha, p_mod, 'sparring', p_quedada) returning id;
 $$;
 
@@ -34,7 +34,7 @@ create or replace function pl_roll(p_sesion uuid, p_orden int,
                                    p_oponente uuid default null,
                                    p_registrado_por uuid default null)
 returns uuid language sql as $$
-  insert into rolls (sesion_id, orden, origen, resultado, oponente_id,
+  insert into rolls (sesion_id, orden_en_sesion, origen, resultado, oponente_id,
                      registrado_por, posicion_inicio, rol_inicio)
   values (p_sesion, p_orden, p_origen, p_resultado, p_oponente,
           p_registrado_por, 'de_pie', 'neutral')
@@ -79,7 +79,7 @@ end $$;
 do $$
 declare
   v_yo    uuid;  v_rival uuid;  v_igual uuid;  v_virgen uuid;  v_coach uuid;
-  v_grupo uuid;  v_quedada uuid; v_quedada2 uuid;
+  v_equipo uuid;  v_quedada uuid; v_quedada2 uuid;
   v_gi uuid; v_nogi uuid; v_s uuid;
   r uuid;
   t1 uuid; t2 uuid; t3 uuid;
@@ -88,7 +88,7 @@ begin
   select id into t1 from tecnicas where slug = 'armbar';
   select id into t2 from tecnicas where slug = 'kimura';
   select id into t3 from tecnicas where slug = 'mata_leao';
-  select id into v_grupo from grupos order by created_at limit 1;
+  select id into v_equipo from equipos order by created_at limit 1;
 
   -- Gente de pruebas. El rival es cinturon negro y yo blanco, para CINTURON
   -- INVISIBLE; `v_igual` es del mismo color, para el caso que NO lo cumple.
@@ -103,14 +103,14 @@ begin
   insert into practicantes (nombre, cinturon, academia) values
     ('PL-Coach', 'marron', 'PRUEBAS')   returning id into v_coach;
 
-  insert into miembros_grupo (grupo_id, practicante_id, rol, estado)
-  select v_grupo, x, 'miembro', 'activo'
+  insert into miembros_equipo (equipo_id, practicante_id, rol_en_equipo, estado)
+  select v_equipo, x, 'miembro', 'activo'
     from unnest(array[v_yo, v_rival, v_igual, v_virgen, v_coach]) x;
 
-  insert into quedadas (grupo_id, titulo, fecha, hora_inicio, lugar, creado_por)
-  values (v_grupo, 'PL-Quedada', d, '19:00', 'PRUEBAS', v_yo) returning id into v_quedada;
-  insert into quedadas (grupo_id, titulo, fecha, hora_inicio, lugar, creado_por)
-  values (v_grupo, 'PL-Quedada2', d + 7, '19:00', 'PRUEBAS', v_yo) returning id into v_quedada2;
+  insert into quedadas (equipo_id, titulo, fecha, hora_inicio, lugar, creado_por)
+  values (v_equipo, 'PL-Quedada', d, '19:00', 'PRUEBAS', v_yo) returning id into v_quedada;
+  insert into quedadas (equipo_id, titulo, fecha, hora_inicio, lugar, creado_por)
+  values (v_equipo, 'PL-Quedada2', d + 7, '19:00', 'PRUEBAS', v_yo) returning id into v_quedada2;
 
   v_gi   := pl_ses(v_yo, d, 'gi');
   v_nogi := pl_ses(v_yo, d, 'nogi');
@@ -405,13 +405,13 @@ begin
   v_s := pl_ses(v_rival, d, 'gi');
   for i in 1..9 loop
     r := pl_roll(v_s, i, 'observador', 'sin_sumision', v_igual, v_coach);
-    update rolls set roll_grupo_id = gen_random_uuid() where id = r;
+    update rolls set par_id = gen_random_uuid() where id = r;
     perform pl_ev(r, 'yo', 'barrida', 'guardia_cerrada', 'abajo', 'ninguno', true, 20);
   end loop;
   perform pl_toca(v_coach, 'ojo_del_coach', date_trunc('month', d)::date::text,
                   false, 'nueve observaciones');
   r := pl_roll(v_s, 10, 'observador', 'sin_sumision', v_igual, v_coach);
-  update rolls set roll_grupo_id = gen_random_uuid() where id = r;
+  update rolls set par_id = gen_random_uuid() where id = r;
   perform pl_ev(r, 'yo', 'barrida', 'guardia_cerrada', 'abajo', 'ninguno', true, 20);
   perform pl_toca(v_coach, 'ojo_del_coach', date_trunc('month', d)::date::text,
                   true, 'y con la decima, si');
@@ -433,7 +433,7 @@ begin
                   true, 'tres dias distintos');
 
   -- ============================================================
-  --  CACHONDEO — apagados mientras el grupo no los pida
+  --  CACHONDEO — apagados mientras el equipo no los pida
   -- ============================================================
   r := pl_roll(v_gi, 40);
   perform pl_ev(r, 'oponente', 'pase_guardia', 'guardia_cerrada', 'arriba', 'ninguno', true, 10);
@@ -442,7 +442,7 @@ begin
   perform pl_ev(r, 'oponente', 'pase_guardia', 'de_la_riva',      'arriba', 'ninguno', true, 40);
   perform pl_toca(v_yo, 'peaje', r::text, false, 'con el cachondeo apagado no existe');
 
-  update grupos set modo_cachondeo = true where id = v_grupo;
+  update equipos set modo_cachondeo = true where id = v_equipo;
   perform pl_toca(v_yo, 'peaje', r::text, true, 'y encendido, si');
 
   r := pl_roll(v_gi, 41);
@@ -474,7 +474,7 @@ begin
   perform pl_ev(r, 'oponente', 'sumision', 'montada', 'arriba', 'hombro', false, 90);
   perform pl_toca(v_yo, 'donante', r::text, false, 'la tercera no entro');
 
-  update grupos set modo_cachondeo = false where id = v_grupo;
+  update equipos set modo_cachondeo = false where id = v_equipo;
 
   -- ============================================================
   --  PRIMERA VEZ y JUGUETE NUEVO — con practicante virgen, que dependen de

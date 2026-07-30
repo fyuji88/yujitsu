@@ -8,15 +8,15 @@
 --       contra si mismo.
 --    2. Hay historial de verdad: cerrar un enfoque y abrir otro no pisa el
 --       anterior, y el activo es el nuevo.
---    3. La RLS: se leen los del grupo, y NADIE escribe el enfoque de otro.
+--    3. La RLS: se leen los del equipo, y NADIE escribe el enfoque de otro.
 --       Esto ultimo es lo que de verdad importa — un enfoque ajeno editable
 --       seria poner palabras en boca de otro.
 -- ============================================================
 \set ON_ERROR_STOP on
 
 -- ------------------------------------------------------------
--- Preparacion: hacen falta DOS cuentas en el mismo grupo, y la base local
--- normalmente tiene una. Se le da cuenta a un companero de grupo que no la
+-- Preparacion: hacen falta DOS cuentas en el mismo equipo, y la base local
+-- normalmente tiene una. Se le da cuenta a un companero de equipo que no la
 -- tenga, y al final se le quita. Sin dos cuentas no hay nada que probar: la
 -- pregunta entera es si uno puede escribir el enfoque del otro.
 -- ------------------------------------------------------------
@@ -25,16 +25,16 @@ values ('bbbbbbbb-e0f0-0000-0000-00000000000b', 'enfoques-otro@test')
     on conflict (id) do nothing;
 
 -- El trigger bjj_08 le crea ficha propia; sobra, porque lo que se quiere es
--- engancharlo a una ficha que ya esta en el grupo.
+-- engancharlo a una ficha que ya esta en el equipo.
 delete from practicantes where user_id = 'bbbbbbbb-e0f0-0000-0000-00000000000b';
 
 update practicantes set user_id = 'bbbbbbbb-e0f0-0000-0000-00000000000b',
                         usa_sistema = true
  where id = (
    select p.id from practicantes p
-     join miembros_grupo m on m.practicante_id = p.id and m.estado = 'activo'
+     join miembros_equipo m on m.practicante_id = p.id and m.estado = 'activo'
     where p.user_id is null
-      and m.grupo_id in (select grupo_id from miembros_grupo
+      and m.equipo_id in (select equipo_id from miembros_equipo
                           where estado = 'activo'
                             and practicante_id in (select id from practicantes
                                                     where user_id is not null))
@@ -51,7 +51,7 @@ declare
 begin
   select p.id, p.user_id into v_yo, v_yo_user
     from practicantes p
-    join miembros_grupo m on m.practicante_id = p.id and m.estado = 'activo'
+    join miembros_equipo m on m.practicante_id = p.id and m.estado = 'activo'
    where p.user_id is not null
      and exists (select 1 from sesiones s join rolls r on r.sesion_id = s.id
                   where s.practicante_id = p.id)
@@ -59,14 +59,14 @@ begin
 
   select p.id, p.user_id into v_otro, v_otro_user
     from practicantes p
-    join miembros_grupo m2 on m2.practicante_id = p.id and m2.estado = 'activo'
+    join miembros_equipo m2 on m2.practicante_id = p.id and m2.estado = 'activo'
    where p.user_id is not null and p.id <> v_yo
-     and m2.grupo_id in (select grupo_id from miembros_grupo
+     and m2.equipo_id in (select equipo_id from miembros_equipo
                           where practicante_id = v_yo and estado = 'activo')
    limit 1;
 
   if v_yo is null or v_otro is null then
-    raise exception 'FALLO: hacen falta dos practicantes con cuenta en el mismo grupo';
+    raise exception 'FALLO: hacen falta dos practicantes con cuenta en el mismo equipo';
   end if;
 
   delete from enfoques where practicante_id in (v_yo, v_otro);
@@ -137,9 +137,9 @@ begin
   set local role authenticated;
 
   if not exists (select 1 from enfoques where practicante_id = v_yo) then
-    raise exception 'FALLO: un companero de grupo no ve mi enfoque';
+    raise exception 'FALLO: un companero de equipo no ve mi enfoque';
   end if;
-  raise notice 'PASS  el companero de grupo lee mi enfoque';
+  raise notice 'PASS  el companero de equipo lee mi enfoque';
 
   -- Escribirlo: NO.
   begin

@@ -132,13 +132,13 @@ async function entrar(ctx) {
     fullPage: true });
   ok('los cinco, fotografiados en claro y en oscuro');
 
-  // ---------- 6. El acento del grupo manda sobre el verde por defecto ---
+  // ---------- 6. El acento del equipo manda sobre el verde por defecto ---
   await page.evaluate(async () => {
     // Sin `.single()`: el stub devuelve el array tal cual, asi que `.single()`
     // deja `data` como lista y `g.id` sale undefined — el update no tocaria
     // ninguna fila y la prueba fallaria por el motivo equivocado.
-    const { data: gs } = await window.__sb.from('grupos').select('id').limit(1);
-    await window.__sb.from('grupos').update({ color_acento: '#7b3fb8' }).eq('id', gs[0].id);
+    const { data: gs } = await window.__sb.from('equipos').select('id').limit(1);
+    await window.__sb.from('equipos').update({ color_acento: '#7b3fb8' }).eq('id', gs[0].id);
   });
   await page.reload();
   await page.getByTestId('marca').waitFor({ timeout: 30000 });
@@ -150,7 +150,7 @@ async function entrar(ctx) {
   ).catch(() => {});
   const acento = await page.evaluate(() =>
     getComputedStyle(document.documentElement).getPropertyValue('--marca').trim());
-  comprobar(acento === '#7b3fb8', `el grupo cambia el acento (--marca = ${acento})`);
+  comprobar(acento === '#7b3fb8', `el equipo cambia el acento (--marca = ${acento})`);
 
   // Y lo derivado tiene que ser legible sobre el fondo, no el acento a pelo.
   const derivado = await page.evaluate(() => {
@@ -161,7 +161,7 @@ async function entrar(ctx) {
     `y el texto de marca se aclara para ser legible (${derivado}, no el acento a pelo)`);
 
   comprobar((await page.getByTestId('marca').innerText()).includes('ACADEMIA'),
-    'y la cabecera lleva el nombre del grupo');
+    'y la cabecera lleva el nombre del equipo');
 
   // Y lo que NO puede cambiar: los colores de datos.
   const datos = await page.evaluate(() => {
@@ -174,8 +174,8 @@ async function entrar(ctx) {
 
   // Un valor basura en la base no puede acabar dentro de un style.
   await page.evaluate(async () => {
-    const { data: gs } = await window.__sb.from('grupos').select('id').limit(1);
-    await window.__sb.from('grupos').update({ color_acento: '#458c50' }).eq('id', gs[0].id);
+    const { data: gs } = await window.__sb.from('equipos').select('id').limit(1);
+    await window.__sb.from('equipos').update({ color_acento: '#458c50' }).eq('id', gs[0].id);
   });
 
   console.log(`\n######## TEMA: ${n} comprobaciones ########`);

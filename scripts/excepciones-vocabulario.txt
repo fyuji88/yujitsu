@@ -1,0 +1,12 @@
+# Excepciones de scripts/comprobar-vocabulario.py
+#
+# Un nombre por linea, con el motivo detras. Sin motivo escrito no vale: una
+# excepcion sin explicacion es la forma que tiene una regla de morirse — dentro
+# de seis meses nadie sabe si eso estaba pensado o si alguien callo un aviso
+# para que el CI pasara.
+
+estado  # Mismo concepto (el estado del ciclo de vida de esta fila) con un enum
+        # acotado a cada tabla: bjj_estado_inscripcion, bjj_estado_miembro,
+        # bjj_estado_quedada. No es una palabra para dos conceptos, es un patron
+        # consistente — que es justo lo contrario del problema. Si algun dia se
+        # ve una `estado` que signifique otra cosa, sale de aqui.

@@ -73,7 +73,7 @@ function comprobar(cond, m) {
   comprobar(verificados > 0,
     'y los verificados llevan su 👁: la procedencia se enseña, no se esconde');
 
-  // Los de cachondeo estan apagados mientras el grupo no los pida.
+  // Los de cachondeo estan apagados mientras el equipo no los pida.
   const cachondeo = await page.locator('[data-testid="familia-cachondeo"] .logro.on').count();
   comprobar(cachondeo === 0, 'con el cachondeo apagado, ninguno de esa familia cuenta');
 
@@ -82,12 +82,12 @@ function comprobar(cond, m) {
   comprobar(svgs >= 28, `${svgs} trazos SVG: son pictogramas, no emoji`);
 
   // ---------- El ranking ----------
-  await page.goto(`${APP}/grupo`);
+  await page.goto(`${APP}/equipo`);
   await page.getByTestId('ranking-mes').waitFor({ timeout: 30000 });
   comprobar(await page.getByTestId('solo-verificados').getAttribute('aria-pressed') === 'true',
     'el ranking arranca contando solo los verificados');
 
-  // El ranking tarda: la vista se calcula sobre todos los eventos del grupo.
+  // El ranking tarda: la vista se calcula sobre todos los eventos del equipo.
   // Hay que esperar a que termine de contar, o se leen cero filas y la prueba
   // pasa sin haber mirado nada.
   const yaConto = () => page.waitForFunction(() => {
@@ -110,12 +110,15 @@ function comprobar(cond, m) {
     return data ?? [];
   });
   const tipos = {};
-  for (const f of feed) tipos[f.tipo] = (tipos[f.tipo] ?? 0) + 1;
-  comprobar((tipos.logro ?? 0) < feed.length / 2,
+  for (const f of feed) tipos[f.tipo_de_elemento] = (tipos[f.tipo_de_elemento] ?? 0) + 1;
+  // El `feed.length > 0` no sobra: sin el, un feed vacio daba PASS con
+  // "0 de 0" y la comprobacion no comprobaba nada. Paso de verdad cuando el
+  // renombrado dejo `f.tipo` en undefined.
+  comprobar(feed.length > 0 && (tipos.logro ?? 0) < feed.length / 2,
     `los logros no ahogan el feed: ${tipos.logro ?? 0} de ${feed.length} elementos`);
 
   const conLogros = feed.filter(
-    (f) => f.tipo === 'sesion' && (f.datos?.logros?.length ?? 0) > 0);
+    (f) => f.tipo_de_elemento === 'sesion' && (f.datos?.logros?.length ?? 0) > 0);
   comprobar(conLogros.length > 0,
     `y viajan dentro de la sesion: ${conLogros.length} sesiones los llevan agregados`);
 

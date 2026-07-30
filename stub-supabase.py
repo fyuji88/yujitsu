@@ -25,11 +25,11 @@ from urllib.parse import urlparse, parse_qs
 # Solo lectura y solo para lo que la pantalla de analisis necesita.
 PSQL = os.environ.get('PSQL')
 PGURL = os.environ.get('PGURL')
-TABLAS_PUENTE = ('practicantes', 'tecnicas', 'grupos', 'miembros_grupo',
+TABLAS_PUENTE = ('practicantes', 'tecnicas', 'equipos', 'miembros_equipo',
                  'quedadas', 'inscripciones', 'v_mi_quedada_hoy', 'reacciones',
                  'enfoques', 'logros', 'v_logros_practicante', 'v_logros_mes')
 RPC_PUENTE = ('analisis', 'analisis_rolls_celda', 'unirse_con_codigo',
-              'crear_grupo', 'regenerar_codigo', 'apuntarse_a_quedada',
+              'crear_equipo', 'regenerar_codigo', 'apuntarse_a_quedada',
               'cancelar_inscripcion', 'quedada_por_token', 'feed',
               'enfoque_contraste')
 # Las que devuelven un conjunto de filas y no un valor suelto.
@@ -250,7 +250,7 @@ class H(BaseHTTPRequestHandler):
         `Accept: application/vnd.pgrst.object+json`, y PostgREST devuelve
         entonces UN OBJETO, no una lista de uno.
 
-        El stub devolvia siempre la lista. La app leia `data.grupo_id` sobre un
+        El stub devolvia siempre la lista. La app leia `data.equipo_id` sobre un
         array y sacaba `undefined` — sin error, sin nada en la consola, la
         pantalla simplemente no se enteraba. Costo dos depuraciones en falso
         antes de mirar aqui, asi que ahora se emula.
@@ -267,7 +267,7 @@ class H(BaseHTTPRequestHandler):
         if m:
             tabla = m.group(1)
             # El stub no sabe hacer el embedding de PostgREST
-            # (`select=grupos(nombre)`). Antes lo ignoraba y devolvia las
+            # (`select=equipos(nombre)`). Antes lo ignoraba y devolvia las
             # columnas planas: datos con buena pinta y forma equivocada, que
             # es peor que un error — un recorrido en navegador pasaba mientras
             # la pantalla leia `undefined`. Ahora se queja.

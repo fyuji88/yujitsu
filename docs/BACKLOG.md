@@ -69,6 +69,8 @@ quinta es la que te dice si se está muriendo despacio.
 | 🔴 **Alta** | **Tarjeta de resumen del roll.** Dominancia, ganador con gracia, exportable. Cierra de paso el bloque de posesión. Y es el átomo del que se construye el informe de la quedada. |
 | ~~🔴 Alta~~ | ~~**Mantener la pantalla encendida** durante el roll (`wakeLock`)~~ — **hecho**: `src/lib/pantalla.ts`, activo solo mientras `fase === 'roll'` para no comerse la batería del entreno entero. Se vuelve a pedir al volver de una distracción, que es cuando el navegador lo suelta. Eran más de cinco líneas. |
 | 🟡 Media | **Tiempo de dominio / posesión.** El dato ya se captura en `segundo_roll`; falta decidir cómo se cierra el último tramo y qué cuenta como disputa. |
+| 🟡 Media | **`academia` en `practicantes` y `sesiones`, ¿sigue haciendo falta?** Es texto libre, y desde `bjj_14` el equipo dice lo mismo mejor. Salió al renombrar el vocabulario (`bjj_27`) y se dejó fuera a propósito: quitar una columna con datos dentro es otra conversación, no un renombrado. |
+| 🟡 Media | **Aplicar `bjj_27` a producción.** Escrita y probada; espera a que los cuatro vacíen la cola, porque renombra un parámetro que viaja serializado en IndexedDB. Migración y despliegue del cliente, juntos. |
 | 🟡 Media | **Línea de tiempo del roll, editable.** Deshacer solo el último evento se queda corto en cuanto hay marcador visible. |
 | 🟡 Media | **Radar de efectividad** en la tarjeta. Bloqueado: pases y barridas fallados no se registran, así que dos de los cinco ejes no tienen denominador. |
 | 🟢 Baja | **Rolls observados sin sumisión**, el "solo resultado" del prototipo, para cuando el coach solo quiere anotar quién ganó. |

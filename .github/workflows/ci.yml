@@ -66,9 +66,17 @@ jobs:
             psql -v ON_ERROR_STOP=1 -q -f "$f"
           done
 
+      # Detras de las migraciones y antes que nada mas: si el vocabulario esta
+      # roto, lo que fallara despues es una consulta que devuelve otra cosa, y
+      # eso cuesta mucho mas de leer que este mensaje.
+      - name: Una palabra, un concepto
+        env:
+          PGURL: postgresql://postgres:postgres@localhost:5432/bjj
+        run: python3 scripts/comprobar-vocabulario.py
+
       # Estas dos se montan su propio escenario, asi que corren sobre el
       # esquema recien creado. Las demas (`logros.sql`, `informe.sql`,
-      # `quedadas.sql`…) dan por hecho que ya hay un grupo y datos, y hoy no
+      # `quedadas.sql`…) dan por hecho que ya hay un equipo y datos, y hoy no
       # entran en CI: esta anotado en db/pruebas/README.md.
       - name: Las politicas de RLS
         run: psql -f db/pruebas/rls.sql

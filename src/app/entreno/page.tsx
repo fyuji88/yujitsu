@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Marco, type Sesion } from '@/components/Marco';
 import { supabase } from '@/lib/supabase';
+import { TEXTOS } from '@/lib/textos/es';
 import { usarPantallaEncendida } from '@/lib/pantalla';
 import {
   CLAVE_SESION, CLAVE_TECNICAS, encolar, encolarRollObservado, nuevoId,
@@ -122,14 +123,14 @@ function Flujo({ sesion }: { sesion: Sesion }) {
 
   /** La quedada de hoy en la que estás apuntado, si la hay. */
   const [quedadaHoy, setQuedadaHoy] = useState<
-    { id: string; grupo_id: string; titulo: string; lugar: string | null } | null
+    { id: string; equipo_id: string; titulo: string; lugar: string | null } | null
   >(null);
   /**
-   * Tu grupo, para colgar de él las sesiones que no son de ninguna quedada.
-   * Sin esto, una sesión suelta se queda con `grupo_id` a null y no sale en el
-   * feed del grupo — que es casi todas.
+   * Tu equipo, para colgar de él las sesiones que no son de ninguna quedada.
+   * Sin esto, una sesión suelta se queda con `equipo_id` a null y no sale en el
+   * feed del equipo — que es casi todas.
    */
-  const [miGrupo, setMiGrupo] = useState<string | null>(null);
+  const [miEquipo, setMiEquipo] = useState<string | null>(null);
 
   useEffect(() => {
     const guardada = localStorage.getItem(CLAVE_SESION);
@@ -143,15 +144,15 @@ function Flujo({ sesion }: { sesion: Sesion }) {
   }, []);
 
   useEffect(() => {
-    void supabase().from('miembros_grupo').select('grupo_id')
+    void supabase().from('miembros_equipo').select('equipo_id')
       .eq('estado', 'activo').limit(1).maybeSingle()
       .then(({ data }) => {
-        if (data) setMiGrupo((data as { grupo_id: string }).grupo_id);
+        if (data) setMiEquipo((data as { equipo_id: string }).equipo_id);
       });
   }, []);
 
   useEffect(() => {
-    void supabase().from('v_mi_quedada_hoy').select('id,grupo_id,titulo,lugar')
+    void supabase().from('v_mi_quedada_hoy').select('id,equipo_id,titulo,lugar')
       .maybeSingle()
       .then(({ data }) => {
         if (data) setQuedadaHoy(data as typeof quedadaHoy);
@@ -263,16 +264,16 @@ function Flujo({ sesion }: { sesion: Sesion }) {
       modalidad,
       tipo,
       academia: sesion.practicante.academia,
-      // Si hay una quedada hoy en tu grupo y estás apuntado, viene sola: en el
+      // Si hay una quedada hoy en tu equipo y estás apuntado, viene sola: en el
       // caso normal son cero toques. "Roll libre" es lo que sale si no hay.
-      grupo_id: quedadaHoy?.grupo_id ?? miGrupo,
+      equipo_id: quedadaHoy?.equipo_id ?? miEquipo,
       quedada_id: quedadaHoy?.id ?? null,
     });
     localStorage.setItem(CLAVE_SESION, JSON.stringify(s));
     setAbierta(s);
     setModalidadObs(modalidad);
     void vaciarCola();
-  }, [sesion.practicante, quedadaHoy, miGrupo]);
+  }, [sesion.practicante, quedadaHoy, miEquipo]);
 
   function limpiarRoll() {
     setOponente(null);
@@ -372,7 +373,7 @@ function Flujo({ sesion }: { sesion: Sesion }) {
     retenerCola(true);
     const seg = Math.floor(transcurrido(crono, Date.now()) / 1000);
     const args: ArgsRollObservado = {
-      p_grupo: nuevoId(),
+      p_par: nuevoId(),
       p_practicante_a: practA.id,
       p_practicante_b: oponente.id,
       p_fecha: hoy(),
@@ -422,7 +423,7 @@ function Flujo({ sesion }: { sesion: Sesion }) {
           <p className="hint" data-testid="quedada-hoy" style={{ color: 'var(--marca-texto)' }}>
             Hoy hay <b>{quedadaHoy.titulo}</b>
             {quedadaHoy.lugar && <> en {quedadaHoy.lugar}</>} y estás apuntado:
-            lo que registres se guarda en esa quedada.
+            lo que registres se guarda en ese {TEXTOS.quedada}.
           </p>
         )}
         <h2 className="sec">Modalidad</h2>
@@ -743,7 +744,7 @@ function Flujo({ sesion }: { sesion: Sesion }) {
             <p className="hint" data-testid="resumen-observado">
               {espeja
                 ? <>Se guardan <b>dos rolls</b>, uno para {nombreA} y otro para {nombreB},
-                    unidos por el mismo <code>roll_grupo_id</code>. Lo que para uno es ataque
+                    unidos por el mismo <code>par_id</code>. Lo que para uno es ataque
                     para el otro es defensa.</>
                 : <>Se guarda <b>un roll</b>, el de {nombreA}. {nombreB} no usa la app, así que
                     no hay a quién espejárselo.</>}

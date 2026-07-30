@@ -127,16 +127,16 @@ end $$;
 -- ============================================================
 --  EL ESCENARIO
 --
---  Dos grupos que no se conocen de nada, con gente y rolls en los dos. Se
+--  Dos equipos que no se conocen de nada, con gente y rolls en los dos. Se
 --  monta como `postgres` a proposito: aqui la RLS estorba, y lo que se prueba
 --  viene despues.
 -- ============================================================
 do $$
 declare
-  ua uuid := 'aaaa1111-0000-0000-0000-00000000a001';   -- A1, grupo A
-  ub uuid := 'aaaa1111-0000-0000-0000-00000000a002';   -- A2, grupo A
-  uc uuid := 'bbbb1111-0000-0000-0000-00000000b001';   -- B1, grupo B
-  ud uuid := 'bbbb1111-0000-0000-0000-00000000b002';   -- B2, grupo B
+  ua uuid := 'aaaa1111-0000-0000-0000-00000000a001';   -- A1, equipo A
+  ub uuid := 'aaaa1111-0000-0000-0000-00000000a002';   -- A2, equipo A
+  uc uuid := 'bbbb1111-0000-0000-0000-00000000b001';   -- B1, equipo B
+  ud uuid := 'bbbb1111-0000-0000-0000-00000000b002';   -- B2, equipo B
   ue uuid := 'eeee1111-0000-0000-0000-00000000e001';   -- E, invitado externo
 begin
   insert into auth.users (id, email) values
@@ -160,11 +160,11 @@ begin
     ('c0000000-0000-4000-8000-000000000001', 'RLS-Contacto-de-A1', 'blanca', 'RLS', false, ua),
     ('c0000000-0000-4000-8000-000000000002', 'RLS-Contacto-de-A2', 'blanca', 'RLS', false, ub);
 
-  insert into grupos (id, nombre, slug, codigo_union) values
+  insert into equipos (id, nombre, slug, codigo_union) values
     ('a0000000-0000-4000-9000-00000000000a', 'RLS Tatami A', 'rls-tatami-a', 'RLSAAA-001'),
     ('b0000000-0000-4000-9000-00000000000b', 'RLS Tatami B', 'rls-tatami-b', 'RLSBBB-002');
 
-  insert into miembros_grupo (grupo_id, practicante_id, rol) values
+  insert into miembros_equipo (equipo_id, practicante_id, rol_en_equipo) values
     ('a0000000-0000-4000-9000-00000000000a', 'a0000000-0000-4000-8000-000000000001', 'admin'),
     ('a0000000-0000-4000-9000-00000000000a', 'a0000000-0000-4000-8000-000000000002', 'miembro'),
     ('a0000000-0000-4000-9000-00000000000a', 'c0000000-0000-4000-8000-000000000001', 'miembro'),
@@ -174,7 +174,7 @@ begin
 
   -- Un roll con eventos para A1, A2 y B1. Con sumision completada, para que
   -- las vistas de heatmap y head-to-head tengan de que tirar.
-  insert into sesiones (id, practicante_id, fecha, modalidad, tipo, grupo_id) values
+  insert into sesiones (id, practicante_id, fecha, modalidad, formato, equipo_id) values
     ('a0000000-0000-4000-a000-000000000001', 'a0000000-0000-4000-8000-000000000001',
      current_date, 'gi', 'sparring', 'a0000000-0000-4000-9000-00000000000a'),
     ('a0000000-0000-4000-a000-000000000002', 'a0000000-0000-4000-8000-000000000002',
@@ -182,7 +182,7 @@ begin
     ('b0000000-0000-4000-a000-000000000001', 'b0000000-0000-4000-8000-000000000001',
      current_date, 'gi', 'sparring', 'b0000000-0000-4000-9000-00000000000b');
 
-  insert into rolls (id, sesion_id, oponente_id, orden, modalidad, posicion_inicio,
+  insert into rolls (id, sesion_id, oponente_id, orden_en_sesion, modalidad, posicion_inicio,
                      rol_inicio, resultado, origen) values
     ('a0000000-0000-4000-b000-000000000001', 'a0000000-0000-4000-a000-000000000001',
      'a0000000-0000-4000-8000-000000000002', 1, 'gi', 'de_pie', 'neutral',
@@ -202,8 +202,8 @@ begin
                       'a0000000-0000-4000-b000-000000000002'::uuid,
                       'b0000000-0000-4000-b000-000000000001'::uuid]) r;
 
-  -- Una quedada del grupo A con UNA plaza, y el externo apuntado.
-  insert into quedadas (id, grupo_id, titulo, fecha, lugar, plazas_max,
+  -- Una quedada del equipo A con UNA plaza, y el externo apuntado.
+  insert into quedadas (id, equipo_id, titulo, fecha, lugar, plazas_max,
                         admite_externos, creado_por) values
     ('a0000000-0000-4000-c000-000000000001', 'a0000000-0000-4000-9000-00000000000a',
      'RLS Open Mat', current_date + 1, 'RLS', 1, true,
@@ -252,7 +252,7 @@ select pr_caso('lectura', 'A1 ve sus propios eventos',
   (select count(*) from eventos where roll_id = :ROLLA1) > 0);
 
 -- Lo que hace posible el selector de practicante del analisis.
-select pr_caso('lectura', 'A1 ve las sesiones de A2, del mismo grupo',
+select pr_caso('lectura', 'A1 ve las sesiones de A2, del mismo equipo',
   (select count(*) from sesiones where practicante_id = :A2) > 0);
 select pr_caso('lectura', 'A1 ve los rolls de A2',
   (select count(*) from rolls where sesion_id = :SESA2) > 0);
@@ -260,30 +260,30 @@ select pr_caso('lectura', 'A1 ve los eventos de A2',
   (select count(*) from eventos where roll_id = :ROLLA2) > 0);
 
 -- Y la frontera. Cero, no "pocos".
-select pr_caso('lectura', 'A1 NO ve sesiones del grupo B',
+select pr_caso('lectura', 'A1 NO ve sesiones del equipo B',
   (select count(*) from sesiones where practicante_id = :B1) = 0,
   (select count(*)::text || ' filas' from sesiones where practicante_id = :B1));
-select pr_caso('lectura', 'A1 NO ve rolls del grupo B',
+select pr_caso('lectura', 'A1 NO ve rolls del equipo B',
   (select count(*) from rolls r join sesiones s on s.id = r.sesion_id
     where s.practicante_id = :B1) = 0);
-select pr_caso('lectura', 'A1 NO ve eventos del grupo B',
+select pr_caso('lectura', 'A1 NO ve eventos del equipo B',
   (select count(*) from eventos e join rolls r on r.id = e.roll_id
     join sesiones s on s.id = r.sesion_id where s.practicante_id = :B1) = 0);
 
 -- LAS VISTAS. Es por donde se escapa esto si a alguna le falta
 -- `security_invoker`: la tabla queda tapada y la vista la enseña igual.
-select pr_caso('lectura', 'A1 NO ve al grupo B por v_eventos',
+select pr_caso('lectura', 'A1 NO ve al equipo B por v_eventos',
   (select count(*) from v_eventos where autor_id = :B1) = 0,
   (select count(*)::text || ' filas' from v_eventos where autor_id = :B1));
-select pr_caso('lectura', 'A1 NO ve al grupo B por v_heatmap_ofensivo',
+select pr_caso('lectura', 'A1 NO ve al equipo B por v_heatmap_ofensivo',
   (select count(*) from v_heatmap_ofensivo where autor_id = :B1) = 0);
-select pr_caso('lectura', 'A1 NO ve al grupo B por v_h2h',
+select pr_caso('lectura', 'A1 NO ve al equipo B por v_h2h',
   (select count(*) from v_h2h where autor_id = :B1) = 0);
-select pr_caso('lectura', 'A1 NO ve al grupo B por v_puntos_roll',
+select pr_caso('lectura', 'A1 NO ve al equipo B por v_puntos_roll',
   (select count(*) from v_puntos_roll where autor_id = :B1) = 0);
-select pr_caso('lectura', 'A1 NO ve al grupo B por v_feed',
-  (select count(*) from v_feed where grupo_id = 'b0000000-0000-4000-9000-00000000000b') = 0);
-select pr_caso('lectura', 'A1 NO ve al grupo B por v_logros_practicante',
+select pr_caso('lectura', 'A1 NO ve al equipo B por v_feed',
+  (select count(*) from v_feed where equipo_id = 'b0000000-0000-4000-9000-00000000000b') = 0);
+select pr_caso('lectura', 'A1 NO ve al equipo B por v_logros_practicante',
   (select count(*) from v_logros_practicante where practicante_id = :B1) = 0);
 
 -- El catalogo si es de todos: sin el no hay vocabulario ni coleccion.
@@ -314,7 +314,7 @@ select pr_caso('lectura', 'anon NO ve reto_participaciones (progreso por persona
 -- El diccionario tambien queda tapado para `anon` desde `bjj_25`, y conviene
 -- explicar por que no contradice al "posiciones y tecnicas se quedan abiertas":
 -- lo que se queda abierto es su POLITICA, que sigue siendo permisiva y sin
--- recortar por grupo. Lo que desaparece es el GRANT, y `anon` no lo necesita
+-- recortar por equipo. Lo que desaparece es el GRANT, y `anon` no lo necesita
 -- porque la app solo lee el diccionario ya dentro de `<Marco>`, con sesion.
 -- Si algun dia hiciera falta el vocabulario antes del login, se le concede
 -- `select` a esas dos y a nada mas.
@@ -379,8 +379,8 @@ end $$;
 
 -- Se vuelve a anon para lo que queda de esta familia.
 select pr_anon();
-select pr_caso('lectura', 'anon NO ve grupos',
-  pr_tapado('grupos'), pr_por_que('grupos'));
+select pr_caso('lectura', 'anon NO ve equipos',
+  pr_tapado('equipos'), pr_por_que('equipos'));
 select pr_admin();
 
 -- ============================================================
@@ -398,7 +398,7 @@ declare n int;
 begin
   -- Insertar lo mio: tiene que dejarme.
   begin
-    insert into sesiones (practicante_id, fecha, modalidad, tipo)
+    insert into sesiones (practicante_id, fecha, modalidad, formato)
     values ('a0000000-0000-4000-8000-000000000001', current_date, 'gi', 'sparring');
     perform pr_caso('escritura', 'A1 inserta una sesion suya', true);
   exception when others then
@@ -407,7 +407,7 @@ begin
 
   -- A nombre de otro: no.
   begin
-    insert into sesiones (practicante_id, fecha, modalidad, tipo)
+    insert into sesiones (practicante_id, fecha, modalidad, formato)
     values ('a0000000-0000-4000-8000-000000000002', current_date, 'gi', 'sparring');
     perform pr_caso('escritura', 'A1 NO inserta una sesion a nombre de A2', false,
                     'la dejo pasar');
@@ -421,30 +421,30 @@ begin
   perform pr_caso('escritura', 'A1 borra un roll suyo', n = 1, n || ' filas');
 
   -- ---------- EL CASO MAS IMPORTANTE DE TODA LA BATERIA ----------
-  -- `bjj_13` y `bjj_15` abrieron la LECTURA a los del grupo. Si de paso se
+  -- `bjj_13` y `bjj_15` abrieron la LECTURA a los del equipo. Si de paso se
   -- hubiera colado la escritura, cualquiera podria editar o borrar los rolls
   -- de un compañero y la app estaria rota sin que nadie lo notara: no da
   -- error, simplemente desaparecen datos ajenos.
   update sesiones set notas = 'tocado por A1'
    where practicante_id = 'a0000000-0000-4000-8000-000000000002';
   get diagnostics n = row_count;
-  perform pr_caso('escritura', 'A1 NO edita las sesiones de A2 (mismo grupo)',
+  perform pr_caso('escritura', 'A1 NO edita las sesiones de A2 (mismo equipo)',
                   n = 0, n || ' filas tocadas');
 
   delete from rolls where sesion_id = 'a0000000-0000-4000-a000-000000000002';
   get diagnostics n = row_count;
-  perform pr_caso('escritura', 'A1 NO borra los rolls de A2 (mismo grupo)',
+  perform pr_caso('escritura', 'A1 NO borra los rolls de A2 (mismo equipo)',
                   n = 0, n || ' filas borradas');
 
   delete from eventos where roll_id = 'a0000000-0000-4000-b000-000000000002';
   get diagnostics n = row_count;
-  perform pr_caso('escritura', 'A1 NO borra los eventos de A2 (mismo grupo)',
+  perform pr_caso('escritura', 'A1 NO borra los eventos de A2 (mismo equipo)',
                   n = 0, n || ' filas borradas');
 
   update rolls set notas = 'tocado por A1'
    where sesion_id = 'a0000000-0000-4000-a000-000000000002';
   get diagnostics n = row_count;
-  perform pr_caso('escritura', 'A1 NO edita los rolls de A2 (mismo grupo)',
+  perform pr_caso('escritura', 'A1 NO edita los rolls de A2 (mismo equipo)',
                   n = 0, n || ' filas tocadas');
 
   -- ---------- Fichas ----------
@@ -516,7 +516,7 @@ begin
   exception when others then null;
   end;
   select count(*) into n from rolls
-   where roll_grupo_id = '11111111-2222-3333-4444-555555555555';
+   where par_id = '11111111-2222-3333-4444-555555555555';
   perform pr_caso('rpc', 'registrar_roll_observado es idempotente',
                   n = 2, n || ' rolls (esperados 2: uno por persona)');
 end $$;
@@ -564,8 +564,8 @@ begin
     perform unirse_con_codigo('RLSAAA-001');
   exception when others then null;
   end;
-  select count(*) into n from miembros_grupo
-   where grupo_id = 'a0000000-0000-4000-9000-00000000000a'
+  select count(*) into n from miembros_equipo
+   where equipo_id = 'a0000000-0000-4000-9000-00000000000a'
      and practicante_id = 'b0000000-0000-4000-8000-000000000001';
   perform pr_caso('rpc', 'unirse_con_codigo dos veces no duplica la membresia',
                   n = 1, n || ' membresias');
@@ -627,14 +627,14 @@ select pr_caso('rpc', 'ninguna funcion SECURITY DEFINER es ejecutable por anon',
 --  4 · EL INVITADO EXTERNO
 --
 --  Alguien de otro gimnasio apuntado a una quedada. Tiene que poder ver el
---  plan al que va, y NADA mas: si de paso ve el feed o los rolls del grupo,
+--  plan al que va, y NADA mas: si de paso ve el feed o los rolls del equipo,
 --  invitar a alguien a un open mat le abre el historial de la academia.
 -- ============================================================
 select pr_es(:UEXT);
 
 -- LA REGLA, desde `bjj_22`: una inscripcion da acceso A ESE EVENTO y a su
 -- informe. Nada mas. Ni el feed, ni los datos de otros miembros, ni otras
--- quedadas. El acceso sigue al evento, no al grupo.
+-- quedadas. El acceso sigue al evento, no al equipo.
 select pr_caso('externo', 'el invitado ve la quedada a la que esta apuntado',
   (select count(*) from quedadas where id = :QUEDADA) > 0);
 
@@ -642,17 +642,17 @@ select pr_caso('externo', 'el invitado ve la quedada a la que esta apuntado',
 -- carencia de producto y no una fuga.
 select pr_caso('externo', 'pero si la ve con el enlace de invitacion',
   (select count(*) from quedada_por_token(current_setting('rls.token'))) > 0);
-select pr_caso('externo', 'el invitado NO ve el feed del grupo',
-  (select count(*) from v_feed where grupo_id = :GRUPOA) = 0,
-  (select count(*)::text || ' filas' from v_feed where grupo_id = :GRUPOA));
-select pr_caso('externo', 'el invitado NO ve los rolls de los del grupo',
+select pr_caso('externo', 'el invitado NO ve el feed del equipo',
+  (select count(*) from v_feed where equipo_id = :GRUPOA) = 0,
+  (select count(*)::text || ' filas' from v_feed where equipo_id = :GRUPOA));
+select pr_caso('externo', 'el invitado NO ve los rolls de los del equipo',
   (select count(*) from rolls r join sesiones s on s.id = r.sesion_id
     where s.practicante_id = :A1) = 0);
-select pr_caso('externo', 'el invitado NO ve las sesiones de los del grupo',
+select pr_caso('externo', 'el invitado NO ve las sesiones de los del equipo',
   (select count(*) from sesiones where practicante_id = :A1) = 0);
-select pr_caso('externo', 'el invitado NO ve OTRAS quedadas del grupo',
-  (select count(*) from quedadas where grupo_id = :GRUPOA and id <> :QUEDADA) = 0);
-select pr_caso('externo', 'el invitado NO ve el roster del grupo',
+select pr_caso('externo', 'el invitado NO ve OTRAS quedadas del equipo',
+  (select count(*) from quedadas where equipo_id = :GRUPOA and id <> :QUEDADA) = 0);
+select pr_caso('externo', 'el invitado NO ve el roster del equipo',
   (select count(*) from practicantes where id = :A2) = 0,
   've ' || (select count(*)::text from practicantes) || ' practicantes');
 

@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { TEXTOS } from '@/lib/textos/es';
 import { textoLogro } from '@/lib/textos/logros.es';
 
 /**
- * El feed del grupo.
+ * El feed del equipo.
  *
  * No hay tabla de entradas: `v_feed` deriva de lo que ya pasó, así que si
  * mañana se corrige una sesión el feed se corrige solo. Aquí no se agrega
@@ -21,9 +22,9 @@ const EMOJIS = ['🔥', '💪', '😂', '🫡', '🥋'] as const;
 interface Reaccion { emoji: string; cuantos: number; mia: boolean }
 
 interface Item {
-  grupo_id: string;
-  grupo: string;
-  tipo: string;
+  equipo_id: string;
+  equipo: string;
+  tipo_de_elemento: string;
   referencia_id: string;
   practicante_id: string | null;
   quien: string;
@@ -74,7 +75,7 @@ function LogrosDeLaSesion({ lista }: { lista: { clave: string; veces: number }[]
 
 function texto(i: Item) {
   const d = i.datos;
-  switch (i.tipo) {
+  switch (i.tipo_de_elemento) {
     case 'sesion': {
       const n = Number(d.rolls ?? 0);
       return <>
@@ -97,7 +98,7 @@ function texto(i: Item) {
         {d.externo ? ' (viene de otro gimnasio)' : ''}
       </>;
     case 'miembro':
-      return <><b>{i.quien}</b> entró en el grupo</>;
+      return <><b>{i.quien}</b> entró en {TEXTOS.elEquipo}</>;
     case 'logro': {
       const n = textoLogro(String(d.clave)).nombre;
       const veces = Number(d.veces ?? 1);
@@ -151,11 +152,11 @@ export function Feed({ practicanteId }: { practicanteId: string }) {
     if (mia) {
       await sb.from('reacciones').delete()
         .eq('practicante_id', practicanteId)
-        .eq('item_tipo', i.tipo).eq('referencia_id', i.referencia_id).eq('emoji', emoji);
+        .eq('item_tipo', i.tipo_de_elemento).eq('referencia_id', i.referencia_id).eq('emoji', emoji);
     } else {
       await sb.from('reacciones').insert({
         practicante_id: practicanteId,
-        item_tipo: i.tipo, referencia_id: i.referencia_id, emoji,
+        item_tipo: i.tipo_de_elemento, referencia_id: i.referencia_id, emoji,
       });
     }
     setOcupado(false);
@@ -167,7 +168,7 @@ export function Feed({ practicanteId }: { practicanteId: string }) {
   if (!items.length) {
     return (
       <p className="hint" data-testid="feed-vacio">
-        Todavía no ha pasado nada en el grupo. En cuanto alguien registre un entreno
+        Todavía no ha pasado nada en {TEXTOS.elEquipo}. En cuanto alguien registre un entreno
         o monte una quedada, aparecerá aquí.
       </p>
     );
@@ -176,9 +177,9 @@ export function Feed({ practicanteId }: { practicanteId: string }) {
   return (
     <div data-testid="feed">
       {items.map((i) => (
-        <div className="fila" key={`${i.tipo}-${i.referencia_id}-${i.cuando}`}
+        <div className="fila" key={`${i.tipo_de_elemento}-${i.referencia_id}-${i.cuando}`}
           style={{ alignItems: 'flex-start', marginTop: 8 }}>
-          <span style={{ fontSize: 17, lineHeight: 1.2 }}>{ICONO[i.tipo] ?? '•'}</span>
+          <span style={{ fontSize: 17, lineHeight: 1.2 }}>{ICONO[i.tipo_de_elemento] ?? '•'}</span>
           <span className="n">
             {texto(i)}
             <small>{haceCuanto(i.cuando)}</small>

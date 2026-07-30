@@ -10,6 +10,7 @@ import {
 import { contarPendientes, olvidarDatosDelUsuario } from '@/lib/db';
 import { BotonTema, useTema } from '@/components/Tema';
 import { aplicarAcento } from '@/lib/tema';
+import { TEXTOS } from '@/lib/textos/es';
 import type { PracticanteRow } from '@/lib/database.types';
 
 export interface Sesion {
@@ -39,7 +40,7 @@ export function Marco(
   const [sync, setSync] = useState<EstadoSync>({ enCola: 0, enviando: false, error: null });
   const [saliendo, setSaliendo] = useState(false);
   const [pendientesAlSalir, setPendientesAlSalir] = useState<number | null>(null);
-  const [grupo, setGrupo] = useState<{ nombre: string; color_acento: string | null } | null>(null);
+  const [equipo, setEquipo] = useState<{ nombre: string; color_acento: string | null } | null>(null);
   const [tema] = useTema();
 
   useEffect(() => {
@@ -69,36 +70,36 @@ export function Marco(
     return () => { parar(); };
   }, []);
 
-  // El grupo activo: da la marca de la cabecera y el acento del tema.
-  // Dos consultas planas en vez de un `select('grupos(...)')`: el embedding de
+  // El equipo activo: da la marca de la cabecera y el acento del tema.
+  // Dos consultas planas en vez de un `select('equipos(...)')`: el embedding de
   // PostgREST aquí ahorra un viaje y cuesta que esto no se pueda probar contra
   // el stub, que no lo sabe hacer. Por un viaje de red al abrir, no compensa.
   useEffect(() => {
     if (!s) return;
     (async () => {
       const { data: m } = await supabase()
-        .from('miembros_grupo').select('grupo_id')
+        .from('miembros_equipo').select('equipo_id')
         .eq('estado', 'activo').limit(1).maybeSingle();
-      const id = (m as { grupo_id: string } | null)?.grupo_id;
+      const id = (m as { equipo_id: string } | null)?.equipo_id;
       if (!id) return;
       const { data: g } = await supabase()
-        .from('grupos').select('nombre,color_acento').eq('id', id).maybeSingle();
-      if (g) setGrupo(g as { nombre: string; color_acento: string | null });
+        .from('equipos').select('nombre,color_acento').eq('id', id).maybeSingle();
+      if (g) setEquipo(g as { nombre: string; color_acento: string | null });
     })();
   }, [s]);
 
   /**
-   * El acento del grupo, cada vez que cambia el grupo o el tema.
+   * El acento del equipo, cada vez que cambia el equipo o el tema.
    *
-   * El grupo elige **solo el acento**: `aplicarAcento()` deriva de ahí el
+   * El equipo elige **solo el acento**: `aplicarAcento()` deriva de ahí el
    * color de texto legible y la tinta del botón, midiendo el contraste contra
    * el fondo del tema actual. Una academia puede poner el color que quiera y
    * no puede dejarse la interfaz ilegible — y no toca nunca los colores de
    * datos, que es lo que protege el heatmap.
    */
   useEffect(() => {
-    aplicarAcento(grupo?.color_acento, tema);
-  }, [grupo, tema]);
+    aplicarAcento(equipo?.color_acento, tema);
+  }, [equipo, tema]);
 
   /**
    * Salir.
@@ -138,11 +139,11 @@ export function Marco(
     <div className="phone">
       <div className="top">
         <div style={{ minWidth: 0 }}>
-          {/* La marca del grupo, encima del título: es lo único de la app que
-              lleva el acento a pelo. Sin grupo todavía, la app se nombra a sí
+          {/* La marca del equipo, encima del título: es lo único de la app que
+              lleva el acento a pelo. Sin equipo todavía, la app se nombra a sí
               misma. */}
           <span className="marca" data-testid="marca">
-            {(grupo?.nombre ?? 'yujitsu').toUpperCase()}
+            {(equipo?.nombre ?? 'yujitsu').toUpperCase()}
           </span>
           <div className="t1">{titulo}</div>
           <div className="t2">{sub ?? (s ? s.practicante.nombre : '…')}</div>
@@ -194,9 +195,9 @@ export function Marco(
           "Practicantes", que se comía el ancho de dos. */}
       <nav className="tabs">
         <Link href="/entreno" className={ruta === '/entreno' ? 'on' : ''}>Entreno</Link>
-        <Link href="/quedadas" className={ruta === '/quedadas' ? 'on' : ''}>Quedadas</Link>
+        <Link href="/quedadas" className={ruta === '/quedadas' ? 'on' : ''}>{TEXTOS.quedadas}</Link>
         <Link href="/analisis" className={ruta === '/analisis' ? 'on' : ''}>Análisis</Link>
-        <Link href="/grupo" className={ruta === '/grupo' ? 'on' : ''}>Grupo</Link>
+        <Link href="/equipo" className={ruta === '/equipo' ? 'on' : ''}>{TEXTOS.equipo}</Link>
         <Link href="/practicantes" className={ruta === '/practicantes' ? 'on' : ''}>Gente</Link>
       </nav>
     </div>

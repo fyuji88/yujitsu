@@ -4,12 +4,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Marco, type Sesion } from '@/components/Marco';
 import { supabase } from '@/lib/supabase';
+import { TEXTOS } from '@/lib/textos/es';
 import type {
-  GrupoRow, InscripcionRow, MiembroRow, Modalidad, PracticanteRow, QuedadaRow,
+  EquipoRow, InscripcionRow, MiembroRow, Modalidad, PracticanteRow, QuedadaRow,
 } from '@/lib/database.types';
 
 /**
- * Quedadas: los open mats del grupo.
+ * Quedadas: los open mats del equipo.
  *
  * Las plazas NO se controlan aquí. Dos personas dándole a "apuntarme" a la vez
  * con una plaza libre es el caso clásico y el cliente no puede resolverlo: los
@@ -33,14 +34,14 @@ interface Informe {
 }
 
 export default function Quedadas() {
-  return <Marco titulo="Quedadas">{(s) => <Panel sesion={s} />}</Marco>;
+  return <Marco titulo={TEXTOS.quedadas}>{(s) => <Panel sesion={s} />}</Marco>;
 }
 
 function Panel({ sesion }: { sesion: Sesion }) {
   const params = useSearchParams();
   const invitacion = params.get('invitacion');
 
-  const [grupos, setGrupos] = useState<GrupoRow[]>([]);
+  const [equipos, setEquipos] = useState<EquipoRow[]>([]);
   const [miembros, setMiembros] = useState<MiembroRow[]>([]);
   const [quedadas, setQuedadas] = useState<QuedadaRow[]>([]);
   const [inscripciones, setInscripciones] = useState<InscripcionRow[]>([]);
@@ -56,13 +57,13 @@ function Panel({ sesion }: { sesion: Sesion }) {
   const cargar = useCallback(async () => {
     const sb = supabase();
     const [g, m, q, i, p] = await Promise.all([
-      sb.from('grupos').select('*').order('nombre'),
-      sb.from('miembros_grupo').select('*'),
+      sb.from('equipos').select('*').order('nombre'),
+      sb.from('miembros_equipo').select('*'),
       sb.from('quedadas').select('*').order('fecha', { ascending: false }),
       sb.from('inscripciones').select('*'),
       sb.from('practicantes').select('id,nombre').order('nombre'),
     ]);
-    setGrupos((g.data ?? []) as GrupoRow[]);
+    setEquipos((g.data ?? []) as EquipoRow[]);
     setMiembros((m.data ?? []) as MiembroRow[]);
     setQuedadas((q.data ?? []) as QuedadaRow[]);
     setInscripciones((i.data ?? []) as InscripcionRow[]);
@@ -73,7 +74,7 @@ function Panel({ sesion }: { sesion: Sesion }) {
   useEffect(() => { void cargar(); }, [cargar]);
 
   // La quedada de una invitación no se puede leer de la tabla si no eres del
-  // grupo: se pide por RPC, que devuelve esa y solo esa.
+  // equipo: se pide por RPC, que devuelve esa y solo esa.
   useEffect(() => {
     if (!invitacion) return;
     void supabase().rpc('quedada_por_token', { p_token: invitacion })
@@ -83,9 +84,9 @@ function Panel({ sesion }: { sesion: Sesion }) {
       });
   }, [invitacion]);
 
-  const soyAdminDe = (grupoId: string) => miembros.some(
-    (m) => m.grupo_id === grupoId && m.practicante_id === sesion.practicante.id
-      && m.rol === 'admin' && m.estado === 'activo',
+  const soyAdminDe = (equipoId: string) => miembros.some(
+    (m) => m.equipo_id === equipoId && m.practicante_id === sesion.practicante.id
+      && m.rol_en_equipo === 'admin' && m.estado === 'activo',
   );
   const miInscripcion = (qid: string) => inscripciones.find(
     (i) => i.quedada_id === qid && i.practicante_id === sesion.practicante.id
@@ -121,12 +122,12 @@ function Panel({ sesion }: { sesion: Sesion }) {
   }
 
   async function crear(datos: {
-    grupo_id: string; titulo: string; fecha: string; hora_inicio: string;
+    equipo_id: string; titulo: string; fecha: string; hora_inicio: string;
     lugar: string; plazas_max: string; modalidad: Modalidad; admite_externos: boolean;
   }) {
     setOcupado(true); setError(null);
     const { error } = await supabase().from('quedadas').insert({
-      grupo_id: datos.grupo_id,
+      equipo_id: datos.equipo_id,
       titulo: datos.titulo.trim(),
       fecha: datos.fecha,
       hora_inicio: datos.hora_inicio || null,
@@ -163,7 +164,7 @@ function Panel({ sesion }: { sesion: Sesion }) {
       .select('datos').eq('quedada_id', qid);
     setOcupado(false);
     const fila = (data ?? [])[0] as { datos: Informe } | undefined;
-    if (!fila) { setError('Esa quedada todavía no tiene informe.'); return; }
+    if (!fila) { setError(`Ese ${TEXTOS.quedada} todavía no tiene informe.`); return; }
     setInforme({ quedada: qid, datos: fila.datos });
   }
 
@@ -172,20 +173,20 @@ function Panel({ sesion }: { sesion: Sesion }) {
   const hoy = new Date().toISOString().slice(0, 10);
   const proximas = quedadas.filter((q) => q.fecha >= hoy && q.estado !== 'cancelada');
   const pasadas = quedadas.filter((q) => q.fecha < hoy || q.estado === 'cerrada');
-  const puedoCrear = grupos.some((g) => soyAdminDe(g.id));
+  const puedoCrear = equipos.some((g) => soyAdminDe(g.id));
 
   return (
     <>
       {error && <p className="err" data-testid="error">{error}</p>}
       {aviso && <p className="hint" data-testid="aviso" style={{ color: 'var(--ok)' }}>{aviso}</p>}
 
-      {/* Invitación de fuera: se ve la quedada y nada más del grupo. */}
+      {/* Invitación de fuera: se ve la quedada y nada más del equipo. */}
       {invitacion && invitada && (
         <div className="state" data-testid="invitacion" style={{ marginTop: 10 }}>
           <div className="lbl">Te han invitado</div>
           <div className="pos">{String(invitada.titulo)}</div>
           <div className="rol">
-            {String(invitada.grupo)} · {String(invitada.fecha)}
+            {String(invitada.equipo)} · {String(invitada.fecha)}
             {invitada.lugar ? ` · ${String(invitada.lugar)}` : ''}
             {invitada.libres != null && ` · ${String(invitada.libres)} plazas libres`}
           </div>
@@ -196,23 +197,25 @@ function Panel({ sesion }: { sesion: Sesion }) {
             </button>
           </div>
           <p className="hint" style={{ marginBottom: 0 }}>
-            Este enlace te deja ver y apuntarte a esta quedada. No te da acceso a nada
-            más del grupo.
+            Este enlace te deja ver y apuntarte a este {TEXTOS.quedada}. No te da acceso a nada
+            más del equipo.
           </p>
         </div>
       )}
       {invitacion && !invitada && (
         <p className="err" data-testid="invitacion-mala">
-          Ese enlace no vale, o la quedada ya no admite invitados.
+          Ese enlace no vale, o el {TEXTOS.quedada} ya no admite invitados.
         </p>
       )}
 
-      {!grupos.length && (
-        <div className="state" data-testid="sin-grupo" style={{ marginTop: 12 }}>
-          <div className="lbl">Sin grupo</div>
-          <div className="pos" style={{ fontSize: 17 }}>Las quedadas son de un grupo</div>
+      {!equipos.length && (
+        <div className="state" data-testid="sin-equipo" style={{ marginTop: 12 }}>
+          <div className="lbl">Sin equipo</div>
+          <div className="pos" style={{ fontSize: 17 }}>
+            {`Los ${TEXTOS.quedadas} son de un ${TEXTOS.equipo}`}
+          </div>
           <p className="hint" style={{ margin: '8px 0 0' }}>
-            Entra en uno desde la pestaña Grupo y aquí verás sus open mats.
+            Entra en uno desde la pestaña {TEXTOS.equipo} y aquí verás sus {TEXTOS.quedadas}.
           </p>
         </div>
       )}
@@ -221,12 +224,12 @@ function Panel({ sesion }: { sesion: Sesion }) {
         <div style={{ marginTop: 12 }}>
           <button className="ghost" data-testid="nueva-quedada"
             onClick={() => setCreando((v) => !v)}>
-            {creando ? 'Cancelar' : '+ Nueva quedada'}
+            {creando ? 'Cancelar' : `+ Nuevo ${TEXTOS.quedada}`}
           </button>
         </div>
       )}
       {creando && (
-        <Formulario grupos={grupos.filter((g) => soyAdminDe(g.id))}
+        <Formulario equipos={equipos.filter((g) => soyAdminDe(g.id))}
           ocupado={ocupado} onCrear={crear} />
       )}
 
@@ -235,7 +238,7 @@ function Panel({ sesion }: { sesion: Sesion }) {
         const mia = miInscripcion(q.id);
         const dentro = apuntados(q.id);
         const libres = q.plazas_max == null ? null : q.plazas_max - dentro.length;
-        const admin = soyAdminDe(q.grupo_id);
+        const admin = soyAdminDe(q.equipo_id);
         return (
           <div className="tarjeta-q" key={q.id} data-testid={`quedada-${q.id}`}
             style={{
@@ -285,7 +288,7 @@ function Panel({ sesion }: { sesion: Sesion }) {
                       <div className="fila" key={i.id}>
                         <span className="n">
                           {roster.find((p) => p.id === i.practicante_id)?.nombre ?? '—'}
-                          {i.es_externo && <small>de fuera del grupo</small>}
+                          {i.es_externo && <small>de fuera del equipo</small>}
                         </span>
                         <span className="pill">
                           {i.estado === 'apuntado' ? 'viene' : `espera ${i.orden}`}
@@ -317,7 +320,7 @@ function Panel({ sesion }: { sesion: Sesion }) {
               data-testid={`informe-${q.id}`}
               style={{ padding: '7px 11px', fontSize: 12 }}
               onClick={() => void verInforme(q.id)}>Ver informe</button>
-          ) : soyAdminDe(q.grupo_id) ? (
+          ) : soyAdminDe(q.equipo_id) ? (
             <button className="ghost" disabled={ocupado}
               data-testid={`cerrar-${q.id}`}
               style={{ padding: '7px 11px', fontSize: 12 }}
@@ -328,10 +331,10 @@ function Panel({ sesion }: { sesion: Sesion }) {
 
       {informe && <VistaInforme datos={informe.datos} onCerrar={() => setInforme(null)} />}
 
-      {grupos.length > 0 && !proximas.length && !pasadas.length && (
+      {equipos.length > 0 && !proximas.length && !pasadas.length && (
         <p className="hint" data-testid="sin-quedadas">
-          Todavía no hay ninguna quedada.
-          {puedoCrear ? ' Crea la primera con el botón de arriba.' : ' Cuando el admin cree una, aparecerá aquí.'}
+          Todavía no hay ningún {TEXTOS.quedada}.
+          {puedoCrear ? ' Crea el primero con el botón de arriba.' : ' Cuando el admin cree uno, aparecerá aquí.'}
         </p>
       )}
     </>
@@ -339,15 +342,15 @@ function Panel({ sesion }: { sesion: Sesion }) {
 }
 
 function Formulario(
-  { grupos, ocupado, onCrear }: {
-    grupos: GrupoRow[]; ocupado: boolean;
+  { equipos, ocupado, onCrear }: {
+    equipos: EquipoRow[]; ocupado: boolean;
     onCrear: (d: {
-      grupo_id: string; titulo: string; fecha: string; hora_inicio: string;
+      equipo_id: string; titulo: string; fecha: string; hora_inicio: string;
       lugar: string; plazas_max: string; modalidad: Modalidad; admite_externos: boolean;
     }) => void;
   },
 ) {
-  const [grupo, setGrupo] = useState(grupos[0]?.id ?? '');
+  const [equipo, setEquipo] = useState(equipos[0]?.id ?? '');
   const [titulo, setTitulo] = useState('Open mat');
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
   const [hora, setHora] = useState('11:00');
@@ -360,15 +363,15 @@ function Formulario(
     <form onSubmit={(e) => {
       e.preventDefault();
       onCrear({
-        grupo_id: grupo, titulo, fecha, hora_inicio: hora, lugar,
+        equipo_id: equipo, titulo, fecha, hora_inicio: hora, lugar,
         plazas_max: plazas, modalidad, admite_externos: externos,
       });
     }}>
-      {grupos.length > 1 && (
+      {equipos.length > 1 && (
         <>
-          <label htmlFor="grupo">Grupo</label>
-          <select id="grupo" value={grupo} onChange={(e) => setGrupo(e.target.value)}>
-            {grupos.map((g) => <option key={g.id} value={g.id}>{g.nombre}</option>)}
+          <label htmlFor="equipo">{TEXTOS.equipo}</label>
+          <select id="equipo" value={equipo} onChange={(e) => setEquipo(e.target.value)}>
+            {equipos.map((g) => <option key={g.id} value={g.id}>{g.nombre}</option>)}
           </select>
         </>
       )}
@@ -404,16 +407,16 @@ function Formulario(
           onClick={() => setExternos(true)}>Sí, con enlace</button>
         <button type="button" className="chip"
           style={!externos ? { borderColor: 'var(--marca)', color: 'var(--marca-texto)' } : undefined}
-          onClick={() => setExternos(false)}>Solo el grupo</button>
+          onClick={() => setExternos(false)}>Solo el equipo</button>
       </div>
       <p className="hint">
-        Con invitados, el enlace deja ver y apuntarse a esta quedada y nada más:
-        no da acceso al grupo ni a los datos de los demás.
+        Con invitados, el enlace deja ver y apuntarse a este {TEXTOS.quedada} y nada más:
+        no da acceso al equipo ni a los datos de los demás.
       </p>
 
       <div style={{ marginTop: 16 }}>
         <button className="primary" type="submit" data-testid="crear-quedada"
-          disabled={ocupado || !grupo || titulo.trim().length < 2}>Crear</button>
+          disabled={ocupado || !equipo || titulo.trim().length < 2}>Crear</button>
       </div>
     </form>
   );
@@ -454,7 +457,7 @@ function VistaInforme(
       </div>
       <p className="hint">
         Cada uno se lleva exactamente uno, por lo que más le separa de la media
-        del grupo esa tarde. Nadie se queda sin título.
+        del equipo esa tarde. Nadie se queda sin título.
       </p>
 
       <h2 className="sec">Ranking</h2>

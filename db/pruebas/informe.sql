@@ -13,11 +13,11 @@
 -- `cerrar_quedada` solo la puede llamar un admin, y eso lo resuelve
 -- `private.es_admin()` a partir del claim. Sin ponerlo, auth.uid() es null y
 -- la funcion rechaza la llamada — incluso como superusuario, porque la
--- comprobacion no es de permisos de Postgres sino de rol dentro del grupo.
+-- comprobacion no es de permisos de Postgres sino de rol dentro del equipo.
 select set_config('request.jwt.claims',
   json_build_object('sub', (
     select p.user_id from practicantes p
-      join miembros_grupo m on m.practicante_id = p.id
+      join miembros_equipo m on m.practicante_id = p.id
      where m.rol = 'admin' and m.estado = 'activo' and p.user_id is not null
      limit 1))::text, false);
 

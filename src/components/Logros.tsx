@@ -97,8 +97,8 @@ export function Coleccion({ practicanteId, nombre, esMio }: {
 
 // ---------------------------------------------------------------- ranking
 
-export function RankingDelMes({ grupoId, practicanteId, roster }: {
-  grupoId: string;
+export function RankingDelMes({ equipoId, practicanteId, roster }: {
+  equipoId: string;
   practicanteId: string;
   roster: Record<string, string>;
 }) {
@@ -117,10 +117,10 @@ export function RankingDelMes({ grupoId, practicanteId, roster }: {
     setCargando(true);
     const { data } = await supabase().from('v_logros_mes')
       .select('clave,practicante_id,veces,veces_verificadas')
-      .eq('grupo_id', grupoId).eq('mes', mesActual());
+      .eq('equipo_id', equipoId).eq('mes', mesActual());
     setFilas((data ?? []) as FilaRanking[]);
     setCargando(false);
-  }, [grupoId]);
+  }, [equipoId]);
 
   useEffect(() => { void cargar(); }, [cargar]);
 

@@ -14,7 +14,7 @@
 -- ------------------------------------------------------------
 delete from quedadas where titulo like 'PRUEBA%';
 delete from practicantes where nombre in ('T-Admin', 'T-Miembro', 'T-Externo');
-delete from grupos where slug in ('t-grupo', 't-otro');
+delete from equipos where slug in ('t-equipo', 't-otro');
 delete from auth.users where email like 't-%@test';
 
 insert into auth.users (id, email) values
@@ -31,12 +31,12 @@ insert into practicantes (id, nombre, usa_sistema, user_id) values
   ('bbbb0000-0000-0000-0000-00000000000b', 'T-Miembro', true, '22220000-0000-0000-0000-000000000002'),
   ('cccc0000-0000-0000-0000-00000000000c', 'T-Externo', true, '33330000-0000-0000-0000-000000000003');
 
-insert into grupos (id, nombre, slug, codigo_union)
-values ('dddd0000-0000-0000-0000-00000000000d', 'T-Grupo', 't-grupo', 'TGRUPO-A1B');
-insert into miembros_grupo (grupo_id, practicante_id, rol) values
+insert into equipos (id, nombre, slug, codigo_union)
+values ('dddd0000-0000-0000-0000-00000000000d', 'T-Equipo', 't-equipo', 'TGRUPO-A1B');
+insert into miembros_equipo (equipo_id, practicante_id, rol_en_equipo) values
   ('dddd0000-0000-0000-0000-00000000000d', 'aaaa0000-0000-0000-0000-00000000000a', 'admin');
 
-insert into quedadas (id, grupo_id, titulo, fecha, plazas_max, admite_externos,
+insert into quedadas (id, equipo_id, titulo, fecha, plazas_max, admite_externos,
                       token_invitacion, creado_por)
 values ('eeee0000-0000-0000-0000-00000000000e', 'dddd0000-0000-0000-0000-00000000000d',
         'PRUEBA open mat', current_date, 2, true, 'token-de-prueba',
@@ -54,9 +54,9 @@ begin;
   begin
     g1 := unirse_con_codigo('TGRUPO-A1B');
     g2 := unirse_con_codigo('tgrupo-a1b');   -- y no distingue mayusculas
-    if g1 <> g2 then raise exception 'FALLO: dos grupos distintos'; end if;
-    select count(*) into n from miembros_grupo
-     where grupo_id = g1 and practicante_id = 'bbbb0000-0000-0000-0000-00000000000b';
+    if g1 <> g2 then raise exception 'FALLO: dos equipos distintos'; end if;
+    select count(*) into n from miembros_equipo
+     where equipo_id = g1 and practicante_id = 'bbbb0000-0000-0000-0000-00000000000b';
     if n <> 1 then raise exception 'FALLO: % filas de miembro, esperaba 1', n; end if;
     raise notice 'PASS  unirse dos veces deja una sola fila de miembro';
 
@@ -125,11 +125,11 @@ begin;
     end if;
     raise notice 'PASS  y por la tabla de quedadas no ve ni la suya: solo por el token';
 
-    select count(*) into n from miembros_grupo;
-    if n > 0 then raise exception 'FALLO GRAVE: el externo ve % miembros del grupo', n; end if;
+    select count(*) into n from miembros_equipo;
+    if n > 0 then raise exception 'FALLO GRAVE: el externo ve % miembros del equipo', n; end if;
     select count(*) into n from rolls;
-    if n > 0 then raise exception 'FALLO GRAVE: el externo ve % rolls del grupo', n; end if;
-    raise notice 'PASS  ni los miembros del grupo ni sus rolls';
+    if n > 0 then raise exception 'FALLO GRAVE: el externo ve % rolls del equipo', n; end if;
+    raise notice 'PASS  ni los miembros del equipo ni sus rolls';
 
     -- Lo que si puede: consultar SU quedada por el token.
     select count(*) into n from quedada_por_token('token-de-prueba');

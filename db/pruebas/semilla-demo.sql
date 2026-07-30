@@ -116,26 +116,26 @@ select ('dbdb0000-0000-0000-0000-' || lpad(n::text, 12, '0'))::uuid,
        nombre, cinturon, grados, peso, 'Kame House', cuenta
   from semilla_gente where n > 0;
 
--- Todo el mundo dentro del mismo grupo, EMPEZANDO POR GOKU.
+-- Todo el mundo dentro del mismo equipo, EMPEZANDO POR GOKU.
 --
 -- Y esto es lo que se me olvidó la primera vez: antes la ficha con cuenta se
--- reciclaba, así que ya venía dentro del grupo; ahora se crea de cero y hay
+-- reciclaba, así que ya venía dentro del equipo; ahora se crea de cero y hay
 -- que meterla a mano. Sin eso, el usuario del navegador no está en ningún
--- grupo — y la lectura va por grupo, así que la app abre sin ranking, sin
+-- equipo — y la lectura va por equipo, así que la app abre sin ranking, sin
 -- acento de marca y con el análisis vacío. Otra vez un síntoma que no se
 -- parece a la causa.
 --
--- Va de admin porque la pantalla de grupo enseña el código de unión y el botón
+-- Va de admin porque la pantalla de equipo enseña el código de unión y el botón
 -- de regenerarlo solo a los admin, y eso también hay que poder recorrerlo.
-delete from miembros_grupo
- where grupo_id = (select id from grupos order by created_at limit 1);
+delete from miembros_equipo
+ where equipo_id = (select id from equipos order by created_at limit 1);
 
-insert into miembros_grupo (grupo_id, practicante_id, rol, estado)
-select (select id from grupos order by created_at limit 1), p.id,
-       (case when p.user_id is not null then 'admin' else 'miembro' end)::bjj_rol_grupo,
+insert into miembros_equipo (equipo_id, practicante_id, rol_en_equipo, estado)
+select (select id from equipos order by created_at limit 1), p.id,
+       (case when p.user_id is not null then 'admin' else 'miembro' end)::bjj_rol_equipo,
        'activo'
   from practicantes p
- where not exists (select 1 from miembros_grupo m where m.practicante_id = p.id);
+ where not exists (select 1 from miembros_equipo m where m.practicante_id = p.id);
 
 -- ------------------------------------------------------------
 -- 2. Las sesiones y los rolls de Goku
@@ -144,8 +144,8 @@ select (select id from grupos order by created_at limit 1), p.id,
 -- modalidad alterna por sesión —nunca `mixto`— para que gi + no-gi sume
 -- exactamente el total: es lo que comprueba el recorrido cuando toca el filtro.
 -- ------------------------------------------------------------
-insert into sesiones (id, practicante_id, fecha, academia, modalidad, tipo,
-                      duracion_min, grupo_id)
+insert into sesiones (id, practicante_id, fecha, academia, modalidad, formato,
+                      duracion_min, equipo_id)
 select ('5e510000-0000-0000-0000-' || lpad(i::text, 12, '0'))::uuid,
        (select id from practicantes where user_id is not null),
        current_date - (i * 8 / 3),                 -- ~2,7 días entre sesiones
@@ -154,12 +154,12 @@ select ('5e510000-0000-0000-0000-' || lpad(i::text, 12, '0'))::uuid,
        (case i % 5 when 0 then 'competicion' when 1 then 'open_mat'
                    else 'sparring' end)::bjj_tipo_sesion,
        60 + (i % 4) * 15,
-       (select id from grupos order by created_at limit 1)
+       (select id from equipos order by created_at limit 1)
   from generate_series(0, 44) i;
 
 -- Un tercio de los rolls van como observados: la pantalla avisa de cuántos lo
 -- son, porque registrándote tú faltan sistemáticamente las cosas que no ves.
-insert into rolls (id, sesion_id, oponente_id, orden, modalidad, duracion_min,
+insert into rolls (id, sesion_id, oponente_id, orden_en_sesion, modalidad, duracion_min,
                    posicion_inicio, rol_inicio, resultado, origen)
 select ('401100' || lpad(i::text, 2, '0') || '-0000-0000-0000-' || lpad(j::text, 12, '0'))::uuid,
        ('5e510000-0000-0000-0000-' || lpad(i::text, 12, '0'))::uuid,
@@ -334,18 +334,18 @@ select r.id,
 -- solo a fichas vacías. Bulma se queda sin nada a propósito: es la que prueba
 -- el estado vacío.
 -- ------------------------------------------------------------
-insert into sesiones (id, practicante_id, fecha, academia, modalidad, tipo,
-                      duracion_min, grupo_id)
+insert into sesiones (id, practicante_id, fecha, academia, modalidad, formato,
+                      duracion_min, equipo_id)
 select ('5e520000-0000-000' || g.n::text || '-0000-' || lpad(i::text, 12, '0'))::uuid,
        ('dbdb0000-0000-0000-0000-' || lpad(g.n::text, 12, '0'))::uuid,
        current_date - (i * 5), 'Kame House',
        (case when i % 2 = 0 then 'nogi' else 'gi' end)::bjj_modalidad,
        'sparring', 75,
-       (select id from grupos order by created_at limit 1)
+       (select id from equipos order by created_at limit 1)
   from semilla_gente g, generate_series(0, 11) i
  where g.n in (1, 2);
 
-insert into rolls (id, sesion_id, oponente_id, orden, modalidad, duracion_min,
+insert into rolls (id, sesion_id, oponente_id, orden_en_sesion, modalidad, duracion_min,
                    posicion_inicio, rol_inicio, resultado, origen)
 select ('40220' || g.n::text || lpad(i::text, 2, '0') || '-0000-0000-0000-' || lpad(j::text, 12, '0'))::uuid,
        ('5e520000-0000-000' || g.n::text || '-0000-' || lpad(i::text, 12, '0'))::uuid,

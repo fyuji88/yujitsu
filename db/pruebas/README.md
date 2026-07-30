@@ -17,7 +17,7 @@ PG="postgresql://postgres@127.0.0.1:55432/bjj"
 | `logros.sql` | los 27 predicados, con su caso que cumple y su caso que no | no |
 | `logros-rls.sql` | que los logros no sean una puerta lateral a otro grupo | no |
 | `puntos.sql` | el marcador IBJJF contra el fixture compartido | **sí, arrasa** |
-| `grupos-rls.sql` | la lectura por grupo de `bjj_15` | sí, toca `auth.users` |
+| `equipos-rls.sql` | la lectura por equipo de `bjj_15` | sí, toca `auth.users` |
 | `quedadas.sql` | plazas, lista de espera e idempotencia | no |
 | `informe.sql` | un título por cabeza, y congelado | modifica la quedada |
 

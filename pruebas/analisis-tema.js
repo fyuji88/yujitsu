@@ -67,8 +67,17 @@ const lum = (rgb) => {
     .evaluateAll((os) => os.map((o) => o.value));
   for (const id of opciones) {
     await page.getByTestId('selector-practicante').selectOption(id);
-    await page.waitForTimeout(1200);
-    if (await page.locator('td.cell.tocable').count() === 0) continue;
+    // Esperar a que PINTE, no un rato fijo. Con `waitForTimeout(1200)` esto
+    // fallaba de vez en cuando y solo dentro del lote: si el panel tardaba mas
+    // de la cuenta, `count() === 0` mandaba al `continue` y ese practicante se
+    // saltaba como si no tuviera datos. Con todos saltados, la comprobacion
+    // decia "max undefined" — un fallo que parecia de la rampa y era de la
+    // espera.
+    try {
+      await page.locator('td.cell.tocable').first().waitFor({ timeout: 8000 });
+    } catch {
+      continue;   // este de verdad no tiene datos
+    }
     ({ bajo, alto } = await extremos());
     if (alto && bajo && alto.v > bajo.v) break;
   }

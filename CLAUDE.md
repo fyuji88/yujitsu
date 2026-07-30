@@ -9,6 +9,62 @@ identificadores de base de datos van sin acentos (`sumision`, `posicion`).
 
 ---
 
+## Cómo se nombran las cosas
+
+Dos reglas. La primera dice qué nombre es válido; la segunda, cuándo vale la
+pena cambiarlo.
+
+### Una palabra, un concepto
+
+En todo el esquema, una palabra significa **una sola cosa**. Si dos columnas no
+pueden compartir tipo, no pueden compartir nombre. Y el nombre tiene que decir
+qué es **sin la tabla como contexto**: `rol` no vale, `rol_en_equipo` sí.
+
+No es estética. Aquí la seguridad entera son políticas de RLS y el análisis
+entero son vistas, así que un nombre ambiguo no produce un error: produce una
+consulta correcta que devuelve otra cosa. Eso no se cae, **da un número** — y un
+número equivocado no se distingue de uno bueno mirándolo.
+
+Ya pasó. `rolls.orden` era el orden dentro de la sesión de cada uno, y el logro
+EL ÚLTIMO EN IRSE se escribió como "el roll con el mayor `orden` de la quedada".
+No premiaba irse el último, premiaba haber rodado más; hubo que sacarlo del
+catálogo. La columna no mentía: no decía **de quién** era la secuencia, y quien
+la leyó rellenó el hueco con lo que le pareció razonable.
+
+`bjj_27` separó las cuatro cosas que se llamaban `grupo` —el gimnasio
+(`equipos`), la categoría de posición (`posiciones.categoria`), el par de rolls
+espejo (`rolls.par_id`) y el parámetro `p_grupo` de la RPC del observador, que
+era el par y no el gimnasio—, y de paso `rolls.orden` → `orden_en_sesion`,
+`inscripciones.orden` → `orden_en_lista` y `sesiones.tipo` → `formato`.
+
+`scripts/comprobar-vocabulario.py` lo vigila en CI: nombres repetidos con tipos
+distintos, nombres prohibidos, y `security_invoker` en las 18 vistas. **Solo ve
+la mitad**: dos columnas `text` que signifiquen cosas distintas se le escapan.
+De esa otra mitad se encarga esta regla, no la máquina.
+
+Las excepciones van a `scripts/excepciones-vocabulario.txt` **con el motivo
+escrito**. Hoy solo hay una, `estado`: es el mismo concepto —el estado del ciclo
+de vida de la fila— con un enum acotado a cada tabla, que es un patrón y no una
+ambigüedad.
+
+### El identificador y la etiqueta son decisiones distintas
+
+La palabra que lee la gente vive en `src/lib/textos/`. Cambiarla es **una
+línea**. El identificador de la base cuesta una migración, renombrar las
+columnas de las vistas, tocar el cliente y coordinar la cola de salida.
+
+Por eso el identificador se renombra **solo cuando es ambiguo para quien
+programa**, nunca porque nos guste más otra palabra. En pantalla se lee "Team" y
+"Open Mat"; en Postgres son `equipos` y `quedadas`, en español como el resto del
+esquema. Si mañana Felipe quiere "Squad", es una línea de textos y ninguna
+migración: para eso están separadas.
+
+Y al revés: `quedadas` **no** puede llamarse `open_mat` en la base, porque
+`open_mat` ya es uno de los seis valores de `bjj_tipo_sesion` — sería otra vez
+una palabra con dos significados.
+
+---
+
 ## La decisión que sostiene todo: se modelan eventos, no resultados
 
 Cada acción de un roll es una fila en `eventos` con cinco datos: **quién** la hizo
@@ -70,13 +126,14 @@ practicante, filtro gi/nogi y ventana temporal. El diseño aprobado es
 `docs/BJJ-Analisis-DEMO.html`; la pantalla es su puerto a React.
 
 **Bloque social terminado y desplegado.** La app dejó de ser un cuaderno
-personal: ahora hay una unidad social —el **grupo**— y todo cuelga de ella.
+personal: ahora hay una unidad social —el **equipo**— y todo cuelga de ella.
+(En pantalla se lee "Team"; en la base es `equipos`. Ver las reglas de arriba.)
 
-- **Grupos** con admin y código de unión (`bjj_14`). Todo el mundo está en uno.
-- **La lectura va por grupo** (`bjj_15`): ves lo de la gente con la que
-  compartes grupo, no lo de cualquier autenticado.
+- **Equipos** con admin y código de unión (`bjj_14`). Todo el mundo está en uno.
+- **La lectura va por equipo** (`bjj_15`): ves lo de la gente con la que
+  compartes equipo, no lo de cualquier autenticado.
 - **Quedadas** con plazas, lista de espera y token de invitación (`bjj_16`).
-- **Feed** del grupo con reacciones (`bjj_17`).
+- **Feed** del equipo con reacciones (`bjj_17`).
 - **Informe de la quedada** (`bjj_18`): ranking y títulos, congelado en jsonb.
 - **Enfoques** (`bjj_19`): lo que dices que trabajas, contrastado con lo que
   hiciste. Vive dentro de Análisis, pegado a los KPIs.
@@ -84,10 +141,13 @@ personal: ahora hay una unidad social —el **grupo**— y todo cuelga de ella.
 - Supabase: proyecto `idzlxkxeadrcolcnmoeo`, org `yujitsu`, eu-west-1, plan gratuito
 - Vercel: `yujitsu-eight.vercel.app`, plan Hobby
 - GitHub: `fyuji88/yujitsu`, privado, rama `main`
-- 19 migraciones aplicadas (`bjj_01` … `bjj_19`), copia en `db/`
+- 26 migraciones aplicadas (`bjj_01` … `bjj_26`), copia en `db/`. **`bjj_27`
+  está escrita y probada pero NO aplicada a producción**: renombra un parámetro
+  que viaja dentro de la cola de salida, así que primero hay que vaciar la cola
+  de los cuatro. Ver `docs/CAMBIOS.md`.
 
 **Datos reales, pero pocos.** El diccionario (24 posiciones, 63 técnicas), el
-grupo "Gullo" y unos 250 rolls entre Felipe, Pablo, Nicolas y Sasza.
+equipo "Gullo" y unos 250 rolls entre Felipe, Pablo, Nicolas y Sasza.
 
 ---
 
@@ -111,7 +171,7 @@ observado pasa por `encolarRollObservado()`, que es la misma cola con otro
 destino: en vez de `upsert` contra tablas, una llamada a
 `registrar_roll_observado()`.
 
-Lo demás —`practicantes`, `grupos`, `miembros_grupo`, `quedadas`,
+Lo demás —`practicantes`, `equipos`, `miembros_equipo`, `quedadas`,
 `inscripciones`, `reacciones`, `enfoques`— sí escribe directo, y es
 deliberado: son cosas que se hacen sentado y con cobertura, no en mitad de un
 roll con el móvil en la bolsa. La cola existe por el tatami, no por gusto de
@@ -145,10 +205,10 @@ cosas que son del usuario y no del dispositivo:
 
 La caché de técnicas sí se queda: el diccionario es igual para todos.
 
-**La lectura de sesiones, rolls y eventos va por grupo.** Durante un tiempo
+**La lectura de sesiones, rolls y eventos va por equipo.** Durante un tiempo
 estuvo abierta a cualquier autenticado (`bjj_13`), que era el precio del
 selector de practicante del análisis. Ya no: desde `bjj_15` se lee lo de la
-gente con la que compartes grupo, y el filtro es
+gente con la que compartes equipo, y el filtro es
 `private.practicantes_visibles()`.
 
 **La escritura no se ha tocado nunca**: cada uno escribe lo suyo, y los
@@ -191,7 +251,7 @@ para el rival, y no se tocan.
 Las dos razones, y las dos cuentan. Verde contra naranja es el par que se cae
 con el daltonismo más común —cerca del 8 % de los hombres, y un gimnasio de BJJ
 es mayoritariamente hombres—; azul contra naranja sobrevive. Y como el acento
-es tematizable por grupo, si los colores de datos también lo fueran una
+es tematizable por equipo, si los colores de datos también lo fueran una
 academia podría elegir un color que deje ilegible su propio heatmap.
 
 `npm run test:contraste` lo comprueba: falla si el token de marca aparece en un
@@ -200,14 +260,14 @@ selector de datos, y falla si aparece un segundo verde en la hoja.
 **Qué se tematiza y qué no.** Está escrito en la cabecera de `globals.css`, que
 es la única fuente de tokens:
 
-| familia | ejemplo | ¿la cambia el grupo? |
+| familia | ejemplo | ¿lo cambia el equipo? |
 |---|---|---|
-| `--marca-*` | `--marca`, `--marca-texto`, `--marca-tinta` | **sí**, `grupos.color_acento` |
+| `--marca-*` | `--marca`, `--marca-texto`, `--marca-tinta` | **sí**, `equipos.color_acento` |
 | `--dato-*` | `--dato-yo`, `--dato-op`, `--dato-neg` | nunca |
 | estado | `--ok`, `--aviso`, `--error` | nunca |
 | superficies | `--plano`, `--superficie`, `--texto` | no, cambian con el tema |
 
-El grupo elige **un** color. De ahí `aplicarAcento()` (`src/lib/tema.ts`) deriva
+El equipo elige **un** color. De ahí `aplicarAcento()` (`src/lib/tema.ts`) deriva
 el texto legible midiendo contraste contra el fondo del tema, y la tinta del
 botón eligiendo entre negro y blanco. Por eso una academia puede poner el color
 que quiera sin dejarse la interfaz ilegible. El hex que llega de la base **se
@@ -272,7 +332,7 @@ src/lib/db.ts              IndexedDB (Dexie) + cola de salida
 src/lib/sync.ts            vaciado de la cola
 src/lib/database.types.ts  tipos del esquema (subconjunto escrito a mano)
 src/components/Marco.tsx   sesión, pestañas, píldora de sincronización
-src/components/Feed.tsx    qué ha pasado en el grupo, con reacciones
+src/components/Feed.tsx    qué ha pasado en el equipo, con reacciones
 src/components/Enfoque.tsx lo que dices que trabajas, contra lo que hiciste
 src/components/Tema.tsx    el store del tema y el interruptor
 src/components/Avatar.tsx  el cinturón de cada uno, en SVG
@@ -285,7 +345,8 @@ src/app/auth/reset         contraseña nueva
 src/app/practicantes       alta y edición del roster
 src/app/entreno            el logging: tu roll y el modo observador
 src/app/analisis           heatmaps, head-to-head, evolución, enfoque
-src/app/grupo              feed, ficha del grupo, miembros, unirse/crear
+src/app/equipo             feed, ficha del equipo, miembros, unirse/crear
+src/lib/textos/es.ts       las palabras de pantalla: "Team", "Open Mat"
 src/app/quedadas           próximas y pasadas, plazas, informe
 db/                        el esquema SQL, igual que lo desplegado
 db/pruebas/                los tests en SQL, uno por bloque
@@ -421,7 +482,7 @@ El proyecto tiene poca red de seguridad automática, así que:
   y además **con la RLS puesta**: pone el claim y hace `set local role
   authenticated` en cada consulta. Eso es lo que hace que un fallo de privacidad
   salga recorriendo la app y no en el móvil de alguien — la primera vez que se
-  activó, cazó la pantalla de grupo enseñando un grupo del que no eras miembro.
+  activó, cazó la pantalla de equipo enseñando un equipo del que no eras miembro.
 
   Las tablas y funciones que cruzan el puente están en `TABLAS_PUENTE` y
   `RPC_PUENTE`. Una tabla que no esté en la lista no da error: contesta `[]`

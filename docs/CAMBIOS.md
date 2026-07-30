@@ -18,6 +18,63 @@ Qué es obligatorio y qué no:
 
 ---
 
+## 2026-08-02 · Una palabra, un concepto
+
+**Migración:** `bjj_27_vocabulario` (`db/22_vocabulario.sql`). **NO aplicada a
+producción todavía** — ver "sabido roto". Probada desde cero y sobre la base
+local con 252 rolls.
+
+`grupo` significaba **cuatro** cosas, no tres: el gimnasio, la categoría de
+posición, el par de rolls espejo, y —la que el encargo no recogía— el parámetro
+`p_grupo` de `registrar_roll_observado()`, que era el `roll_grupo_id` y no el
+gimnasio. Lo delataba su propio comentario en `database.types.ts`: *"p_grupo es
+el roll_grupo_id"*. Un comentario que existe para desmentir un nombre es la
+definición de nombre malo. Ahora: `equipos`, `posiciones.categoria`,
+`rolls.par_id` y `p_par`. Más `rolls.orden` → `orden_en_sesion`,
+`inscripciones.orden` → `orden_en_lista`, `sesiones.tipo` → `formato`,
+`miembros_equipo.rol` → `rol_en_equipo` y `v_feed.tipo` → `tipo_de_elemento`.
+
+**Decisión: las vistas con `alter view … rename column`, nunca recreadas.**
+Recrear es drop + create y ahí se pierde `security_invoker = on` — sin él una
+vista lee con los permisos de su dueño y cualquiera ve los datos de otro equipo.
+Las 18 lo conservan y el comprobador lo vigila.
+
+**Decisión: `private.es_admin(p_grupo)` conserva su parámetro.** Postgres no deja
+renombrar un parámetro con `create or replace`, y hacerlo exigiría tirar la
+función — con **seis políticas** colgando de ella. Renombrar seis políticas de
+seguridad a mano vale menos que el nombre. Va abajo como sabido roto.
+
+**Decisión: `Team` y `Open Mat` viven en `src/lib/textos/es.ts`.** En la base es
+`equipos`, en español como el resto del esquema. Cambiar la etiqueta es una
+línea; cambiar el identificador es esto.
+
+**Lo que cazaron las pruebas, y son la razón de que existan.** La batería de RLS
+paró dos casos en rojo: al recrear cuatro funciones, Postgres les regaló
+`EXECUTE` a `PUBLIC` y `anon` volvía a poder llamarlas — se deshacía `bjj_25` en
+silencio. Y el recorrido de logros destapó que `feed()` devolvía
+`tipo_de_elemento` mientras el cliente leía `f.tipo`: el `switch` caía al icono
+por defecto y **TypeScript no dice nada**, porque la forma de una RPC es una
+interfaz escrita a mano.
+
+**Sabido roto:**
+- **`bjj_27` no está en producción.** `p_grupo` → `p_par` viaja serializado
+  dentro de IndexedDB: si alguien tiene rolls sin subir, fallan al sincronizar.
+  El orden es: los cuatro sincronizan y la píldora dice "al día" → migración y
+  despliegue del cliente **juntos**. Lo dice Felipe, no yo.
+- `private.es_admin` sigue con `p_grupo`, explicado arriba.
+- El payload JSON de `apuntarse_a_quedada` sigue con la clave `'orden'` aunque
+  la columna sea `orden_en_lista`: es una etiqueta de la respuesta, no un
+  identificador del esquema, y renombrarla no compra nada.
+- `db/09_grupos.sql` y `db/10_lectura_por_grupo.sql` conservan su nombre: son
+  migraciones ya aplicadas y renombrar el fichero cambiaría el orden en el CI.
+- La semilla sigue sin poder arrancar de una base vacía (necesita un equipo, y
+  `bjj_14` solo lo crea si ya hay practicantes). Pendiente de antes.
+
+**Backlog:** añadido revisar `academia` en `practicantes` y `sesiones`, que
+huele a redundante ahora que existen los equipos.
+
+---
+
 ## 2026-08-01 (noche) · La pantalla no se apaga mientras se rueda
 
 **Migraciones:** ninguna. Es todo cliente.

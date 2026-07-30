@@ -18,7 +18,7 @@ export type TipoSesion =
   | 'tecnica' | 'drilling' | 'sparring' | 'open_mat' | 'competicion' | 'privada';
 export type Actor = 'yo' | 'oponente';
 export type Rol = 'arriba' | 'abajo' | 'neutral';
-export type GrupoPosicion = 'neutral' | 'guardia' | 'dominante' | 'transicion';
+export type CategoriaPosicion = 'neutral' | 'guardia' | 'dominante' | 'transicion';
 export type Posicion =
   | 'de_pie' | 'clinch'
   | 'guardia_cerrada' | 'media_guardia' | 'mariposa' | 'de_la_riva'
@@ -60,12 +60,12 @@ export interface PracticanteRow {
   created_at: string;
 }
 
-export type RolGrupo = 'admin' | 'miembro';
+export type RolEnEquipo = 'admin' | 'miembro';
 export type EstadoMiembro = 'activo' | 'baja';
 export type EstadoQuedada = 'abierta' | 'cerrada' | 'cancelada';
 export type EstadoInscripcion = 'apuntado' | 'lista_espera' | 'cancelado';
 
-export interface GrupoRow {
+export interface EquipoRow {
   id: string;
   nombre: string;
   slug: string;
@@ -77,16 +77,16 @@ export interface GrupoRow {
 }
 
 export interface MiembroRow {
-  grupo_id: string;
+  equipo_id: string;
   practicante_id: string;
-  rol: RolGrupo;
+  rol_en_equipo: RolEnEquipo;
   estado: EstadoMiembro;
   created_at: string;
 }
 
 export interface QuedadaRow {
   id: string;
-  grupo_id: string;
+  equipo_id: string;
   titulo: string;
   fecha: string;
   hora_inicio: string | null;
@@ -117,8 +117,8 @@ export interface SesionInsert {
   practicante_id: string;
   fecha: string;
   academia?: string | null;
-  /** De qué grupo es. Sustituye al texto libre de `academia`. */
-  grupo_id?: string | null;
+  /** De qué equipo es. Sustituye al texto libre de `academia`. */
+  equipo_id?: string | null;
   /**
    * A qué quedada pertenece, si es que hay una. A nivel de sesión y no de
    * roll: todos los rolls de esa tarde en ese sitio son de esa quedada.
@@ -198,11 +198,14 @@ export interface EventoObservado {
  *
  * Los nombres son literalmente los de los parámetros en Postgres: PostgREST
  * los empareja por nombre, así que renombrar uno aquí rompe la llamada.
- * `p_grupo` es el `roll_grupo_id`, generado en el cliente — es la clave de
- * idempotencia que hace que reintentar no duplique el roll.
+ * `p_par` es el `par_id`: el identificador que comparten los dos rolls
+ * espejo del mismo combate. Lo genera el cliente, y es la clave de
+ * idempotencia que hace que reintentar no duplique el roll. Se llamaba
+ * `p_grupo`, que no tenía nada que ver con equipos y hacía falta un
+ * comentario como este para desmentirlo.
  */
 export interface ArgsRollObservado {
-  p_grupo: string;
+  p_par: string;
   p_practicante_a: string;
   p_practicante_b: string;
   p_fecha: string;
@@ -234,7 +237,7 @@ export interface TecnicaRow {
 export interface PosicionRow {
   codigo: Posicion;
   nombre: string;
-  grupo: GrupoPosicion;
+  categoria: CategoriaPosicion;
   es_guardia: boolean | null;
   core_v1: boolean;
 }

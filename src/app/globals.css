@@ -4,7 +4,7 @@
    Una sola fuente de verdad. Tres familias, y la diferencia entre ellas no es
    organizativa: es lo que decide qué puede cambiar una academia y qué no.
 
-     --marca-*    TEMATIZABLE. Sale del grupo (grupos.color_acento). Identidad:
+     --marca-*    TEMATIZABLE. Sale del equipo (equipos.color_acento). Identidad:
                   cabecera, pestaña activa, botón principal, enlaces, foco.
      --dato-*     NUNCA TEMATIZABLE. Azul = yo, naranja = el rival. Heatmaps,
                   marcador y barras.
@@ -13,7 +13,7 @@
    POR QUÉ EL VERDE NO ENTRA EN LOS DATOS. Verde contra naranja es el par que
    se cae con el daltonismo más común —cerca del 8 % de los hombres, y un
    gimnasio de BJJ es mayoritariamente hombres—; azul contra naranja sobrevive.
-   Y cuando el tema va por grupo, si los colores de datos fueran tematizables
+   Y cuando el tema va por equipo, si los colores de datos fueran tematizables
    una academia podría elegir un acento que deje ilegible su propio heatmap.
    `npm run test:contraste` falla si el verde aparece en un heatmap, una barra,
    el marcador o una leyenda.

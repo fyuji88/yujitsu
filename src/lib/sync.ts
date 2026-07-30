@@ -62,7 +62,7 @@ async function enviarFilas(
  * una fila, y escribe sesión + roll + eventos + espejo en una transacción.
  *
  * Se van borrando de la cola según entran, para que un fallo a la mitad no
- * arrastre a los que ya pasaron. Reenviarlos tampoco haría daño: `p_grupo` es
+ * arrastre a los que ya pasaron. Reenviarlos tampoco haría daño: `p_par` es
  * la clave de idempotencia y la función reconoce el reintento.
  */
 async function enviarObservados(lote: EnvioPendiente[]): Promise<string | null> {
@@ -83,7 +83,7 @@ let retenido = false;
  *
  * Lo usa el resumen del roll observado, donde todavía se puede corregir la
  * duración: si la cola sale antes, la corrección no llega — la RPC reconoce el
- * `roll_grupo_id` y devuelve el roll que ya existe sin tocarlo. Un campo
+ * `par_id` y devuelve el roll que ya existe sin tocarlo. Un campo
  * editable que en silencio no hace nada es peor que no tenerlo.
  *
  * El roll ya está a salvo en IndexedDB mientras tanto; esto solo retrasa la red.

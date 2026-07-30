@@ -33,7 +33,7 @@ export type DestinoCola = TablaRemota | 'roll_observado';
 export interface EnvioPendiente {
   /**
    * Clave de idempotencia. Para las tablas es el id de la fila; para el roll
-   * observado, el `roll_grupo_id`. En los dos casos lo genera el cliente, que
+   * observado, el `par_id`. En los dos casos lo genera el cliente, que
    * es lo que hace que reintentar tras perder cobertura no duplique nada.
    */
   id: string;
@@ -105,12 +105,12 @@ export async function encolar(tabla: TablaRemota, fila: SesionInsert | RollInser
  *
  * Va aparte de `encolar()` porque no es una fila sino una RPC, y porque la
  * unidad de reintento es distinta: aquí el roll entero se manda o no se manda,
- * no hay medio roll. La clave es `p_grupo`, así que reenviarlo es inofensivo —
+ * no hay medio roll. La clave es `p_par`, así que reenviarlo es inofensivo —
  * la función lo reconoce y devuelve lo que ya había.
  */
 export async function encolarRollObservado(args: ArgsRollObservado) {
   await local.outbox.put({
-    id: args.p_grupo, tabla: 'roll_observado', fila: args, creado: Date.now(), intentos: 0,
+    id: args.p_par, tabla: 'roll_observado', fila: args, creado: Date.now(), intentos: 0,
   });
 }
 

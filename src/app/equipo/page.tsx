@@ -6,16 +6,17 @@ import { Feed } from '@/components/Feed';
 import { Avatar } from '@/components/Avatar';
 import { RankingDelMes } from '@/components/Logros';
 import { supabase } from '@/lib/supabase';
+import { TEXTOS } from '@/lib/textos/es';
 import type {
-  GrupoRow, MiembroRow, PracticanteRow, RolGrupo,
+  EquipoRow, MiembroRow, PracticanteRow, RolEnEquipo,
 } from '@/lib/database.types';
 
 /**
- * Tu grupo: quién está dentro, quién manda, y cómo entra alguien nuevo.
+ * Tu equipo: quién está dentro, quién manda, y cómo entra alguien nuevo.
  *
  * La interfaz solo ofrece lo que la RLS permite: los botones de admin —el
  * código, regenerarlo, dar de alta a alguien— solo se pintan si eres admin de
- * ese grupo, que es la misma condición que la política de Postgres. Si la
+ * ese equipo, que es la misma condición que la política de Postgres. Si la
  * pantalla ofreciera más, el usuario vería errores en vez de botones ausentes.
  */
 
@@ -23,12 +24,12 @@ interface MiembroConFicha extends MiembroRow {
   ficha: PracticanteRow | undefined;
 }
 
-export default function Grupo() {
-  return <Marco titulo="Grupo">{(s) => <Panel sesion={s} />}</Marco>;
+export default function Equipo() {
+  return <Marco titulo={TEXTOS.equipo}>{(s) => <Panel sesion={s} />}</Marco>;
 }
 
 function Panel({ sesion }: { sesion: Sesion }) {
-  const [grupos, setGrupos] = useState<GrupoRow[]>([]);
+  const [equipos, setEquipos] = useState<EquipoRow[]>([]);
   const [miembros, setMiembros] = useState<MiembroRow[]>([]);
   const [roster, setRoster] = useState<PracticanteRow[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -42,11 +43,11 @@ function Panel({ sesion }: { sesion: Sesion }) {
     setCargando(true);
     const sb = supabase();
     const [g, m, p] = await Promise.all([
-      sb.from('grupos').select('*').order('nombre'),
-      sb.from('miembros_grupo').select('*'),
+      sb.from('equipos').select('*').order('nombre'),
+      sb.from('miembros_equipo').select('*'),
       sb.from('practicantes').select('*').order('nombre'),
     ]);
-    setGrupos((g.data ?? []) as GrupoRow[]);
+    setEquipos((g.data ?? []) as EquipoRow[]);
     setMiembros((m.data ?? []) as MiembroRow[]);
     setRoster((p.data ?? []) as PracticanteRow[]);
     setCargando(false);
@@ -54,9 +55,9 @@ function Panel({ sesion }: { sesion: Sesion }) {
 
   useEffect(() => { void cargar(); }, [cargar]);
 
-  const soyAdminDe = (grupoId: string) => miembros.some(
-    (m) => m.grupo_id === grupoId && m.practicante_id === sesion.practicante.id
-      && m.rol === 'admin' && m.estado === 'activo',
+  const soyAdminDe = (equipoId: string) => miembros.some(
+    (m) => m.equipo_id === equipoId && m.practicante_id === sesion.practicante.id
+      && m.rol_en_equipo === 'admin' && m.estado === 'activo',
   );
 
   async function unirse(e: React.FormEvent) {
@@ -65,8 +66,8 @@ function Panel({ sesion }: { sesion: Sesion }) {
     const { error } = await supabase().rpc('unirse_con_codigo', { p_codigo: codigo.trim() });
     setOcupado(false);
     if (error) {
-      setError(error.message.includes('no hay ningun grupo')
-        ? 'No hay ningún grupo con ese código. Compruébalo con quien te lo pasó.'
+      setError(error.message.includes('no hay ningun equipo')
+        ? `No hay ningún ${TEXTOS.equipo} con ese código. Compruébalo con quien te lo pasó.`
         : error.message);
       return;
     }
@@ -77,36 +78,36 @@ function Panel({ sesion }: { sesion: Sesion }) {
   async function crear(e: React.FormEvent) {
     e.preventDefault();
     setOcupado(true); setError(null); setAviso(null);
-    const { error } = await supabase().rpc('crear_grupo', { p_nombre: nombreNuevo.trim() });
+    const { error } = await supabase().rpc('crear_equipo', { p_nombre: nombreNuevo.trim() });
     setOcupado(false);
     if (error) { setError(error.message); return; }
-    setNombreNuevo(''); setAviso('Grupo creado. Eres su admin.');
+    setNombreNuevo(''); setAviso(`${TEXTOS.equipo} creado. Eres su admin.`);
     void cargar();
   }
 
-  async function regenerar(grupoId: string) {
+  async function regenerar(equipoId: string) {
     setOcupado(true); setError(null);
-    const { error } = await supabase().rpc('regenerar_codigo', { p_grupo: grupoId });
+    const { error } = await supabase().rpc('regenerar_codigo', { p_equipo: equipoId });
     setOcupado(false);
     if (error) { setError(error.message); return; }
     setAviso('Código nuevo. El anterior ya no vale.');
     void cargar();
   }
 
-  /** Alta manual de alguien del roster que todavía no está en el grupo. */
-  async function anadir(grupoId: string, practicanteId: string) {
+  /** Alta manual de alguien del roster que todavía no está en el equipo. */
+  async function anadir(equipoId: string, practicanteId: string) {
     setOcupado(true); setError(null);
-    const { error } = await supabase().from('miembros_grupo')
-      .insert({ grupo_id: grupoId, practicante_id: practicanteId, rol: 'miembro' });
+    const { error } = await supabase().from('miembros_equipo')
+      .insert({ equipo_id: equipoId, practicante_id: practicanteId, rol_en_equipo: 'miembro' });
     setOcupado(false);
     if (error) { setError(error.message); return; }
     void cargar();
   }
 
-  async function cambiarRol(grupoId: string, practicanteId: string, rol: RolGrupo) {
+  async function cambiarRol(equipoId: string, practicanteId: string, rol: RolEnEquipo) {
     setOcupado(true); setError(null);
-    const { error } = await supabase().from('miembros_grupo')
-      .update({ rol }).eq('grupo_id', grupoId).eq('practicante_id', practicanteId);
+    const { error } = await supabase().from('miembros_equipo')
+      .update({ rol_en_equipo: rol }).eq('equipo_id', equipoId).eq('practicante_id', practicanteId);
     setOcupado(false);
     if (error) { setError(error.message); return; }
     void cargar();
@@ -119,37 +120,37 @@ function Panel({ sesion }: { sesion: Sesion }) {
       {error && <p className="err" data-testid="error">{error}</p>}
       {aviso && <p className="hint" data-testid="aviso" style={{ color: 'var(--ok)' }}>{aviso}</p>}
 
-      {/* El feed va arriba: es lo que se abre a diario. La ficha del grupo y
+      {/* El feed va arriba: es lo que se abre a diario. La ficha del equipo y
           la lista de miembros se consultan de vez en cuando. */}
-      {grupos.length > 0 && (
+      {equipos.length > 0 && (
         <>
           <h2 className="sec" style={{ marginTop: 4 }}>Lo que está pasando</h2>
           <Feed practicanteId={sesion.practicante.id} />
 
-          {/* El ranking va aquí y no en el perfil porque es del GRUPO: sin
+          {/* El ranking va aquí y no en el perfil porque es del EQUIPO: sin
               alguien con quien compararte, un ranking de uno no es nada.
-              Del primer grupo, que con este tamaño es el único que hay. */}
-          <RankingDelMes grupoId={grupos[0].id} practicanteId={sesion.practicante.id}
+              Del primer equipo, que con este tamaño es el único que hay. */}
+          <RankingDelMes equipoId={equipos[0].id} practicanteId={sesion.practicante.id}
             roster={Object.fromEntries(roster.map((p) => [p.id, p.nombre]))} />
         </>
       )}
 
-      {grupos.map((g) => {
+      {equipos.map((g) => {
         const admin = soyAdminDe(g.id);
         const suyos: MiembroConFicha[] = miembros
-          .filter((m) => m.grupo_id === g.id && m.estado === 'activo')
+          .filter((m) => m.equipo_id === g.id && m.estado === 'activo')
           .map((m) => ({ ...m, ficha: roster.find((p) => p.id === m.practicante_id) }))
-          .sort((a, b) => (a.rol === b.rol
+          .sort((a, b) => (a.rol_en_equipo === b.rol_en_equipo
             ? (a.ficha?.nombre ?? '').localeCompare(b.ficha?.nombre ?? '')
-            : a.rol === 'admin' ? -1 : 1));
+            : a.rol_en_equipo === 'admin' ? -1 : 1));
         const fuera = roster.filter(
-          (p) => !miembros.some((m) => m.grupo_id === g.id && m.practicante_id === p.id),
+          (p) => !miembros.some((m) => m.equipo_id === g.id && m.practicante_id === p.id),
         );
 
         return (
-          <div key={g.id} data-testid={`grupo-${g.slug}`}>
+          <div key={g.id} data-testid={`equipo-${g.slug}`}>
             <div className="state" style={{ marginTop: 12 }}>
-              <div className="lbl">Tu grupo</div>
+              <div className="lbl">{TEXTOS.tuEquipo}</div>
               <div className="pos">{g.nombre}</div>
               <div className="rol">
                 {suyos.length} {suyos.length === 1 ? 'miembro' : 'miembros'}
@@ -193,13 +194,13 @@ function Panel({ sesion }: { sesion: Sesion }) {
                       {!m.ficha?.usa_sistema && ' · sin cuenta'}
                     </small>
                   </span>
-                  <span className="pill">{m.rol}</span>
+                  <span className="pill">{m.rol_en_equipo}</span>
                   {admin && m.practicante_id !== sesion.practicante.id && (
                     <button className="ghost" disabled={ocupado}
                       style={{ padding: '7px 10px', fontSize: 12 }}
                       onClick={() => void cambiarRol(g.id, m.practicante_id,
-                        m.rol === 'admin' ? 'miembro' : 'admin')}>
-                      {m.rol === 'admin' ? 'Quitar admin' : 'Hacer admin'}
+                        m.rol_en_equipo === 'admin' ? 'miembro' : 'admin')}>
+                      {m.rol_en_equipo === 'admin' ? 'Quitar admin' : 'Hacer admin'}
                     </button>
                   )}
                 </div>
@@ -227,10 +228,10 @@ function Panel({ sesion }: { sesion: Sesion }) {
         );
       })}
 
-      <h2 className="sec">{grupos.length ? 'Entrar en otro grupo' : 'Entrar en un grupo'}</h2>
-      {!grupos.length && (
+      <h2 className="sec">{equipos.length ? `Entrar en otro ${TEXTOS.equipo}` : `Entrar en un ${TEXTOS.equipo}`}</h2>
+      {!equipos.length && (
         <p className="hint" style={{ marginTop: 0 }}>
-          Todavía no estás en ninguno. Pide el código a quien lleve el grupo, o crea el tuyo.
+          Todavía no estás en ninguno. Pide el código a quien lleve {TEXTOS.elEquipo}, o crea el tuyo.
         </p>
       )}
       <form onSubmit={unirse}>
@@ -247,17 +248,17 @@ function Panel({ sesion }: { sesion: Sesion }) {
 
       <h2 className="sec">O crea uno</h2>
       <form onSubmit={crear}>
-        <label htmlFor="nuevo">Nombre del grupo</label>
-        <input id="nuevo" value={nombreNuevo} data-testid="nombre-grupo"
+        <label htmlFor="nuevo">Nombre {TEXTOS.delEquipo}</label>
+        <input id="nuevo" value={nombreNuevo} data-testid="nombre-equipo"
           placeholder="Open mat de los domingos"
           onChange={(e) => setNombreNuevo(e.target.value)} />
         <div style={{ marginTop: 14 }}>
-          <button className="ghost" type="submit" data-testid="crear-grupo"
-            disabled={ocupado || nombreNuevo.trim().length < 2}>Crear grupo</button>
+          <button className="ghost" type="submit" data-testid="crear-equipo"
+            disabled={ocupado || nombreNuevo.trim().length < 2}>Crear {TEXTOS.equipo}</button>
         </div>
       </form>
       <p className="hint">
-        No hace falta que sea un gimnasio: un open mat entre amigos es un grupo igual.
+        No hace falta que sea un gimnasio: un {TEXTOS.quedada} entre amigos es un {TEXTOS.equipo} igual.
       </p>
     </>
   );
