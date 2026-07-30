@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Marco, type Sesion } from '@/components/Marco';
 import { Enfoque } from '@/components/Enfoque';
+import { Coleccion } from '@/components/Logros';
 import { useTema } from '@/components/Tema';
 import { contraste } from '@/lib/tema';
 import { supabase } from '@/lib/supabase';
@@ -259,6 +260,13 @@ function Panel({ sesion }: { sesion: Sesion }) {
           lo que tiene sentido hacer antes de empezar. */}
       {!cargando && (
         <Enfoque practicanteId={autor} esMio={esMio} nombre={quien?.nombre ?? ''} />
+      )}
+
+      {/* La coleccion va aqui, y no en una pestaña propia, por la misma razon
+          que el enfoque: esta pantalla ya es la ficha de cada uno — tiene el
+          selector de practicante y todo lo que se sabe de su juego. */}
+      {!cargando && (
+        <Coleccion practicanteId={autor} esMio={esMio} nombre={quien?.nombre ?? ''} />
       )}
 
       {!cargando && datos && k && k.rolls > 0 && (

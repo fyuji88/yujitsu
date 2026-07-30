@@ -95,7 +95,7 @@ quinta es la que te dice si se está muriendo despacio.
 | 🟡 Media | **Retos semanales.** El enum `bjj_tipo_regla` ya está en el esquema esperándolos. Demo dibujada. |
 | 🟡 Media | **El mapa de tu juego.** Posiciones que se encienden al finalizar desde ellas por primera vez. Barato y motivador. Demo dibujada. |
 | 🟡 Media | **Némesis y cliente.** Una consulta sobre `v_h2h`, por proporción y no por bruto, mínimo 10 rolls. Demo dibujada. |
-| 🟡 Media | **Logros mensuales y su ranking.** Distintos de los títulos de la quedada: absolutos y acumulables, un predicado por roll, contables ("IMPASABLE ×14"). Nombres **en español** (son chistes, y los chistes no se traducen), guardados como `clave` + fichero de textos para que el idioma sea reversible. Iconos **pictogramas propios de línea, un solo acento, oro solo para los raros** — SVG y no emoji, porque la tarjeta compartible tiene que verse igual en todos los móviles. Diseño en `docs/04-logros-privacidad-y-grupo.md` y `docs/LOGROS-diseno.html`. |
+| ~~🟡 Media~~ | ~~**Logros mensuales y su ranking**~~ — **hecho** (`bjj_21`): 27 logros derivados, colección en la ficha, ranking del mes y feed agregado por sesión. Falta cerrar `el_ultimo_en_irse`, que se dejó fuera porque `rolls.orden` es por sesión y no por quedada. |
 | 🟡 Media | **Sesgo de los logros: ausencia contra presencia.** Los logros que se definen por **la ausencia** de algo (IMPASABLE, LIMPIO, MURO, CUELLO DE ACERO, CINTURÓN INVISIBLE) se inflan solos con no registrar el evento, así que **requieren `origen = 'observador'`**. Los de presencia no, porque para conseguirlos hubo que registrar algo activamente. Flag `requiere_observador` en el catálogo; `rolls.origen` ya existe. Y la procedencia se enseña: "×14 · 5 verificados 👁", con el ranking contando solo verificados por defecto. |
 | 🟡 Media | **Logros en el feed: resumen por sesión, no un elemento por logro.** "Pablo registró 6 rolls anoche · IMPASABLE ×2 · MURO · RELÁMPAGO". Con elemento propio solo para la primera vez, los números redondos (×5, ×10, ×25), el primero del grupo y los raros. Un elemento por logro serían ~150 a la semana con doce personas, y eso mata el feed y las reacciones a la vez. |
 | 🟡 Media | **La familia de logros de constancia** — EL NOTARIO, OJO DEL COACH, SEMANA COMPLETA. Son los únicos que premian **registrar** en vez de rendir, y registrar es el único riesgo que mata el producto. De todos los logros, estos primero. |
@@ -124,6 +124,8 @@ Paleta de Gullo medida del logo: verde **`#458c50`**, hueso `#f1f0ee`, naranja
 | 🟢 Baja | **Confirmación sin mirar**: vibración corta y micro-animación al registrar. |
 | ~~🟢 Baja~~ | ~~**Icono, splash y manifest**~~ — **hecho** con el logo de Gullo: 192, 512, enmascarable al 68 %, `apple-touch-icon` y once splash de iPhone. Se regeneran con `scripts/iconos.mjs`, que también escribe la lista de `src/lib/splash.ts`. Sin iPad, a propósito. |
 | 🟢 Baja | **Tipografía de display** parecida al wordmark de Gullo. La **escala tipográfica ya está declarada** (seis pasos, `--txt-1` … `--txt-6`), igual que la de espaciado de 4px, los radios y las sombras. |
+
+| 🟢 Baja | **Un reto cuya regla sea "consigue el logro X N veces".** Los retos ya tienen ventana, objetivo y progreso guardado; los logros ya son un predicado contable. Engancharlos es barato y da retos que se validan solos, sin que nadie tenga que arbitrar. |
 
 # 7 · Datos y ciencia de datos
 

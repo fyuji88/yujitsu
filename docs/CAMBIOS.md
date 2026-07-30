@@ -18,6 +18,53 @@ Qué es obligatorio y qué no:
 
 ---
 
+## 2026-07-30 · Logros
+
+**Migraciones:** `bjj_21_logros` — **aplicada solo en local, NO en producción.**
+Está entera en `db/16_logros.sql`.
+
+**Entregado:** catálogo de 27 logros, `v_logros_conseguidos` / `v_logros_practicante`
+/ `v_logros_mes`, colección en la ficha del practicante, ranking del mes en Grupo,
+y los logros dentro del feed. Textos en `src/lib/textos/logros.es.ts` y pictogramas
+en `src/lib/logros-iconos.ts`, los dos generados de sus fuentes.
+
+**Decisiones:**
+- **`el_ultimo_en_irse` se queda FUERA del catálogo.** Su predicado es "el roll con
+  el mayor orden de la quedada es del practicante", y `rolls.orden` es el orden
+  dentro de la sesión de cada uno, no de la quedada: cada persona numera los suyos
+  1..n. Así que no premia irse el último, premia haber rodado más —que ya lo cuenta
+  EL NOTARIO— y empata a todos los que lleguen al mismo número. **Lo tiene que
+  cerrar Felipe.** Alternativas: (a) el último `created_at` de la quedada, que con
+  la cola offline mide quién sincronizó y no quién rodó; (b) una hora de fin en el
+  roll, que es un dato nuevo que hoy no se registra; (c) quitarlo.
+- **`de_vuelta` se lee con el criterio de `rol`.** "El oponente llegó a montada" es
+  un evento suyo con `rol = arriba`; con `rol = abajo` sería justo lo contrario y
+  el logro saldría al revés. El test lo cubre con los dos casos.
+- **`primera_vez` cuenta una por roll** aunque el roll estrene dos posiciones: el
+  ámbito es `roll` y `veces` cuenta instancias del ámbito, no eventos.
+- **`impasable` es literal**: cero eventos `pase_guardia` del oponente, completados
+  o no. Un pase fallado también rompe el logro.
+- **La colección vive en Análisis y el ranking en Grupo.** No hay pantalla de
+  perfil; Análisis ya es la ficha de cada uno —tiene el selector de practicante—
+  y un ranking sin nadie con quien compararte no es un ranking.
+
+**Sabido roto:**
+- **`v_logros_conseguidos` tarda 1,65 s con 252 rolls, y el feed 4,5 s.** Es
+  usable pero no es rápido, y crece con los datos. El primer intento del feed
+  reevaluaba la vista una vez por sesión y se pasaba de los 30 s de timeout; se
+  arregló con un join en vez de una subconsulta correlacionada, y con un índice
+  de cobertura. **Si sigue subiendo, toca materializar la vista** — que es lo
+  previsto, y no guardar contadores a mano.
+- **No está en producción.** El código de pantalla degrada solo si se despliega
+  sin la migración: la colección no se pinta y el ranking sale vacío, sin errores.
+- Los cuatro logros de ámbito `quedada` no tienen datos reales todavía: ninguna
+  sesión de producción cuelga de una quedada.
+- El feed no marca "el primero del grupo en conseguirlo"; están los otros tres
+  casos (primera vez, redondos y raros).
+
+**Backlog:** tachados los logros; anotado el reto tipo "consigue X N veces".
+
+
 ## 2026-07-30 · Tema Gullo y sistema de diseño
 
 **Migraciones:** `bjj_20_acento_del_grupo` (`grupos.color_acento`, con check de hex).

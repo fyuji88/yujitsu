@@ -453,3 +453,52 @@ nav.tabs a.on{color:var(--marca-texto);background:var(--marca-suave);
 .av svg{display:block}
 .av .av-nm{font-size:var(--txt-2);font-weight:560;text-align:center;color:var(--texto)}
 .av .av-cb{font-size:var(--txt-1);color:var(--tenue);text-align:center;line-height:1.3}
+
+/* ---- Logros ------------------------------------------------------------
+   Tres niveles de brillo y ningún degradado. El oro va solo en el filo de los
+   raros; un icono que brilla siempre deja de significar nada. */
+.viz .col-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));
+  gap:var(--esp-2);margin-top:var(--esp-3)}
+.logro{display:flex;flex-direction:column;align-items:center;text-align:center;
+  gap:3px;padding:var(--esp-3) 6px;border:1px solid var(--borde);
+  border-radius:var(--radio-3);background:var(--superficie);
+  color:var(--tenue);opacity:.55}
+.logro.on{color:var(--marca-texto);opacity:1;border-color:var(--marca-filo);
+  background:var(--marca-suave)}
+/* El filo dorado, y solo el filo. */
+.logro.raro.on{border-color:#c8a13a;box-shadow:inset 0 0 0 1px rgba(200,161,58,.45)}
+.logro .logro-nm{font-size:9.5px;font-weight:700;letter-spacing:.04em;
+  line-height:1.15;color:var(--texto)}
+.logro:not(.on) .logro-nm{color:var(--tenue)}
+.logro .logro-n{font-size:var(--txt-2);font-weight:640;
+  font-variant-numeric:tabular-nums;color:var(--marca-texto)}
+.logro .logro-ver{color:var(--tenue);font-weight:500}
+.logro .logro-d{font-size:9.5px;line-height:1.25;color:var(--tenue)}
+
+/* El brillo va en el momento: medio segundo al desbloquear, y se acabó. */
+@keyframes logro-brilla{
+  0%  {transform:scale(.8);opacity:.3}
+  45% {transform:scale(1.12);opacity:1}
+  100%{transform:scale(1);opacity:1}
+}
+.logro.recien{animation:logro-brilla .55s ease-out}
+@media (prefers-reduced-motion: reduce){ .logro.recien{animation:none} }
+
+/* El ranking del mes */
+.viz .rank{display:flex;flex-direction:column;gap:6px;margin-top:var(--esp-2)}
+.viz .rank .tr{display:grid;grid-template-columns:20px 1fr auto;align-items:center;
+  gap:var(--esp-2);font-size:var(--txt-3);padding:6px var(--esp-2);
+  border-radius:var(--radio-1)}
+.viz .rank .tr.yo{background:var(--marca-suave);font-weight:640}
+.viz .rank .pos{color:var(--tenue);font-size:var(--txt-2);
+  font-variant-numeric:tabular-nums;text-align:right}
+.viz .rank .v{font-variant-numeric:tabular-nums;font-weight:640}
+
+/* Los logros dentro de un elemento del feed */
+.logros-feed{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.logros-feed .lf{display:inline-flex;align-items:center;gap:4px;
+  font-size:var(--txt-1);font-weight:640;letter-spacing:.03em;
+  color:var(--marca-texto);background:var(--marca-suave);
+  border:1px solid var(--marca-filo);border-radius:var(--radio-pill);
+  padding:2px 8px}
+.logros-feed .lf.raro{border-color:#c8a13a}

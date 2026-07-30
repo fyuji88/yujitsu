@@ -27,7 +27,7 @@ PSQL = os.environ.get('PSQL')
 PGURL = os.environ.get('PGURL')
 TABLAS_PUENTE = ('practicantes', 'tecnicas', 'grupos', 'miembros_grupo',
                  'quedadas', 'inscripciones', 'v_mi_quedada_hoy', 'reacciones',
-                 'enfoques')
+                 'enfoques', 'logros', 'v_logros_practicante', 'v_logros_mes')
 RPC_PUENTE = ('analisis', 'analisis_rolls_celda', 'unirse_con_codigo',
               'crear_grupo', 'regenerar_codigo', 'apuntarse_a_quedada',
               'cancelar_inscripcion', 'quedada_por_token', 'feed',

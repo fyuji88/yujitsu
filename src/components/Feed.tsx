@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { textoLogro } from '@/lib/textos/logros.es';
 
 /**
  * El feed del grupo.
@@ -46,7 +47,30 @@ function haceCuanto(iso: string) {
 const ICONO: Record<string, string> = {
   sesion: '🥋', posicion: '🗺️', reto: '🏅',
   quedada: '📅', inscripcion: '✋', miembro: '👋',
+  logro: '🏆', mes: '📆',
 };
+
+/**
+ * Los logros de una sesión, dentro de su elemento.
+ *
+ * Aquí está la decisión de producto que evita que el feed se ahogue: un
+ * elemento por logro serían unas 150 entradas semanales con doce personas, y
+ * eso entierra el informe de la quedada, entierra quién se apunta y se lleva
+ * por delante las reacciones — nadie pone 🔥 en el elemento número noventa.
+ * Así no se pierde nada y encima se lee mejor.
+ */
+function LogrosDeLaSesion({ lista }: { lista: { clave: string; veces: number }[] }) {
+  if (lista.length === 0) return null;
+  return (
+    <div className="logros-feed">
+      {lista.map((l) => (
+        <span key={l.clave} className="lf">
+          {textoLogro(l.clave).nombre}{l.veces > 1 ? ` ×${l.veces}` : ''}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 function texto(i: Item) {
   const d = i.datos;
@@ -74,6 +98,20 @@ function texto(i: Item) {
       </>;
     case 'miembro':
       return <><b>{i.quien}</b> entró en el grupo</>;
+    case 'logro': {
+      const n = textoLogro(String(d.clave)).nombre;
+      const veces = Number(d.veces ?? 1);
+      // Cuatro motivos, y cada uno se cuenta distinto: decir "por primera vez"
+      // cuando alguien va por la décima es lo que hace que la gente deje de
+      // leer el feed.
+      if (d.motivo === 'primera') return <><b>{i.quien}</b> consiguió <b>{n}</b> por primera vez</>;
+      if (d.motivo === 'redondo') return <><b>{i.quien}</b> llegó a <b>{n} ×{veces}</b></>;
+      return <><b>{i.quien}</b> consiguió <b>{n}</b>, que es de los raros</>;
+    }
+    case 'mes': {
+      const r = (d.ranking ?? []) as { clave: string; veces: number }[];
+      return <>Cierre de mes · {r.length} {r.length === 1 ? 'logro repartido' : 'logros repartidos'}</>;
+    }
     default:
       return <>{i.quien}</>;
   }

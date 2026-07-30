@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Marco, type Sesion } from '@/components/Marco';
 import { Feed } from '@/components/Feed';
 import { Avatar } from '@/components/Avatar';
+import { RankingDelMes } from '@/components/Logros';
 import { supabase } from '@/lib/supabase';
 import type {
   GrupoRow, MiembroRow, PracticanteRow, RolGrupo,
@@ -124,6 +125,12 @@ function Panel({ sesion }: { sesion: Sesion }) {
         <>
           <h2 className="sec" style={{ marginTop: 4 }}>Lo que está pasando</h2>
           <Feed practicanteId={sesion.practicante.id} />
+
+          {/* El ranking va aquí y no en el perfil porque es del GRUPO: sin
+              alguien con quien compararte, un ranking de uno no es nada.
+              Del primer grupo, que con este tamaño es el único que hay. */}
+          <RankingDelMes grupoId={grupos[0].id} practicanteId={sesion.practicante.id}
+            roster={Object.fromEntries(roster.map((p) => [p.id, p.nombre]))} />
         </>
       )}
 
