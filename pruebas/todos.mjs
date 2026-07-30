@@ -33,6 +33,7 @@ const RECORRIDOS = [
   ['analisis-tema.js', 'el panel en los dos temas: rampa, verde fuera de los datos'],
   ['enfoques.js', 'los enfoques: contraste contra la RPC, historial, permisos'],
   ['logros.js', 'los logros: coleccion, ranking del mes y feed sin inundar'],
+  ['pantalla.js', 'la pantalla encendida: se pide al rodar y se suelta al acabar'],
 ];
 
 async function vivo(url) {

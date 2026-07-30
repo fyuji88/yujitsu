@@ -22,8 +22,8 @@ alguien registra. **Media** · mejora real, no urgente. **Baja** · buena idea s
 ventana clara, o esperando a que pase algo antes.
 
 Han salido **dieciocho altas**, que son más de las que me gustaría — pero la mitad
-son baratas, no grandes: mantener la pantalla encendida son cinco líneas y quitar
-`molestias` es un borrado. "Alta" aquí significa prioridad, no tamaño.
+son baratas, no grandes: mantener la pantalla encendida son unas pocas líneas y
+quitar `molestias` es un borrado. "Alta" aquí significa prioridad, no tamaño.
 
 Si solo puedes con cinco cosas, este es el orden: **el login**, **las copias de
 seguridad**, **que la cola no pierda nada**, **las pruebas de RLS** y **los cuatro
@@ -67,7 +67,7 @@ quinta es la que te dice si se está muriendo despacio.
 | 🔴 **Alta** | **Pantalla de análisis y heatmaps.** Es la recompensa de registrar; sin ella el registro no paga. Vistas desplegadas y prompt escrito, con selector de practicante, filtro gi/nogi, cuentas en vez de porcentajes con pocos datos, y toque en una celda para ver los rolls detrás. |
 | 🔴 **Alta** | **Ficha del rival antes de rodar.** Tres líneas sobre el compañero que tienes delante. Es lo único del producto que te sirve **esa misma tarde** en vez de dentro de tres meses, y sale de vistas que ya existen. |
 | 🔴 **Alta** | **Tarjeta de resumen del roll.** Dominancia, ganador con gracia, exportable. Cierra de paso el bloque de posesión. Y es el átomo del que se construye el informe de la quedada. |
-| 🔴 **Alta** | **Mantener la pantalla encendida** durante el roll (`wakeLock`). Cinco líneas. Evita perder medio roll, que es el fallo práctico número uno del registro en vivo. |
+| ~~🔴 Alta~~ | ~~**Mantener la pantalla encendida** durante el roll (`wakeLock`)~~ — **hecho**: `src/lib/pantalla.ts`, activo solo mientras `fase === 'roll'` para no comerse la batería del entreno entero. Se vuelve a pedir al volver de una distracción, que es cuando el navegador lo suelta. Eran más de cinco líneas. |
 | 🟡 Media | **Tiempo de dominio / posesión.** El dato ya se captura en `segundo_roll`; falta decidir cómo se cierra el último tramo y qué cuenta como disputa. |
 | 🟡 Media | **Línea de tiempo del roll, editable.** Deshacer solo el último evento se queda corto en cuanto hay marcador visible. |
 | 🟡 Media | **Radar de efectividad** en la tarjeta. Bloqueado: pases y barridas fallados no se registran, así que dos de los cinco ejes no tienen denominador. |

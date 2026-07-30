@@ -18,6 +18,38 @@ Qué es obligatorio y qué no:
 
 ---
 
+## 2026-08-01 (noche) · La pantalla no se apaga mientras se rueda
+
+**Migraciones:** ninguna. Es todo cliente.
+
+`src/lib/pantalla.ts` mantiene la pantalla encendida **solo mientras
+`fase === 'roll'`**. Sujetarlo a toda la sesión de entreno se comería la batería
+de quien viene dos horas, y en un gimnasio no se recarga.
+
+**Decisión: se vuelve a pedir en cada `visibilitychange`.** El navegador suelta
+el bloqueo en cuanto la pestaña se oculta —una llamada, mirar el WhatsApp— y no
+lo devuelve al volver. Sin eso funcionaría hasta la primera distracción, que es
+justo cuando hace falta.
+
+**El recorrido encontró una fuga de verdad**: al volver se pedía un bloqueo
+nuevo y se perdía la referencia del anterior. Salían 2 peticiones y 1 suelta. El
+código daba por hecho que el navegador ya lo había soltado —la especificación
+dice que sí, pero esperar a que otro limpie por ti no da síntoma hasta que el
+móvil está al 4 %—. Ahora suelta el anterior antes de pedir otro.
+
+**`pruebas/pantalla.js`**, sexto recorrido de `npm run test:navegador`. Espía
+`navigator.wakeLock` porque el de verdad rechaza sin cabeza, y así "no lo pide"
+no se confunde con "lo pide y le dicen que no". Comprobado que falla si se
+desactiva el hook.
+
+**Sabido roto:** `analisis-tema.js` falló una vez en lote y pasó solo y en el
+lote siguiente — no encontró celdas, o sea que midió antes de que cargara. Si
+reaparece, es una espera que falta, no una regresión.
+
+**Backlog:** tachada la de la pantalla encendida.
+
+---
+
 ## 2026-08-01 (tarde) · Copias de seguridad, y fuera `molestias`
 
 **Migraciones:** `bjj_26_fuera_molestias`, aplicada a producción. Datos

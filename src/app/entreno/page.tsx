@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Marco, type Sesion } from '@/components/Marco';
 import { supabase } from '@/lib/supabase';
+import { usarPantallaEncendida } from '@/lib/pantalla';
 import {
   CLAVE_SESION, CLAVE_TECNICAS, encolar, encolarRollObservado, nuevoId,
 } from '@/lib/db';
@@ -87,6 +88,16 @@ function Flujo({ sesion }: { sesion: Sesion }) {
   const [fase, setFase] = useState<
     'inicio' | 'observadorA' | 'oponente' | 'quienArriba' | 'roll' | 'fin'
   >('inicio');
+
+  /**
+   * La pantalla no se apaga mientras se rueda.
+   *
+   * Atado a `fase === 'roll'` y no a la pantalla entera: retenerlo toda la
+   * sesion se come la bateria de quien ha venido a entrenar dos horas, y sin
+   * el, cuarenta segundos de roll en el suelo bastan para que el movil se
+   * bloquee y se pierda medio registro.
+   */
+  usarPantallaEncendida(fase === 'roll');
 
   const [modo, setModo] = useState<Modo>('propio');
   const [practA, setPractA] = useState<PracticanteRow | null>(null);
