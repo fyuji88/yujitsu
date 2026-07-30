@@ -141,10 +141,7 @@ personal: ahora hay una unidad social —el **equipo**— y todo cuelga de ella.
 - Supabase: proyecto `idzlxkxeadrcolcnmoeo`, org `yujitsu`, eu-west-1, plan gratuito
 - Vercel: `yujitsu-eight.vercel.app`, plan Hobby
 - GitHub: `fyuji88/yujitsu`, privado, rama `main`
-- 26 migraciones aplicadas (`bjj_01` … `bjj_26`), copia en `db/`. **`bjj_27`
-  está escrita y probada pero NO aplicada a producción**: renombra un parámetro
-  que viaja dentro de la cola de salida, así que primero hay que vaciar la cola
-  de los cuatro. Ver `docs/CAMBIOS.md`.
+- 27 migraciones aplicadas (`bjj_01` … `bjj_27`), copia en `db/`
 
 **Datos reales, pero pocos.** El diccionario (24 posiciones, 63 técnicas), el
 equipo "Gullo" y unos 250 rolls entre Felipe, Pablo, Nicolas y Sasza.

@@ -20,9 +20,10 @@ Qué es obligatorio y qué no:
 
 ## 2026-08-02 · Una palabra, un concepto
 
-**Migración:** `bjj_27_vocabulario` (`db/22_vocabulario.sql`). **NO aplicada a
-producción todavía** — ver "sabido roto". Probada desde cero y sobre la base
-local con 252 rolls.
+**Migración:** `bjj_27_vocabulario` (`db/22_vocabulario.sql`), **aplicada a
+producción**. Datos intactos: 253 rolls, 1415 eventos, 65 sesiones, 9 fichas, y
+los 253 rolls con `par_id`. Copia previa tomada **y restaurada** antes de tocar
+nada — cuadraba fila por fila.
 
 `grupo` significaba **cuatro** cosas, no tres: el gimnasio, la categoría de
 posición, el par de rolls espejo, y —la que el encargo no recogía— el parámetro
@@ -56,11 +57,27 @@ silencio. Y el recorrido de logros destapó que `feed()` devolvía
 por defecto y **TypeScript no dice nada**, porque la forma de una RPC es una
 interfaz escrita a mano.
 
+**El despliegue salió al revés de lo planeado, y conviene saberlo.** Vercel
+despliega solo al hacer push, así que el cliente nuevo llevaba un rato pidiendo
+`equipo_id` a un esquema que aún decía `grupo_id`: producción estuvo rota entre
+el push y la migración. Aplicar dejó de ser el riesgo y pasó a ser el arreglo.
+**La próxima vez que una migración y el cliente tengan que ir juntos, el push va
+después**, o se despliega desde una rama.
+
+**Verificado en producción**, no supuesto: `/equipos` responde 401 (existe, y
+`anon` no lee) y `/grupos` da 404, o sea que PostgREST recargó el caché; la RPC
+con `p_par` da 42501 permission denied —existe— y con `p_grupo` da PGRST202 —ya
+no—; como usuario autenticado salen 253 rolls, 253 filas de puntos, 50 logros,
+`feed()` con 20 elementos y `analisis()` respondiendo; 18/18 vistas conservan
+`security_invoker`; y **ninguna** función es ejecutable por `anon`. El linter de
+Supabase no saca nada nuevo.
+
 **Sabido roto:**
-- **`bjj_27` no está en producción.** `p_grupo` → `p_par` viaja serializado
-  dentro de IndexedDB: si alguien tiene rolls sin subir, fallan al sincronizar.
-  El orden es: los cuatro sincronizan y la píldora dice "al día" → migración y
-  despliegue del cliente **juntos**. Lo dice Felipe, no yo.
+- **La cola vieja ya no entra.** Un roll observado que quedara sin subir lleva
+  `p_grupo` dentro y ahora recibe PGRST202. Si a alguien le aparece un error de
+  sincronización, es esto: se puede rescatar añadiendo una sobrecarga temporal
+  con el nombre viejo que reenvíe a la nueva, pero no se ha hecho — reintroduce
+  el nombre ambiguo y no sabemos si hay algo pendiente.
 - `private.es_admin` sigue con `p_grupo`, explicado arriba.
 - El payload JSON de `apuntarse_a_quedada` sigue con la clave `'orden'` aunque
   la columna sea `orden_en_lista`: es una etiqueta de la respuesta, no un
