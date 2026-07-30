@@ -20,8 +20,9 @@ Qué es obligatorio y qué no:
 
 ## 2026-07-30 · Logros
 
-**Migraciones:** `bjj_21_logros` — **aplicada solo en local, NO en producción.**
-Está entera en `db/16_logros.sql`.
+**Migraciones:** `bjj_21_logros`, **aplicada a producción** el 31 de julio, en
+una sola transacción y con `psql -f`. Datos intactos antes y después: 247 rolls,
+1392 eventos, 9 practicantes.
 
 **Entregado:** catálogo de 27 logros, `v_logros_conseguidos` / `v_logros_practicante`
 / `v_logros_mes`, colección en la ficha del practicante, ranking del mes en Grupo,
@@ -55,8 +56,17 @@ en `src/lib/logros-iconos.ts`, los dos generados de sus fuentes.
   arregló con un join en vez de una subconsulta correlacionada, y con un índice
   de cobertura. **Si sigue subiendo, toca materializar la vista** — que es lo
   previsto, y no guardar contadores a mano.
-- **No está en producción.** El código de pantalla degrada solo si se despliega
-  sin la migración: la colección no se pinta y el ranking sale vacío, sin errores.
+- **Dos logros renombrados por Felipe al revisar el catálogo**: SIN MARCAR pasa
+  a **FLAWLESS VICTORY** y DE VUELTA a **HIGHLANDER**. Costó una línea en el
+  fichero de textos, que es exactamente para lo que se separó del esquema.
+- **A vigilar cuando haya datos de verdad**: FLAWLESS VICTORY y LIMPIO salen
+  baratos. En producción, Goku los tiene ×74 y ×42 sobre 138 rolls. Un logro que
+  cae en la mitad de los rolls deja de significar algo; si se confirma, hay que
+  endurecer el predicado.
+- **EL ANCLA es el que menos me convence** y se lo dije a Felipe: los otros dos
+  de cachondeo premian algo que hiciste, y este premia que el observador dejara
+  de pulsar dos minutos. Con un observador distraído salta solo. Sigue dentro,
+  pero apagado como toda su familia.
 - Los cuatro logros de ámbito `quedada` no tienen datos reales todavía: ninguna
   sesión de producción cuelga de una quedada.
 - El feed no marca "el primero del grupo en conseguirlo"; están los otros tres

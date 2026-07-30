@@ -108,7 +108,7 @@ insert into logros
  '{"escapes": 3}',
  '>=3 eventos propios tipo escape desde posiciones con grupo = dominante o desde espalda.'),
 
-('de_vuelta', 'DE VUELTA', 'Te montan o te toman la espalda, y acabas ganando',
+('de_vuelta', 'HIGHLANDER', 'Te montan o te toman la espalda, y acabas ganando',
  'defensa', 'raro', 'roll', false, false, '{}',
  'El oponente llegó a montada o espalda en algún momento del roll, y el resultado del roll es sumision_favor.'),
 
@@ -117,7 +117,7 @@ insert into logros
  '{"ataques_al_cuello": 3}',
  '>=3 eventos del oponente tipo sumision con objetivo = cuello, ninguno completado.'),
 
-('sin_marcar', 'SIN MARCAR', 'El rival no consigue ni un punto en todo el roll',
+('sin_marcar', 'FLAWLESS VICTORY', 'El rival no consigue ni un punto en todo el roll',
  'defensa', 'poco_comun', 'roll', true, false, '{}',
  'puntos_oponente = 0 en v_puntos_roll para ese roll. Requiere observador porque es una ausencia.'),
 

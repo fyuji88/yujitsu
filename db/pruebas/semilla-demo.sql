@@ -116,17 +116,26 @@ select ('dbdb0000-0000-0000-0000-' || lpad(n::text, 12, '0'))::uuid,
        nombre, cinturon, grados, peso, 'Kame House', cuenta
   from semilla_gente where n > 0;
 
--- Todo el mundo dentro del mismo grupo: la lectura va por grupo, y alguien
--- fuera de él no aparecería en el selector del análisis.
+-- Todo el mundo dentro del mismo grupo, EMPEZANDO POR GOKU.
+--
+-- Y esto es lo que se me olvidó la primera vez: antes la ficha con cuenta se
+-- reciclaba, así que ya venía dentro del grupo; ahora se crea de cero y hay
+-- que meterla a mano. Sin eso, el usuario del navegador no está en ningún
+-- grupo — y la lectura va por grupo, así que la app abre sin ranking, sin
+-- acento de marca y con el análisis vacío. Otra vez un síntoma que no se
+-- parece a la causa.
+--
+-- Va de admin porque la pantalla de grupo enseña el código de unión y el botón
+-- de regenerarlo solo a los admin, y eso también hay que poder recorrerlo.
 delete from miembros_grupo
- where grupo_id = (select id from grupos order by created_at limit 1)
-   and practicante_id not in (select id from practicantes where user_id is not null);
+ where grupo_id = (select id from grupos order by created_at limit 1);
 
 insert into miembros_grupo (grupo_id, practicante_id, rol, estado)
-select (select id from grupos order by created_at limit 1), p.id, 'miembro', 'activo'
+select (select id from grupos order by created_at limit 1), p.id,
+       (case when p.user_id is not null then 'admin' else 'miembro' end)::bjj_rol_grupo,
+       'activo'
   from practicantes p
- where p.user_id is null
-   and not exists (select 1 from miembros_grupo m where m.practicante_id = p.id);
+ where not exists (select 1 from miembros_grupo m where m.practicante_id = p.id);
 
 -- ------------------------------------------------------------
 -- 2. Las sesiones y los rolls de Goku
