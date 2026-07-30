@@ -18,6 +18,54 @@ Qué es obligatorio y qué no:
 
 ---
 
+## 2026-07-31 · Batería automática de pruebas de RLS
+
+**Migraciones:** ninguna. No se ha tocado ni una política, ni una tabla, ni una
+función: esto es red de seguridad, no refactor.
+
+**Entregado:** `db/pruebas/rls.sql`, **45 casos, 43 pasan**. Y
+`db/pruebas/README.md` con cómo correr todo lo de esa carpeta y cómo leerlo.
+Sale con código distinto de cero si algo falla, así que entra en CI tal cual.
+
+**Decisiones:**
+- Todo dentro de **una transacción que acaba en `rollback`**, con el escenario
+  montado dentro. Se puede correr mil veces sin dejar rastro.
+- El marcador es una tabla **normal y no temporal**: los casos se apuntan desde
+  bloques que corren como `authenticated` o `anon`, y a un `pg_temp` ajeno no se
+  le pueden dar permisos. El `rollback` la borra igual.
+- La comprobación de que `anon` no puede ejecutar funciones `SECURITY DEFINER`
+  mira también los permisos a **`PUBLIC`**. Un `grant execute … to public` no
+  aparece con `grantee = 'anon'` en ninguna parte y le abre la puerta igual:
+  buscar solo 'anon' daba un verde falso.
+- Un `INSERT` que rompe el `with check` **lanza 42501**, pero un `UPDATE` o un
+  `DELETE` que no casa con el `using` afecta a **cero filas sin error**.
+  Confundirlos es la forma fácil de escribir un test que siempre pasa, así que
+  cada familia se comprueba como toca.
+
+**Sabido roto — los dos casos en rojo se dejan fallando a propósito:**
+
+- **`anon` ve la tabla `practicantes` entera.** La política
+  `practicantes_lectura` es `FOR SELECT TO public USING (true)`, y la clave
+  anónima es pública por diseño: va dentro del JavaScript que sirve Vercel.
+  Cualquiera puede sacar el roster con un `curl` — nombres, cinturones, pesos y
+  academia. Viene de `bjj_01`, no es una regresión de nada reciente. Con tres
+  amigos es poca cosa; **el día que entre la academia es una lista de nombres
+  reales publicada en internet**. Lo decide Felipe, y no lo he tocado.
+- **Un invitado externo no ve la quedada a la que está apuntado.**
+  `quedadas_lectura_grupo` va por *tus grupos* y él no es miembro de ninguno.
+  **No es una fuga**: la ve por el enlace de invitación, vía
+  `quedada_por_token()`, y hay un caso que lo comprueba. Es una carencia de
+  producto — sin el enlace a mano no vuelve a encontrar el plan.
+
+**Y un test que mentía, cazado por el camino:** el caso del enlace de
+invitación leía el token *ya metido en la piel del invitado*, que justamente no
+puede leer `quedadas`. Devolvía null y llamaba a la función con null, así que
+fallaba por el test y no por el producto. Ahora el token se captura al montar el
+escenario.
+
+**Backlog:** añadido meter esta batería en CI.
+
+
 ## 2026-07-30 · Logros
 
 **Migraciones:** `bjj_21_logros`, **aplicada a producción** el 31 de julio, en

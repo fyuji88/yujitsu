@@ -102,6 +102,10 @@ quinta es la que te dice si se está muriendo despacio.
 | 🟡 Media | **Pestaña de grupo**: nombre, escudo, lema y **top 5 del mes**. Ranking unificado de cuatro componentes, con la **progresión contra ti mismo** como pieza clave para que no sea una escalera de cinturones. Solo top 5, nunca la tabla entera. |
 | 🟢 Baja | **Modo torneo** con cronómetro reglamentario. Sale casi gratis desde el marcador, pero es otra conversación. |
 
+| 🔴 **Alta** | **La batería de RLS en CI**, corriendo en cada push. Ya existe (`db/pruebas/rls.sql`, 45 casos) y sale con código distinto de cero si algo falla; lo que falta es el runner de GitHub Actions con un Postgres de servicio que aplique `db/*.sql` y la ejecute. Sin esto, la red de seguridad solo protege a quien se acuerda de correrla. |
+| 🔴 **Alta** | **Cerrar la lectura de `practicantes` a `anon`.** Hoy la política es `TO public USING (true)` y la clave anónima va en el bundle: cualquiera saca el roster con un `curl`. Lo detecta el caso 21 de la batería, que se deja fallando a propósito hasta que Felipe decida. |
+| 🟡 Media | **Que un invitado externo vea la quedada a la que está apuntado** sin necesitar el enlace. Hoy solo la ve por `quedada_por_token()`; la política de `quedadas` va por grupo. Caso 41 de la batería. |
+
 # 6 · Diseño y UX
 
 Paleta de Gullo medida del logo: verde **`#458c50`**, hueso `#f1f0ee`, naranja
