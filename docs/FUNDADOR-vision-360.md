@@ -366,6 +366,102 @@ traducir, o meter más de un gimnasio nuevo.
 
 ---
 
+## 10 · ¿Meter al coach como socio?
+
+Pregunta de Felipe: ofrecerle una participación al profesor cuando el proyecto esté
+maduro. La respuesta corta es **sí a involucrarlo, no a empezar por la
+participación** — y sobre todo, no en ese orden.
+
+### Por qué él es la pieza más valiosa que te falta
+
+**Es la distribución.** La unidad de crecimiento es el gimnasio, y el que decide
+la cultura de un gimnasio es el profesor. Si él quiere que esto se use, se usa: le
+basta con decir "aquí los open mats se registran". Ninguna cantidad de pulido de
+producto sustituye eso, y ataca directamente el único riesgo que mata el proyecto.
+
+**Es la autoridad de dominio.** Las decisiones de vocabulario que llevamos
+aparcadas —si se añade `de_rodillas`, si la guardia cuenta como disputa, qué
+títulos hacen gracia y cuáles ofenden— son exactamente las que un cinturón negro
+con academia decide mejor que dos amigos. Y su nombre hace creíble la taxonomía
+ante otras academias, que en jiu-jitsu es una moneda real.
+
+**Es el primer cliente y el socio de diseño a la vez.** El mapa colectivo del
+gimnasio, que es lo único que una academia pagaría, necesita que un coach te diga
+si le sirve. Construirlo sin él es adivinar.
+
+### Los cuatro riesgos, y el cuarto no es obvio
+
+**El capital es lo más caro que tienes y todavía no tienes nada.** Regalar un
+trozo de algo que aún no funciona es baratísimo en euros y carísimo en señal: no
+se puede desregalar. La regla sana es que **el capital paga trabajo futuro
+comprometido, no entusiasmo pasado**.
+
+**Sus incentivos no son los tuyos.** Él quiere que su academia prospere. Eso puede
+significar querer features que solo sirven a Gullo, o exclusividad, o incomodidad
+con que se lo vendas a otra academia de Barcelona. Si es socio, eso es un veto que
+regalaste.
+
+**La asimetría de aportación.** Vosotros construís de forma continua; el respaldo
+es valioso pero se da una vez y el siguiente coach lo da igual.
+
+**Y el que no es evidente: es un conflicto de interés con la privacidad que
+acabamos de diseñar.** Estamos montando controles precisamente para que cada uno
+decida quién ve sus estadísticas. Un coach que además es dueño del producto tiene
+un incentivo estructural a querer verlo todo. Si entra como socio, ese conflicto
+queda dentro de la empresa en vez de fuera. Se puede gestionar, pero hay que verlo
+antes y no después.
+
+Y uno personal que no es de negocio pero pesa: **ahora es tu profesor.** Si además
+es tu socio, un desacuerdo sobre el roadmap se convierte en un desacuerdo en el
+sitio al que vas a entrenar. Merece la pena pensar si quieres eso.
+
+### La secuencia que yo seguiría
+
+**Primero, y ya: socio de diseño, sin papeles.** Enséñaselo. Pregúntale qué querría
+ver. Dale el mapa colectivo cuando exista. Coste cero, y te da la información que
+necesitas antes de cualquier otra cosa: **si le interesa de verdad o solo está
+siendo amable.**
+
+**Después, cuando funcione en Gullo: un papel con nombre y algo concreto que no sea
+capital.** Asesor técnico, primera academia, gratis para siempre, su marca en los
+informes, y **voto de veto en el vocabulario**. Si quieres alinearlo con el
+crecimiento, **un porcentaje de los ingresos de las academias que él traiga** — no
+capital. Eso es precioso aquí: no cuesta nada hasta que hay dinero, le alinea con
+vender, es fácil de terminar, y **no le da gobierno**.
+
+**Y solo si quiere trabajar en esto de verdad** —vender, hacer el onboarding de
+otras academias, ser la cara— entonces capital, con vesting y periodo de carencia.
+Porque para entonces estarías pagando trabajo futuro, que es para lo que sirve el
+capital.
+
+### Dos condiciones previas
+
+**Felipe y Pablo primero.** No puedes meter limpiamente a un tercero cuando los dos
+primeros no habéis definido quién es dueño de qué. Esa media página que estaba en
+prioridad media pasa a ser **bloqueante de esta conversación**.
+
+**Y define el disparador, no lo dejes en "cuando estemos maduros".** Yo lo pondría
+en tres hechos: Gullo registra cuatro semanas seguidas sin que nadie lo recuerde ·
+el mapa colectivo existe y él lo ha mirado y ha pedido algo · una segunda academia
+ha preguntado por la app. Hasta entonces no hay nada sobre lo que asociarse, y la
+conversación prematura te quema la única primera vez que puedes proponérselo.
+
+**Y hay un dato de la primera semana que apunta justo aquí:** de los 16 rolls
+reales registrados, **los metió todos Felipe.** Pablo, Nicolas y Sasza no han
+registrado ninguno por su cuenta. O sea que el problema que el coach resolvería
+—que registrar sea lo que se hace aquí, no un favor que le hace uno al proyecto—
+es exactamente el que ya se está manifestando. Eso **adelanta** el momento de
+hablar con él, aunque sea como socio de diseño y no como socio de nada más.
+
+### Una alternativa que quizá es mejor que la sociedad
+
+Que sea **tu primer cliente que paga.** Un coach que suelta 30 € al mes valida más
+y ata menos que un coach que tiene el 10 %. Y hay una diferencia que importa: **los
+clientes te dicen la verdad; los socios te dicen lo que les gustaría que fuera
+verdad.**
+
+---
+
 ## Una última cosa
 
 Lo que tienes montado en tres semanas —un modelo de eventos coherente, escritura

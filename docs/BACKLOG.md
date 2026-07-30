@@ -102,7 +102,7 @@ quinta es la que te dice si se está muriendo despacio.
 | 🟡 Media | **Pestaña de grupo**: nombre, escudo, lema y **top 5 del mes**. Ranking unificado de cuatro componentes, con la **progresión contra ti mismo** como pieza clave para que no sea una escalera de cinturones. Solo top 5, nunca la tabla entera. |
 | 🟢 Baja | **Modo torneo** con cronómetro reglamentario. Sale casi gratis desde el marcador, pero es otra conversación. |
 
-| 🔴 **Alta** | **La batería de RLS en CI**, corriendo en cada push. Ya existe (`db/pruebas/rls.sql`, 45 casos) y sale con código distinto de cero si algo falla; lo que falta es el runner de GitHub Actions con un Postgres de servicio que aplique `db/*.sql` y la ejecute. Sin esto, la red de seguridad solo protege a quien se acuerda de correrla. |
+| ~~🔴 Alta~~ | ~~**La batería de RLS en CI**~~ — **hecho**: `.github/workflows/ci.yml` aplica las migraciones desde cero en un Postgres de servicio, corre `rls.sql` y `puntos.sql`, y añade `test:puntos`, `test:contraste` y `npm run build`. Falta meter las pruebas que necesitan datos sembrados (`logros.sql`, `informe.sql`, `quedadas.sql`). |
 | ~~🔴 Alta~~ | ~~**Cerrar la lectura de `practicantes` a `anon`**~~ — **hecho** (`bjj_22`), y con ella `retos` y `reto_participaciones`. Queda **repasar el `grant all` por defecto de Supabase**: `anon` conserva INSERT/UPDATE/DELETE/SELECT sobre el resto de tablas. Hoy lo tapa la RLS, pero es superficie de la que no conviene depender. |
 | ~~🟡 Media~~ | ~~**Que un invitado externo vea su quedada**~~ — **hecho** (`bjj_22`): una inscripción da acceso a esa quedada y a su informe, y a nada más. |
 
@@ -131,7 +131,7 @@ Paleta de Gullo medida del logo: verde **`#458c50`**, hueso `#f1f0ee`, naranja
 
 | 🟢 Baja | **Un reto cuya regla sea "consigue el logro X N veces".** Los retos ya tienen ventana, objetivo y progreso guardado; los logros ya son un predicado contable. Engancharlos es barato y da retos que se validan solos, sin que nadie tenga que arbitrar. |
 
-| 🟡 Media | **Calibrar las rarezas de los logros con datos reales.** La diana: común entre el 10 % y el 25 % de los rolls, poco común entre el 3 % y el 10 %, raro por debajo del 2 %. Lo que se salga por arriba se endurece. Hoy no se puede medir: los datos de Goku salen de un generador que solo emite evento cuando pasa algo. |
+| 🟡 Media | **Calibrar las rarezas de los logros.** <br>**Disparador, no "cuando haya datos":** cuando existan **200 rolls reales de al menos 5 personas distintas**, excluyendo los de demo (Goku y Vegeta). Se mide con `scripts/listo-para-calibrar.sql`. <br>**Diana:** común 10–25 % de los rolls, poco común 3–10 %, raro por debajo del 2 %. Lo que se salga por arriba, se endurece. <br>**Punto fijo de la retro de los domingos**, no una tarjeta esperando a que alguien se acuerde. Hoy no se puede medir: los datos de Goku salen de un generador que solo emite evento cuando pasa algo, así que calibrar contra ellos sería calibrar contra las manías del simulador. |
 
 # 7 · Datos y ciencia de datos
 

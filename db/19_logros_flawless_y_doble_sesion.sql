@@ -58,7 +58,7 @@ update logros
 -- conducta que interesa: aparecer dos veces el mismo dia.
 -- ------------------------------------------------------------
 
--- El ambito `dia` lo añade `db/18a_ambito_dia.sql`, que va ANTES y suelto:
+-- El ambito `dia` lo añade `db/18_ambito_dia.sql`, que va ANTES y suelto:
 -- Postgres no deja usar un valor de enum en la misma transaccion en que se
 -- crea ("unsafe use of new value"), y las migraciones se aplican envueltas en
 -- una. Por eso son dos ficheros y no uno.

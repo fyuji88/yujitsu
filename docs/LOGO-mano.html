@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>yujitsu · la mano, en serio</title>
+<style>
+:root{
+  --plano:#f1f0ee; --sup:#fbfaf9; --ink:#141413; --ink2:#4d4c49; --muted:#807e79;
+  --border:rgba(20,20,19,.13); --verde:#458c50; --verde-t:#33693c; --hueso:#f1f0ee;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plano);color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;padding:28px 18px 80px}
+.wrap{max-width:1140px;margin:0 auto}
+h1{font-size:23px;font-weight:690;margin:0 0 5px;letter-spacing:-.015em}
+.sub{color:var(--ink2);font-size:13.5px;margin:0;max-width:70ch;line-height:1.55}
+h2{font-size:12.5px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted);margin:38px 0 8px}
+p.n{font-size:13px;color:var(--ink2);line-height:1.62;max-width:76ch;margin:9px 0 0}
+p.n b{color:var(--ink)} p.n em{font-style:normal;color:var(--verde-t);font-weight:600}
+.rejilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(312px,1fr));gap:16px;margin-top:14px}
+.card{background:var(--sup);border:1px solid var(--border);border-radius:14px;padding:16px 17px 18px;
+  box-shadow:0 1px 2px rgba(20,20,19,.05)}
+.card.rec{border-color:var(--verde);box-shadow:0 0 0 1px var(--verde),0 1px 3px rgba(69,140,80,.16)}
+.card .rec-t{display:inline-block;font-size:10px;letter-spacing:.05em;text-transform:uppercase;
+  color:#fff;background:var(--verde);border-radius:999px;padding:2px 9px;margin-bottom:9px}
+.card h3{font-size:14.5px;font-weight:670;margin:0 0 4px}
+.card .d{font-size:12px;color:var(--ink2);line-height:1.5;margin:0 0 14px;min-height:56px}
+.card .v{font-size:11px;color:var(--muted);line-height:1.5;margin:12px 0 0;
+  padding-top:11px;border-top:1px solid var(--border)}
+.card .v b{color:var(--ink)}
+.tiras{display:flex;gap:13px;align-items:flex-end;flex-wrap:wrap}
+.tira{display:flex;gap:9px;align-items:flex-end;padding:11px 12px;border-radius:11px}
+.tira.claro{background:var(--hueso);box-shadow:inset 0 0 0 1px var(--border)}
+.tira.verde{background:var(--verde)}
+.px{display:flex;flex-direction:column;align-items:center;gap:5px}
+.px span{font-size:9.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tira.verde .px span{color:rgba(255,255,255,.65)}
+pre{background:var(--sup);border:1px solid var(--border);border-radius:12px;padding:15px 16px;
+  font-family:ui-monospace,Menlo,monospace;font-size:11.5px;line-height:1.65;overflow-x:auto;
+  white-space:pre-wrap;color:var(--ink)}
+footer{margin-top:44px;font-size:11.5px;color:var(--muted);line-height:1.7;max-width:78ch}
+</style></head><body><div class="wrap">
+
+<h1>La mano, dibujada en serio</h1>
+<p class="sub">Antes la dibujé con líneas finas y moría a 16 píxeles. Como <b>silueta sólida</b> es otra
+cosa, así que la juzgamos otra vez — cuatro gestos, tres tamaños, dos fondos. La cinta es hueco
+recortado, que es como se hace un logo a una tinta.</p>
+
+<div class="rejilla" id="rejilla"></div>
+
+<h2>Lo que ha cambiado de opinión y lo que no</h2>
+<p class="n"><b>Me retracto de la mitad de lo que dije:</b> como silueta, una mano sí sobrevive a 16
+píxeles. Se ve en la tarjeta D1, que es tu gesto original y a tamaño pequeño se lee perfectamente
+como una mano. Mi error fue dibujarla con trazo fino.</p>
+<p class="n"><b>Lo que mantengo es el otro problema:</b> a 16 píxeles se lee "una mano", pero no se lee
+"una Y ni una J". El chiste se pierde y queda un logo de mano genérico. Por eso la D4 me parece la
+salida buena.</p>
+<p class="n"><b>Y el gesto que propones tiene un problema concreto que no es de tamaño:</b> pulgar,
+índice y corazón extendidos es el gesto de "tres" y en varios sitios es un saludo con connotaciones
+que no quieres en la pantalla de inicio de nadie. La <b>Y de verdad es pulgar y meñique</b> —el
+shaka— y encima deja los tres dedos del medio doblados, que es justo donde va el esparadrapo. El
+gesto correcto te da las dos cosas gratis.</p>
+
+<h2>El prompt para generar imágenes</h2>
+<p class="n">Para explorar la sensación, no para sacar el logo final. Genera veinte, quédate con una,
+y yo la paso a SVG. Y cuenta con que la mitad salgan con seis dedos: es el fallo clásico de estos
+modelos.</p>
+<pre>Flat vector logo mark, single solid colour silhouette on plain white background.
+A grappler's hand seen straight on, palm forward, making the ASL letter "Y":
+thumb and little finger fully extended outward, the three middle fingers folded
+into the fist. Two thick bands of athletic finger tape wrap across the folded
+fingers, rendered as clean negative-space gaps cut out of the silhouette.
+The forearm below the wrist curves to the left, so the whole silhouette also
+reads as the letter J.
+
+Style: bold geometric icon, thick simple forms, no outlines, no gradients,
+no shading, no texture, no text, flat 2D, high contrast, generous negative
+space, centred composition, symmetrical margins, designed to stay legible at
+16 pixels. Reference: modern sports app icon, Nike-simple, single colour
+#458c50 on off-white #f1f0ee.
+
+Avoid: realistic hand, anatomical detail, fingernails, wrinkles, drop shadow,
+3D, bevel, more than five fingers, thin lines, background scenery.</pre>
+<p class="n">Tres variantes que merece la pena probar cambiando solo una frase: <b>(1)</b> el gesto
+—cambia "ASL letter Y" por "thumb and index extended, like the letter L" si quieres lo del meme que
+mandaste—; <b>(2)</b> la cinta —"one thick band across the knuckles" en vez de dos—; <b>(3)</b> el
+antebrazo —quítalo entero si prefieres solo el puño.</p>
+
+<h2>Y el consejo de socio</h2>
+<p class="n">No decidas el logo esta semana. Es la decisión más divertida que tienes y la que menos
+mueve la aguja: <em>ninguna versión de esto hace que Pablo registre un roll el martes</em>. Coge la
+que más te guste hoy, ponla, y déjala fea si hace falta — se cambia en una tarde cuando el resto
+funcione. El icono provisional que hay ahora mismo ya cumple su único trabajo, que es que la app se
+distinga en la pantalla de inicio.</p>
+
+<footer>
+  Siluetas dibujadas a mano en SVG sobre una rejilla de 28×28. La cinta se recorta en el color del
+  fondo, así que el mismo fichero funciona en verde sobre hueso y en blanco sobre verde. Verde Gullo
+  #458c50, hueso #f1f0ee.
+</footer>
+</div>
+
+<script>
+/* Cada marca recibe el color del fondo, porque la cinta es hueco recortado. */
+const puno = (bg, opts={}) => {
+  const {pulgar, meniqueDer, indice, corazon, antebrazo, altoPuno=10.5, yPuno=8.5} = opts;
+  const g = [];
+  // dedos extendidos, como barras gruesas con punta redonda
+  const barra = (d, w=4.3) => `<path d="${d}" fill="none" stroke="currentColor"
+      stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  if (pulgar)     g.push(barra('M9.6 11 L5.4 3.9'));
+  if (meniqueDer) g.push(barra('M18.4 11 L22.6 3.9'));
+  if (indice)     g.push(barra('M12.2 9.5 L12.2 2.4'));
+  if (corazon)    g.push(barra('M15.8 9.5 L15.8 1.6'));
+  if (antebrazo)  g.push(barra('M14 17.5 C14 23.4 12.6 25.8 8.8 25.8', 4.8));
+  // el puño
+  g.push(`<rect x="8.4" y="${yPuno}" width="11.2" height="${altoPuno}" rx="3.6" fill="currentColor"/>`);
+  // la cinta: dos huecos recortados
+  const t1 = yPuno + 2.4, t2 = yPuno + 5.9;
+  g.push(`<rect x="7.6" y="${t1}" width="12.8" height="1.75" rx=".85" fill="${bg}"/>`);
+  g.push(`<rect x="7.6" y="${t2}" width="12.8" height="1.75" rx=".85" fill="${bg}"/>`);
+  return g.join('');
+};
+
+const M = {
+  D1: bg => puno(bg, {pulgar:1, indice:1, corazon:1}),
+  D2: bg => puno(bg, {pulgar:1, meniqueDer:1}),
+  D3: bg => puno(bg, {pulgar:1, indice:1}),
+  D4: bg => puno(bg, {pulgar:1, meniqueDer:1, antebrazo:1}),
+};
+
+const INFO = [
+  {k:'D1', rec:0, t:'D1 · Tu gesto, como silueta',
+   d:'Pulgar, índice y corazón extendidos, y dos bandas de esparadrapo cruzando el puño.',
+   v:'<b>Aquí me retracto:</b> a 16px se lee como una mano perfectamente. La silueta salva el tamaño. <b>Pero</b> lo que se lee es "una mano", no "una Y" — y en varios países ese gesto concreto tiene lecturas que no quieres.'},
+  {k:'D3', rec:0, t:'D3 · La L del meme',
+   d:'Pulgar e índice, literal a lo que me mandaste, con la cinta en el puño.',
+   v:'<b>Lo mejor:</b> es el más limpio de los cuatro y el más reconocible a cualquier tamaño, porque solo tiene dos salientes. <b>Riesgo:</b> es una L. No hay Y ni J en ningún sitio, y el chiste era el nombre.'},
+  {k:'D2', rec:0, t:'D2 · La Y de verdad',
+   d:'Pulgar y meñique extendidos —el shaka, que es la Y en lengua de signos— con los tres dedos del medio doblados y vendados.',
+   v:'<b>Lo mejor:</b> es una Y de verdad, y deja los tres dedos del medio doblados, que es exactamente donde va el esparadrapo. El gesto te da las dos cosas gratis. <b>Falta:</b> la J.'},
+  {k:'D4', rec:1, t:'D4 · Y con el antebrazo en J',
+   d:'La mano en Y, y el antebrazo curvándose a la izquierda por debajo de la muñeca: la silueta completa dibuja una J.',
+   v:'<b>Por qué esta:</b> es la única que dice Y <em>y</em> J con una sola forma, sin explicar nada. Los dedos hacen la Y, el brazo hace la J, la cinta dice grappler. Y a 16px conserva la silueta en gancho, que es lo que la distingue de "una mano cualquiera".'},
+];
+
+const TAM = [56, 28, 16];
+function tiras(k){
+  const uno = (px, color, bg) => `<svg width="${px}" height="${px}" viewBox="0 0 28 28"
+    style="color:${color};display:block">${M[k](bg)}</svg>`;
+  const col = (color,bg) => TAM.map(px =>
+    `<div class="px">${uno(px,color,bg)}<span>${px}</span></div>`).join('');
+  return `<div class="tiras">
+    <div class="tira claro">${col('#458c50','#f1f0ee')}</div>
+    <div class="tira verde">${col('#ffffff','#458c50')}</div>
+  </div>`;
+}
+document.getElementById('rejilla').innerHTML = INFO.map(i => `
+  <div class="card ${i.rec?'rec':''}">
+    ${i.rec?'<span class="rec-t">la mejor de las manos</span>':''}
+    <h3>${i.t}</h3><p class="d">${i.d}</p>${tiras(i.k)}<p class="v">${i.v}</p></div>`).join('');
+</script>
+</body></html>

@@ -1,0 +1,93 @@
+# ============================================================
+#  CI · el esquema desde cero, las pruebas, y el build
+#
+#  Dos cosas que valen más de lo que parece, y que justifican esto solas:
+#
+#  1. **Comprueba que las migraciones aplican limpias DESDE CERO.** Nadie lo
+#     hacía, y es donde se acumulan las sorpresas: una migración puede ir bien
+#     sobre la base de hoy y no poder reconstruirse mañana. La primera vez que
+#     se corrió esto ya cazó una — `19_logros_flawless` se aplicaba antes que
+#     `18_ambito_dia` por orden alfabético, y usaba un valor de enum que aún no
+#     existía.
+#  2. **Convierte el "npm run build pasa" en un hecho** en vez de una promesa
+#     escrita en un mensaje.
+#
+#  Contra un Postgres de servicio, nunca contra producción.
+# ============================================================
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  esquema-y-pruebas:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: bjj
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: bjj
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cliente de Postgres
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      # Lo que Supabase trae de fabrica: roles, esquema `auth` y los
+      # privilegios por defecto CON su agujero incluido — el que corrige
+      # `db/20`. Si el bootstrap viniera ya limpio, el CI daria verde sin haber
+      # comprobado esa migracion.
+      - name: Lo que Supabase trae de fabrica
+        run: psql -v ON_ERROR_STOP=1 -q -f db/ci/00_bootstrap.sql
+
+      - name: Las migraciones, desde cero y en orden
+        run: |
+          for f in db/*.sql; do
+            case "$f" in *99_datos_demo*) echo "  (saltado) $f"; continue;; esac
+            echo "  aplicando $f"
+            psql -v ON_ERROR_STOP=1 -q -f "$f"
+          done
+
+      # Estas dos se montan su propio escenario, asi que corren sobre el
+      # esquema recien creado. Las demas (`logros.sql`, `informe.sql`,
+      # `quedadas.sql`…) dan por hecho que ya hay un grupo y datos, y hoy no
+      # entran en CI: esta anotado en db/pruebas/README.md.
+      - name: Las politicas de RLS
+        run: psql -f db/pruebas/rls.sql
+
+      - name: El marcador contra el fixture compartido
+        run: psql -v ruta="$PWD/src/lib/__fixtures__/puntos.json" -f db/pruebas/puntos.sql
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      # El gemelo en TypeScript del calculo de puntos. Los dos tienen que dar
+      # los mismos numeros: si se separan, el marcador en vivo y el del
+      # historico dicen cosas distintas del mismo roll.
+      - run: npm run test:puntos
+
+      - run: npm run test:contraste
+
+      - run: npm run build

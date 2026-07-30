@@ -18,6 +18,66 @@ Qué es obligatorio y qué no:
 
 ---
 
+## 2026-08-01 · `anon` a cero, CI, y el disparador de la calibración
+
+**Migraciones:** `bjj_25_anon_sin_privilegios`, **aplicada a producción**. Datos
+intactos: 251 rolls, 1403 eventos.
+
+**1 · `anon` sin ningún privilegio, y arreglado el DEFECTO, no solo la lista.**
+`pg_default_acl` concedía a `anon` los privilegios completos sobre toda tabla
+nueva, por partida doble (`postgres` y `supabase_admin`). Revocar las 31 de hoy
+no habría servido: la siguiente migración reabría el agujero. El escenario a
+evitar no era el de hoy —ninguna política de escritura le aplica— sino que
+alguien cree una tabla y olvide `enable row level security`: con el grant
+puesto, esa tabla nace pública. Ahora hacen falta dos errores en vez de uno.
+
+Comprobado **antes** de revocar que no hace falta para nada: las tres pantallas
+sin sesión usan solo `supabase().auth.*`, que habla con GoTrue y no con
+PostgREST. Cero consultas a tablas antes del login.
+
+**2 · CI.** `.github/workflows/ci.yml`: Postgres de servicio, `db/*.sql` desde
+cero, `rls.sql`, `puntos.sql`, `test:puntos`, `test:contraste` y `npm run build`.
+
+**3 · La calibración deja de ser "cuando haya datos".** Disparador medible:
+200 rolls reales de 5 personas distintas, excluyendo demo, con
+`scripts/listo-para-calibrar.sql`. Hoy responde *"Todavía no: 18/200 rolls y
+4/5 personas"*. Punto fijo de la retro de los domingos.
+
+**4 · Corregida la regla del idioma de los nombres.** No era "siempre en
+español": es que el nombre va en el idioma en el que el chiste funcione, y no
+se traduce nunca uno que ya funcionaba. Escrito en el catálogo y en el fichero
+de textos. FLAWLESS VICTORY se queda.
+
+**Decisiones:**
+- Hubo que revocar también a **`PUBLIC`**, no solo a `anon`: Postgres concede
+  `EXECUTE` a `PUBLIC` en toda función, y `anon` lo hereda. Revocarle solo a
+  `anon` dejaba **siete funciones** llamables. Es la misma trampa que ya obligó
+  a mirar `PUBLIC` en la batería de RLS.
+- El bootstrap del CI (`db/ci/00_bootstrap.sql`) reproduce los privilegios por
+  defecto de Supabase **con su agujero incluido**. Si viniera limpio, el CI
+  daría verde sin haber comprobado la migración que lo cierra.
+- `18a_ambito_dia.sql` pasa a `18_ambito_dia.sql` y el otro a `19_`. Por orden
+  alfabético, `18_logros_flawless` se aplicaba **antes** que `18a_ambito_dia` y
+  usaba un valor de enum que aún no existía. **Lo cazó el CI antes de existir**,
+  en el primer ensayo desde cero.
+
+**Sabido roto:**
+- **La mitad de `supabase_admin` del `default_acl` no se pudo cerrar**:
+  `postgres` no es miembro de ese rol en el plan gestionado y da *permission
+  denied*. La migración lo intenta, avisa y sigue. Importa poco —esa entrada
+  solo actúa si `supabase_admin` crea una tabla en `public`, y las de la app
+  las crea `postgres`, que sí quedó cerrada— pero no está cubierto al 100 %.
+- **En CI solo entran `rls.sql` y `puntos.sql`.** Las demás (`logros.sql`,
+  `informe.sql`, `quedadas.sql`, `grupos-rls.sql`) dan por hecho que ya hay un
+  grupo y datos sembrados. Meterlas pide que la semilla sepa arrancar de cero.
+- El diccionario (`posiciones`, `tecnicas`) queda tapado también para `anon`.
+  No contradice al "se quedan abiertas" de ayer: lo que sigue abierto es su
+  **política**; lo que desaparece es el **grant**, que nadie usa antes del login.
+
+**Batería de RLS: 55 casos, 55 pasan.** Cuatro nuevos, incluido el que crea una
+tabla al vuelo para comprobar que **no nace abierta**.
+
+
 ## 2026-07-31 (noche) · El catálogo de logros, cuadrado
 
 **Migraciones:** ninguna. Solo documentación y una herramienta.

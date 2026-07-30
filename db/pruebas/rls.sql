@@ -297,10 +297,11 @@ select pr_admin();
 -- ---------- anon: la puerta de la calle ----------
 select pr_anon();
 select pr_caso('lectura', 'anon NO ve sesiones',
-  (select count(*) from sesiones) = 0,
-  (select count(*)::text || ' filas' from sesiones));
-select pr_caso('lectura', 'anon NO ve rolls', (select count(*) from rolls) = 0);
-select pr_caso('lectura', 'anon NO ve eventos', (select count(*) from eventos) = 0);
+  pr_tapado('sesiones'), pr_por_que('sesiones'));
+select pr_caso('lectura', 'anon NO ve rolls',
+  pr_tapado('rolls'), pr_por_que('rolls'));
+select pr_caso('lectura', 'anon NO ve eventos',
+  pr_tapado('eventos'), pr_por_que('eventos'));
 -- Los tres que estaban en `USING (true)` para `public` hasta `bjj_22`. Ahora
 -- ni siquiera hay `grant`, asi que salta 42501 antes de mirar politica alguna:
 -- por eso se comprueban con captura de excepcion y no con un `count(*)` pelado.
@@ -310,10 +311,76 @@ select pr_caso('lectura', 'anon NO ve retos',
   pr_tapado('retos'), pr_por_que('retos'));
 select pr_caso('lectura', 'anon NO ve reto_participaciones (progreso por persona)',
   pr_tapado('reto_participaciones'), pr_por_que('reto_participaciones'));
-select pr_caso('lectura', 'pero el diccionario sigue abierto: posiciones',
-  not pr_tapado('posiciones'));
-select pr_caso('lectura', 'y tambien tecnicas', not pr_tapado('tecnicas'));
-select pr_caso('lectura', 'anon NO ve grupos', (select count(*) from grupos) = 0);
+-- El diccionario tambien queda tapado para `anon` desde `bjj_25`, y conviene
+-- explicar por que no contradice al "posiciones y tecnicas se quedan abiertas":
+-- lo que se queda abierto es su POLITICA, que sigue siendo permisiva y sin
+-- recortar por grupo. Lo que desaparece es el GRANT, y `anon` no lo necesita
+-- porque la app solo lee el diccionario ya dentro de `<Marco>`, con sesion.
+-- Si algun dia hiciera falta el vocabulario antes del login, se le concede
+-- `select` a esas dos y a nada mas.
+select pr_caso('lectura', 'anon tampoco ve el diccionario (posiciones)',
+  pr_tapado('posiciones'), pr_por_que('posiciones'));
+select pr_caso('lectura', 'ni tecnicas', pr_tapado('tecnicas'));
+select pr_admin();
+
+-- ---------- Y LA REGLA QUE LO FIJA (bjj_25) ----------
+--
+-- `anon` no tiene NINGUN privilegio sobre tablas ni vistas. Este caso es el
+-- que impide que esto se vuelva a colar dentro de tres migraciones: el
+-- problema nunca fue la lista de hoy, era el DEFECTO — `pg_default_acl`
+-- concedia todo sobre cada tabla nueva, asi que bastaba crear una y olvidarse
+-- del `enable row level security` para publicarla entera.
+--
+-- Se mira `PUBLIC` ademas de `anon`: un `grant ... to public` no aparece como
+-- 'anon' en ningun sitio y le llega igual. Esa trampa ya costo siete funciones.
+--
+-- Se excluye el andamiaje de esta misma bateria —la tabla `rls_res` y las
+-- funciones `pr_*`—, que se crea dentro de la transaccion y muere con ella. No
+-- es parte de la app y contarlo daria un rojo permanente por mirarse al espejo.
+select pr_caso('permisos', 'anon no tiene NINGUN privilegio de tabla ni vista',
+  (select count(*) from information_schema.table_privileges
+    where table_schema = 'public' and grantee in ('anon', 'PUBLIC')
+      and table_name not like 'rls\_%') = 0,
+  coalesce((select string_agg(distinct table_name || ' (' || grantee || ')', ', ')
+     from information_schema.table_privileges
+    where table_schema = 'public' and grantee in ('anon', 'PUBLIC')
+      and table_name not like 'rls\_%'), 'ninguno'));
+
+-- Y ninguna funcion, tampoco por herencia.
+select pr_caso('permisos', 'anon no puede ejecutar NINGUNA funcion',
+  (select count(*) from pg_proc p
+    where p.pronamespace = 'public'::regnamespace
+      and p.proname not like 'pr\_%'
+      and has_function_privilege('anon', p.oid, 'EXECUTE')) = 0,
+  coalesce((select string_agg(p.proname, ', ') from pg_proc p
+     where p.pronamespace = 'public'::regnamespace
+       and p.proname not like 'pr\_%'
+       and has_function_privilege('anon', p.oid, 'EXECUTE')), 'ninguna'));
+
+-- El defecto, que es el arreglo de verdad: una tabla nueva NO nace abierta.
+-- Se comprueba creandola, que es la unica forma de saberlo sin fiarse.
+do $$
+declare abierta boolean;
+begin
+  create table zzz_defecto_rls (id int);
+  select exists (select 1 from information_schema.table_privileges
+                  where table_name = 'zzz_defecto_rls' and grantee in ('anon','PUBLIC'))
+    into abierta;
+  perform pr_caso('permisos', 'una tabla NUEVA no nace abierta a anon',
+                  not abierta,
+                  case when abierta then 'nace con privilegios: el default_acl sigue mal'
+                       else '' end);
+  -- Y que a `authenticated` si le siga llegando, o habriamos roto la app.
+  perform pr_caso('permisos', 'pero authenticated si la recibe, como debe',
+    exists (select 1 from information_schema.table_privileges
+             where table_name = 'zzz_defecto_rls' and grantee = 'authenticated'));
+  drop table zzz_defecto_rls;
+end $$;
+
+-- Se vuelve a anon para lo que queda de esta familia.
+select pr_anon();
+select pr_caso('lectura', 'anon NO ve grupos',
+  pr_tapado('grupos'), pr_por_que('grupos'));
 select pr_admin();
 
 -- ============================================================

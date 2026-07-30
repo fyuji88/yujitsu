@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>yujitsu · logo, versión elegida</title>
+<style>
+:root{
+  --plano:#f1f0ee; --sup:#fbfaf9; --ink:#141413; --ink2:#4d4c49; --muted:#807e79;
+  --border:rgba(20,20,19,.13); --verde:#458c50; --verde-t:#33693c; --hueso:#f1f0ee;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plano);color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;padding:28px 18px 80px}
+.wrap{max-width:1140px;margin:0 auto}
+h1{font-size:23px;font-weight:690;margin:0 0 5px;letter-spacing:-.015em}
+.sub{color:var(--ink2);font-size:13.5px;margin:0;max-width:70ch;line-height:1.55}
+h2{font-size:12.5px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted);margin:38px 0 8px}
+p.n{font-size:13px;color:var(--ink2);line-height:1.62;max-width:76ch;margin:9px 0 0}
+p.n b{color:var(--ink)} p.n em{font-style:normal;color:var(--verde-t);font-weight:600}
+code{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:var(--sup);
+  border:1px solid var(--border);padding:1px 5px;border-radius:4px}
+table.m{border-collapse:collapse;font-size:12.5px;margin-top:8px;max-width:660px}
+table.m th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--muted);padding:6px 14px 6px 0;font-weight:600}
+table.m td{padding:6px 14px 6px 0;border-top:1px solid var(--border);vertical-align:top}
+.sw{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:6px}
+.ok{color:var(--verde-t);font-weight:600}
+.rejilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px;margin-top:14px}
+.card{background:var(--sup);border:1px solid var(--border);border-radius:14px;padding:16px 17px 18px;
+  box-shadow:0 1px 2px rgba(20,20,19,.05)}
+.card.rec{border-color:var(--verde);box-shadow:0 0 0 1px var(--verde),0 1px 3px rgba(69,140,80,.16)}
+.card .rec-t{display:inline-block;font-size:10px;letter-spacing:.05em;text-transform:uppercase;
+  color:#fff;background:var(--verde);border-radius:999px;padding:2px 9px;margin-bottom:9px}
+.card h3{font-size:14.5px;font-weight:670;margin:0 0 4px}
+.card .d{font-size:12px;color:var(--ink2);line-height:1.5;margin:0 0 14px;min-height:50px}
+.card .v{font-size:11px;color:var(--muted);line-height:1.5;margin:12px 0 0;
+  padding-top:11px;border-top:1px solid var(--border)}
+.card .v b{color:var(--ink)}
+.tiras{display:flex;gap:13px;align-items:flex-end;flex-wrap:wrap}
+.tira{display:flex;gap:9px;align-items:flex-end;padding:11px 12px;border-radius:11px}
+.tira.claro{background:var(--hueso);box-shadow:inset 0 0 0 1px var(--border)}
+.tira.verde{background:var(--verde)}
+.px{display:flex;flex-direction:column;align-items:center;gap:5px}
+.px span{font-size:9.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tira.verde .px span{color:rgba(255,255,255,.65)}
+.iconos{display:flex;gap:12px;margin-top:14px;flex-wrap:wrap}
+.appic{width:84px;text-align:center}
+.appic .sq{width:84px;height:84px;border-radius:20px;display:grid;place-items:center;
+  box-shadow:0 2px 5px rgba(20,20,19,.14);overflow:hidden}
+.appic .lb{font-size:10.5px;color:var(--muted);margin-top:6px;line-height:1.3}
+.cab{display:flex;align-items:center;gap:11px;background:var(--sup);border:1px solid var(--border);
+  border-radius:13px;padding:12px 15px;max-width:430px;margin-top:14px}
+.cab .wm{font-weight:800;font-size:15px;letter-spacing:.09em;color:var(--verde)}
+.cab .sep{width:1px;height:20px;background:var(--border)}
+.cab .nm{font-size:14px;font-weight:640}
+.cab .lem{font-size:11px;color:var(--muted);margin-top:1px}
+footer{margin-top:44px;font-size:11.5px;color:var(--muted);line-height:1.7;max-width:78ch}
+</style></head><body><div class="wrap">
+
+<h1>Esta sí. Medida y pasada a vector, con tus proporciones intactas</h1>
+<p class="sub">Es mucho mejor que la anterior: el gesto es limpio, tiene el esparadrapo, y la mano es
+casi cuadrada. He medido la imagen y he respetado las proporciones exactamente — lo único que he
+tocado es lo que un logo necesita por fuerza.</p>
+
+<h2>Lo que medí, y lo que he cambiado</h2>
+<table class="m">
+  <tr><th>Qué</th><th>En tu PNG</th><th>En el vector</th></tr>
+  <tr><td>Proporción de la mano</td><td>873 × 927 px · <b>0,942</b> de ancho por alto</td>
+      <td class="ok">idéntica · 0,942</td></tr>
+  <tr><td>Gesto</td><td>índice, meñique y pulgar; corazón y anular doblados</td>
+      <td class="ok">idéntico</td></tr>
+  <tr><td>Esparadrapo</td><td>tres bandas en el índice y tres en el meñique</td>
+      <td class="ok">idéntico</td></tr>
+  <tr><td>Verde</td><td><span class="sw" style="background:#3f854f"></span><code>#3f854f</code></td>
+      <td><span class="sw" style="background:#458c50"></span><code>#458c50</code> · el de Gullo</td></tr>
+  <tr><td>Lienzo</td><td>2816 × 1536, la mano 62 px a la derecha del centro</td>
+      <td>cuadrado, centrada</td></tr>
+  <tr><td>Destello suelto</td><td>sí, abajo a la derecha</td><td>fuera</td></tr>
+  <tr><td>Formato</td><td>PNG</td><td>SVG</td></tr>
+</table>
+<p class="n"><b>Lo único de esa lista que es opinable es el verde</b>, y no lo es tanto:
+<code>#3f854f</code> está a un pelo de <code>#458c50</code> — tan cerca que no lo distingues solo, y
+lo bastante lejos para que cante al lado del wordmark de Gullo en la misma cabecera. Lo demás no son
+gustos: son requisitos del favicon, del icono de la PWA y del sello del informe.</p>
+
+<h2>Las dos versiones</h2>
+<div class="rejilla" id="rejilla"></div>
+
+<h2>Como icono de app y en la cabecera</h2>
+<div class="iconos" id="iconos"></div>
+<div class="cab">
+  <svg width="30" height="30" viewBox="0 0 28 28" style="color:#458c50;display:block" id="cabsvg"></svg>
+  <div class="sep"></div>
+  <span class="wm">GULLO</span>
+  <div style="margin-left:auto;text-align:right">
+    <div class="nm">yujitsu</div><div class="lem">tu jiu-jitsu, medido</div></div>
+</div>
+<p class="n">Ahí es donde se ve si un logo funciona: <b>al lado del wordmark de Gullo, en 30 píxeles,
+y con el verde exacto.</b> Si el verde fuera el del PNG, esa cabecera tendría dos verdes distintos y
+se notaría.</p>
+
+<h2>Qué te dejo hecho si me dices que sí</h2>
+<p class="n">Los ficheros que hacen falta de verdad, todos derivados del mismo SVG:
+<code>logo.svg</code> a una tinta · <code>icon-192.png</code> y <code>icon-512.png</code> para el
+manifest · <code>icon-maskable.png</code> con la zona segura para el recorte circular de Android ·
+<code>favicon.ico</code> de 16 y 32 · y la versión en blanco para cuando va sobre el verde. Se lo dejo
+a Claude Code con las rutas puestas.</p>
+
+<footer>
+  Medidas tomadas del PNG con una máscara de color: mano de 873 × 927 px en un lienzo de 2816 × 1536,
+  verde dominante #3f854f, fondo #eeedeb. El trazado respeta las posiciones relativas de los cinco
+  dedos, el ángulo del índice y del pulgar, y las tres bandas de cinta de cada dedo extendido. Rejilla
+  de 28 × 28, grosores iguales, cinta en hueco recortado para que funcione a una tinta sobre cualquier
+  fondo.
+</footer>
+</div>
+
+<script>
+/* ------------------------------------------------------------------
+   Trazado de la imagen de Felipe. Todo en una rejilla de 28x28.
+   Mapeo usado: X = 2.7 + (x-1034)*0.0259 ; Y = 2.0 + (y-304)*0.0259
+   ------------------------------------------------------------------ */
+const W = 2.5;                       // grosor de los dedos
+/* Anchos ajustados para clavar la proporción 0,942 de la imagen de Felipe:
+   los X están escalados 1,073 respecto al primer trazado, alrededor de x=13,9. */
+const DEDOS = {
+  indice : {a:[3.82, 6.9],  b:[7.89, 13.6], w:W,  cinta:[.30,.46,.62]},
+  dobA   : {a:[10.47, 10.2], b:[10.47, 14.6], w:W},
+  dobB   : {a:[13.47, 9.8],  b:[13.47, 14.6], w:W},
+  menique: {a:[18.84, 3.4], b:[17.76, 12.4], w:W, cinta:[.34,.50,.66]},
+  pulgar : {a:[23.77, 14.4], b:[19.69, 17.8], w:2.9},
+};
+const PALMA = 'M4.89 14.6 C3.71 20.4 6.17 26.4 12.03 26.4 C17.98 26.4 21.20 21.0 19.98 15.0 Z';
+
+const bar = (d, w) => `<path d="${d}" fill="none" stroke="currentColor" stroke-width="${w}"
+  stroke-linecap="round" stroke-linejoin="round"/>`;
+
+function cintas(bg){
+  let s = '';
+  for (const k of ['indice','menique']){
+    const {a,b,w,cinta} = DEDOS[k];
+    if (!cinta) continue;
+    const dx = b[0]-a[0], dy = b[1]-a[1], len = Math.hypot(dx,dy);
+    const nx = -dy/len, ny = dx/len;              // normal unitaria
+    const half = w/2 + .45;
+    for (const t of cinta){
+      const cx = a[0]+dx*t, cy = a[1]+dy*t;
+      s += `<line x1="${(cx-nx*half).toFixed(2)}" y1="${(cy-ny*half).toFixed(2)}"
+        x2="${(cx+nx*half).toFixed(2)}" y2="${(cy+ny*half).toFixed(2)}"
+        stroke="${bg}" stroke-width=".62" stroke-linecap="butt"/>`;
+    }
+  }
+  return s;
+}
+
+const mano = (bg, crease) => {
+  const d = k => { const f = DEDOS[k];
+    return bar(`M${f.a[0]} ${f.a[1]} L${f.b[0]} ${f.b[1]}`, f.w); };
+  return `
+    ${d('indice')}${d('dobA')}${d('dobB')}${d('menique')}${d('pulgar')}
+    <path d="${PALMA}" fill="currentColor"/>
+    <line x1="10.47" y1="10.6" x2="10.47" y2="14.2" stroke="${bg}" stroke-width=".55"/>
+    ${crease ? `<path d="M9.07 21.6 C11.43 17.6 15.51 16.6 18.94 17.4" fill="none"
+        stroke="${bg}" stroke-width=".72" stroke-linecap="round"/>` : ''}
+    ${cintas(bg)}`;
+};
+
+const M = { F: bg => mano(bg, true), L: bg => mano(bg, false) };
+
+const INFO = [
+  {k:'F', rec:1, t:'Fiel · con el pliegue de la palma',
+   d:'El trazado exacto de tu imagen: mismas proporciones, mismo gesto, tres bandas de cinta por dedo, y el pliegue blanco de la palma que tiene tu PNG.',
+   v:'<b>Esta es la que usaría en grande:</b> cabecera, informe, camiseta, pegatina. El pliegue le da el aire de la imagen original. <b>A 16px</b> el pliegue se convierte en un pelo y desaparece, así que ahí no molesta pero tampoco aporta.'},
+  {k:'L', rec:0, t:'Limpia · sin el pliegue',
+   d:'La misma, quitando solo la línea del pliegue de la palma.',
+   v:'<b>Para tamaños pequeños:</b> favicon, insignia junto a un nombre, icono recortado. Un logo bien hecho tiene dos versiones por esto exactamente — no es una variante distinta, es la misma marca simplificada donde no cabe el detalle.'},
+];
+
+const TAM = [72, 32, 16];
+function tiras(k){
+  const uno = (px, color, bg) => `<svg width="${px}" height="${px}" viewBox="0 0 28 28"
+    style="color:${color};display:block">${M[k](bg)}</svg>`;
+  const col = (color,bg) => TAM.map(px =>
+    `<div class="px">${uno(px,color,bg)}<span>${px}</span></div>`).join('');
+  return `<div class="tiras">
+    <div class="tira claro">${col('#458c50','#f1f0ee')}</div>
+    <div class="tira verde">${col('#ffffff','#458c50')}</div></div>`;
+}
+document.getElementById('rejilla').innerHTML = INFO.map(i => `
+  <div class="card ${i.rec?'rec':''}">
+    ${i.rec?'<span class="rec-t">la principal</span>':''}
+    <h3>${i.t}</h3><p class="d">${i.d}</p>${tiras(i.k)}<p class="v">${i.v}</p></div>`).join('');
+
+document.getElementById('iconos').innerHTML = [
+  {v:'F', bg:'#458c50', fg:'#ffffff', lb:'verde · pantalla de inicio'},
+  {v:'F', bg:'#f1f0ee', fg:'#458c50', lb:'hueso · versión clara'},
+  {v:'L', bg:'#141413', fg:'#ffffff', lb:'monocromo · favicon'},
+  {v:'L', bg:'#458c50', fg:'#ffffff', lb:'enmascarable · zona segura'},
+].map((o,i) => `<div class="appic">
+    <div class="sq" style="background:${o.bg};color:${o.fg}">
+      <svg width="${i===3?46:58}" height="${i===3?46:58}" viewBox="0 0 28 28"
+        style="display:block">${M[o.v](o.bg)}</svg></div>
+    <div class="lb">${o.lb}</div></div>`).join('');
+
+document.getElementById('cabsvg').innerHTML = M.L('#fbfaf9');
+</script>
+</body></html>

@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>yujitsu · logo vectorizado</title>
+<style>
+:root{
+  --plano:#f1f0ee; --sup:#fbfaf9; --ink:#141413; --ink2:#4d4c49; --muted:#807e79;
+  --border:rgba(20,20,19,.13); --verde:#458c50; --verde-t:#33693c; --hueso:#f1f0ee;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plano);color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;padding:28px 18px 80px}
+.wrap{max-width:1140px;margin:0 auto}
+h1{font-size:23px;font-weight:690;margin:0 0 5px;letter-spacing:-.015em}
+.sub{color:var(--ink2);font-size:13.5px;margin:0;max-width:70ch;line-height:1.55}
+h2{font-size:12.5px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted);margin:38px 0 8px}
+p.n{font-size:13px;color:var(--ink2);line-height:1.62;max-width:76ch;margin:9px 0 0}
+p.n b{color:var(--ink)} p.n em{font-style:normal;color:var(--verde-t);font-weight:600}
+code{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:var(--sup);
+  border:1px solid var(--border);padding:1px 5px;border-radius:4px}
+table.m{border-collapse:collapse;font-size:12.5px;margin-top:8px;max-width:620px}
+table.m th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--muted);padding:6px 14px 6px 0;font-weight:600}
+table.m td{padding:6px 14px 6px 0;border-top:1px solid var(--border)}
+.sw{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:6px}
+.rejilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;margin-top:14px}
+.card{background:var(--sup);border:1px solid var(--border);border-radius:14px;padding:16px 17px 18px;
+  box-shadow:0 1px 2px rgba(20,20,19,.05)}
+.card.rec{border-color:var(--verde);box-shadow:0 0 0 1px var(--verde),0 1px 3px rgba(69,140,80,.16)}
+.card .rec-t{display:inline-block;font-size:10px;letter-spacing:.05em;text-transform:uppercase;
+  color:#fff;background:var(--verde);border-radius:999px;padding:2px 9px;margin-bottom:9px}
+.card h3{font-size:14.5px;font-weight:670;margin:0 0 4px}
+.card .d{font-size:12px;color:var(--ink2);line-height:1.5;margin:0 0 14px;min-height:52px}
+.card .v{font-size:11px;color:var(--muted);line-height:1.5;margin:12px 0 0;
+  padding-top:11px;border-top:1px solid var(--border)}
+.card .v b{color:var(--ink)}
+.tiras{display:flex;gap:13px;align-items:flex-end;flex-wrap:wrap}
+.tira{display:flex;gap:9px;align-items:flex-end;padding:11px 12px;border-radius:11px}
+.tira.claro{background:var(--hueso);box-shadow:inset 0 0 0 1px var(--border)}
+.tira.verde{background:var(--verde)}
+.px{display:flex;flex-direction:column;align-items:center;gap:5px}
+.px span{font-size:9.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tira.verde .px span{color:rgba(255,255,255,.65)}
+.iconos{display:flex;gap:12px;margin-top:14px;flex-wrap:wrap}
+.appic{width:80px;text-align:center}
+.appic .sq{width:80px;height:80px;border-radius:19px;display:grid;place-items:center;
+  box-shadow:0 2px 5px rgba(20,20,19,.14)}
+.appic .lb{font-size:10.5px;color:var(--muted);margin-top:6px;line-height:1.3}
+footer{margin-top:44px;font-size:11.5px;color:var(--muted);line-height:1.7;max-width:78ch}
+</style></head><body><div class="wrap">
+
+<h1>Tu logo generado, medido y vectorizado</h1>
+<p class="sub">La imagen que has generado está bien y se puede usar. La he medido píxel a píxel,
+la he regularizado y la he pasado a SVG en tres versiones. Aquí está lo que había que arreglar.</p>
+
+<h2>Lo que medí en tu PNG</h2>
+<table class="m">
+  <tr><th>Qué</th><th>Lo que hay</th><th>Lo que debería ser</th></tr>
+  <tr><td>Verde</td>
+      <td><span class="sw" style="background:#38834a"></span><code>#38834a</code></td>
+      <td><span class="sw" style="background:#458c50"></span><code>#458c50</code> · el de Gullo</td></tr>
+  <tr><td>Lienzo</td><td>1024 × 559, la mano descentrada</td><td>cuadrado, centrada, con márgenes iguales</td></tr>
+  <tr><td>Formato</td><td>PNG</td><td>SVG · el favicon y el sello del informe lo exigen</td></tr>
+  <tr><td>Gesto</td><td>pulgar, índice y corazón</td><td>—</td></tr>
+  <tr><td>Esparadrapo</td><td>no hay</td><td>era el punto del concepto</td></tr>
+  <tr><td>Restos</td><td>un destello suelto abajo a la derecha</td><td>fuera</td></tr>
+</table>
+<p class="n">El verde es el detalle que más importa de esa tabla: <b><code>#38834a</code> no es
+<code>#458c50</code></b>. Se parecen lo suficiente para que no lo notes solo, y lo bastante poco para
+que se note al lado del wordmark de Gullo. Un logo tiene que llevar el color de marca exacto, no uno
+cercano.</p>
+
+<h2>Las tres versiones, en vector</h2>
+<div class="rejilla" id="rejilla"></div>
+
+<h2>Como icono de app</h2>
+<div class="iconos" id="iconos"></div>
+
+<h2>Dos cosas que sí puedes usar ya y una que no</h2>
+<p class="n"><b>Puedes usarla.</b> Es tu imagen, la has generado tú y no hay problema de derechos con
+ella. Pero un aviso que casi nadie da: <b>una marca generada así es difícil de proteger</b> en varios
+países, y el mismo prompt en manos de otro puede escupir un logo casi idéntico. Para un proyecto entre
+amigos da igual; el día que pongas el nombre en camisetas y en una web de pago, conviene que la
+versión final la haya dibujado alguien —o que esté suficientemente regularizada y modificada, que es
+lo que acabo de hacer.</p>
+<p class="n"><b>Lo que no haría es usar el PNG directamente.</b> No por purismo: es que el favicon
+son 16 píxeles, el icono de la PWA se recorta en círculo en Android, y el sello del informe tiene que
+imprimirse. Un mapa de bits de 1024×559 falla en los tres.</p>
+
+<footer>
+  Medidas tomadas del PNG con una máscara de color: caja de la mano 350 × 398 px dentro de un lienzo
+  de 1024 × 559, verde dominante #38834a. Las tres versiones están dibujadas a mano sobre una rejilla
+  de 28 × 28 con grosores iguales, puntas alineadas y radios consistentes — que es lo que un logo
+  necesita y lo que un generador no da.
+</footer>
+</div>
+
+<script>
+/* Todo sobre una rejilla de 28x28. La cinta es hueco recortado en el color del fondo. */
+const dedo = (d, w=2.9) => `<path d="${d}" fill="none" stroke="currentColor" stroke-width="${w}"
+  stroke-linecap="round" stroke-linejoin="round"/>`;
+
+const palma = () => `
+  <rect x="6.6" y="14.2" width="12.9" height="7.6" rx="3.5" fill="currentColor"/>
+  <circle cx="19.3" cy="17.9" r="3.3" fill="currentColor"/>
+  <rect x="8.1" y="20.2" width="8.6" height="5.6" rx="1.3" fill="currentColor"/>`;
+
+const cinta = (bg) => `
+  <g transform="rotate(-6 14 17)">
+    <rect x="5.2" y="15.0" width="16" height="1.7" rx=".85" fill="${bg}"/>
+    <rect x="5.2" y="18.2" width="16" height="1.7" rx=".85" fill="${bg}"/>
+  </g>`;
+
+const antebrazo = () => dedo('M12.4 21.6 C12.4 25.2 11.2 26.4 8.4 26.4', 4.4);
+
+const M = {
+  /* V1 · fiel a la imagen generada, regularizada */
+  V1: bg => `
+    ${dedo('M12.7 4.4 V15.6')}
+    ${dedo('M16.3 5.9 V15.6')}
+    ${dedo('M9.3 12.6 V16')}
+    ${dedo('M5.3 9.6 L7.9 15.8', 3.1)}
+    ${palma()}`,
+  /* V2 · la misma con el esparadrapo */
+  V2: bg => `
+    ${dedo('M12.7 4.4 V15.6')}
+    ${dedo('M16.3 5.9 V15.6')}
+    ${dedo('M9.3 12.6 V16')}
+    ${dedo('M5.3 9.6 L7.9 15.8', 3.1)}
+    ${palma()}
+    ${cinta(bg)}`,
+  /* V3 · la Y con el antebrazo en J */
+  V3: bg => `
+    ${dedo('M5.0 8.2 L8.0 15.6', 3.1)}
+    ${dedo('M21.4 8.2 L18.4 15.6', 3.1)}
+    ${dedo('M11.3 12.4 V16')}
+    ${dedo('M14.6 12.0 V16')}
+    <rect x="6.9" y="14.2" width="14.2" height="7.6" rx="3.6" fill="currentColor"/>
+    ${antebrazo()}
+    ${cinta(bg)}`,
+};
+
+const INFO = [
+  {k:'V1', rec:0, t:'V1 · Tu imagen, regularizada',
+   d:'El mismo gesto y las mismas proporciones que generaste, pero con grosores iguales, puntas alineadas, radios consistentes, centrada en un cuadrado y con el verde exacto de Gullo.',
+   v:'<b>Esto es lo que un vector añade:</b> el generador te da una forma, no un sistema. Aquí todos los dedos tienen el mismo grosor y las mismas puntas, que es lo que hace que se vea intencionado. <b>Falta:</b> la cinta y la J.'},
+  {k:'V2', rec:0, t:'V2 · Con el esparadrapo',
+   d:'La misma, con dos bandas de cinta recortadas en hueco sobre el puño.',
+   v:'<b>Lo que gana:</b> vuelve el guiño de grappler, que era el alma del concepto y que la imagen generada no tenía — sus líneas blancas son separaciones de dedos, no cinta. <b>Mira los 16px:</b> la cinta aguanta porque es una forma gruesa, no una línea.'},
+  {k:'V3', rec:1, t:'V3 · La Y con el antebrazo en J',
+   d:'Pulgar y meñique abiertos —la Y—, los del medio doblados y vendados, y el antebrazo curvándose para dibujar la J.',
+   v:'<b>Sigo recomendando esta</b> por una razón que se ve a 16px: las otras dos se leen como "una mano", y esta se lee como <em>una forma</em> con dos prolongaciones simétricas y un gancho. Es lo que la hace tu logo y no el logo de cualquier gimnasio.'},
+];
+
+const TAM = [64, 32, 16];
+function tiras(k){
+  const uno = (px, color, bg) => `<svg width="${px}" height="${px}" viewBox="0 0 28 28"
+    style="color:${color};display:block">${M[k](bg)}</svg>`;
+  const col = (color,bg) => TAM.map(px =>
+    `<div class="px">${uno(px,color,bg)}<span>${px}</span></div>`).join('');
+  return `<div class="tiras">
+    <div class="tira claro">${col('#458c50','#f1f0ee')}</div>
+    <div class="tira verde">${col('#ffffff','#458c50')}</div></div>`;
+}
+document.getElementById('rejilla').innerHTML = INFO.map(i => `
+  <div class="card ${i.rec?'rec':''}">
+    ${i.rec?'<span class="rec-t">mi recomendación</span>':''}
+    <h3>${i.t}</h3><p class="d">${i.d}</p>${tiras(i.k)}<p class="v">${i.v}</p></div>`).join('');
+
+document.getElementById('iconos').innerHTML = [
+  {v:'V2', bg:'#458c50', fg:'#fff',     lb:'V2 en verde'},
+  {v:'V2', bg:'#f1f0ee', fg:'#458c50',  lb:'V2 en hueso'},
+  {v:'V3', bg:'#458c50', fg:'#fff',     lb:'V3 en verde'},
+  {v:'V3', bg:'#141413', fg:'#fff',     lb:'V3 monocromo'},
+].map(o => `<div class="appic">
+    <div class="sq" style="background:${o.bg};color:${o.fg}">
+      <svg width="54" height="54" viewBox="0 0 28 28" style="display:block">${M[o.v](o.bg)}</svg></div>
+    <div class="lb">${o.lb}</div></div>`).join('');
+</script>
+</body></html>

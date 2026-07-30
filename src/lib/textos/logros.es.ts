@@ -7,8 +7,16 @@
  * También es el primer paso de la internacionalización: cuando haga falta el
  * inglés, se copia este fichero y se cambia el que se importa.
  *
- * Los nombres son chistes, y los chistes no se traducen: la versión en otro
- * idioma tendrá que inventarse los suyos, no traducir estos literalmente.
+ * EL IDIOMA DE CADA NOMBRE. La regla no es "todo en español". Es que **el
+ * nombre va en el idioma en el que el chiste funcione, y no se traduce nunca
+ * uno que ya funcionaba**.
+ *
+ * EL RODILLO no se convierte en THE ROLLING PIN: traducirlo mata la gracia.
+ * Pero FLAWLESS VICTORY no traduce nada — es otro chiste, en inglés, y
+ * aterriza igual de bien en un gimnasio de Barcelona.
+ *
+ * Consecuencia para el día que haya inglés: la versión en otro idioma tendrá
+ * que inventarse sus propios chistes, no traducir estos.
  */
 
 export interface TextoLogro {

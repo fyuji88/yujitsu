@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>yujitsu · conceptos de logo</title>
+<style>
+:root{
+  --plano:#f1f0ee; --sup:#fbfaf9; --sup2:#f4f3f1;
+  --ink:#141413; --ink2:#4d4c49; --muted:#807e79; --border:rgba(20,20,19,.13);
+  --verde:#458c50; --verde-t:#33693c; --hueso:#f1f0ee;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plano);color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;padding:28px 18px 80px}
+.wrap{max-width:1140px;margin:0 auto}
+h1{font-size:23px;font-weight:690;margin:0 0 5px;letter-spacing:-.015em}
+.sub{color:var(--ink2);font-size:13.5px;margin:0;max-width:68ch;line-height:1.55}
+h2{font-size:12.5px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted);margin:38px 0 8px}
+p.n{font-size:13px;color:var(--ink2);line-height:1.62;max-width:76ch;margin:9px 0 0}
+p.n b{color:var(--ink)} p.n em{font-style:normal;color:var(--verde-t);font-weight:600}
+
+.rejilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(316px,1fr));gap:16px;margin-top:14px}
+.card{background:var(--sup);border:1px solid var(--border);border-radius:14px;padding:16px 17px 18px;
+  box-shadow:0 1px 2px rgba(20,20,19,.05)}
+.card.rec{border-color:var(--verde);box-shadow:0 0 0 1px var(--verde),0 1px 3px rgba(69,140,80,.16)}
+.card .rec-t{display:inline-block;font-size:10px;letter-spacing:.05em;text-transform:uppercase;
+  color:#fff;background:var(--verde);border-radius:999px;padding:2px 9px;margin-bottom:9px}
+.card h3{font-size:14.5px;font-weight:670;margin:0 0 4px}
+.card .d{font-size:12px;color:var(--ink2);line-height:1.5;margin:0 0 14px;min-height:62px}
+.card .v{font-size:11px;color:var(--muted);line-height:1.5;margin:12px 0 0;
+  padding-top:11px;border-top:1px solid var(--border)}
+.card .v b{color:var(--ink)}
+
+.tiras{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap}
+.tira{display:flex;gap:9px;align-items:flex-end;padding:11px 12px;border-radius:11px}
+.tira.claro{background:var(--hueso);box-shadow:inset 0 0 0 1px var(--border)}
+.tira.verde{background:var(--verde)}
+.px{display:flex;flex-direction:column;align-items:center;gap:5px}
+.px span{font-size:9.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tira.verde .px span{color:rgba(255,255,255,.65)}
+
+.iconos{display:flex;gap:12px;margin-top:14px;flex-wrap:wrap}
+.appic{width:78px;text-align:center}
+.appic .sq{width:78px;height:78px;border-radius:18px;display:grid;place-items:center;
+  box-shadow:0 2px 5px rgba(20,20,19,.14)}
+.appic .lb{font-size:10.5px;color:var(--muted);margin-top:6px;line-height:1.3}
+footer{margin-top:44px;font-size:11.5px;color:var(--muted);line-height:1.7;max-width:78ch}
+</style></head><body><div class="wrap">
+
+<h1>Conceptos de logo para yujitsu</h1>
+<p class="sub">Seis direcciones, cada una a tres tamaños y sobre los dos fondos, porque un logo se
+juzga a 16 píxeles y no a 200. Todo en SVG: se puede ampliar sin perder nada y se colorea con una
+variable.</p>
+
+<h2>Primero, sobre tu idea</h2>
+<p class="n"><b>El juego de palabras es bueno y no es decoración.</b> "yujitsu" suena a
+<em>you-jitsu</em>, y resulta que eso <b>es literalmente el posicionamiento del producto</b>: no es
+jiu-jitsu en general, es <em>tu</em> jiu-jitsu — tu heatmap, tu arquetipo, tus puntos débiles. Un
+nombre que ya contiene la propuesta de valor es algo que la mayoría de los proyectos pagaría por
+tener. Eso se queda.</p>
+<p class="n"><b>La mano con esparadrapo tiene un problema y una virtud.</b> La virtud es enorme: los
+dedos vendados son <em>la</em> señal universal de grappler — quien entrena la reconoce al instante y
+quien no, no la ve. La virtud está en la cinta, no en la mano.</p>
+<p class="n">El problema es doble. Uno: <b>una mano no sobrevive a 16 píxeles.</b> Mira la
+columna D abajo, que la he dibujado a propósito para que lo veas — a tamaño de favicon o de icono en
+la pantalla de inicio es una mancha. Dos: <b>pulgar, índice y corazón extendidos no leen como "Y" ni
+como "J"</b>; leen como un tres, o como un saludo scout. La "Y" con la mano existe —es pulgar y
+meñique, el <em>shaka</em>— pero entonces pierdes los dedos vendados, que era lo bueno.</p>
+<p class="n"><b>Mi propuesta: quédate con la cinta y suelta la mano.</b> El esparadrapo es una forma
+geométrica simple —una banda envolviendo algo— y con eso se puede construir una letra. Y la mano
+vendada no se tira: va donde el tamaño no importa, que es <b>la pegatina, la camiseta y la pantalla
+de carga</b>. Ahí funciona de maravilla.</p>
+
+<h2>Los seis</h2>
+<div class="rejilla" id="rejilla"></div>
+
+<h2>Cómo se ve el recomendado como icono de app</h2>
+<div class="iconos" id="iconos"></div>
+<p class="n">El icono de una PWA se recorta en círculo en Android y en cuadrado redondeado en iOS, así
+que la marca tiene que caber en la <b>zona segura</b> —el 80 % central— y no llevar trazos finos.
+Por eso el monograma engorda un poco dentro del cuadrado en vez de usarse tal cual.</p>
+
+<h2>Tres cosas que el logo tiene que cumplir, y que casi nadie comprueba</h2>
+<p class="n"><b>Funciona a una sola tinta.</b> Verde Gullo sobre hueso, y blanco sobre verde. Si
+necesita dos colores para leerse, no vale para el sello del informe ni para la insignia junto a un
+nombre.</p>
+<p class="n"><b>No compite con el wordmark de Gullo.</b> En la cabecera de la app van a convivir, y
+el de ellos es una tipografía pesada y muy presente. Un símbolo simple y geométrico se lleva bien al
+lado; uno ilustrativo se pelea.</p>
+<p class="n"><b>Sobrevive a 16 píxeles.</b> Es el tamaño del favicon y de la insignia en una lista de
+practicantes. Es el filtro que mata más ideas bonitas, y por eso está arriba en cada tarjeta.</p>
+
+<h2>Y una nota sobre el nombre escrito</h2>
+<p class="n">Yo dejaría <b>yujitsu</b> en minúscula como nombre escrito —es lo que ya está en el
+repositorio, en Vercel, en Supabase y en el dominio— y dejaría que el chiste viva en el símbolo y en
+una línea debajo: <b>"tu jiu-jitsu, medido"</b>. "YouJitsu" escrito así explica el chiste, y un chiste
+explicado deja de serlo. Mejor que lo pille quien lo pille.</p>
+
+<footer>
+  Todo dibujado a mano en SVG, con una sola rejilla de 28×28 y grosor de trazo proporcional. Se
+  colorean con <code>currentColor</code>, así que el mismo fichero sirve en verde sobre hueso y en
+  blanco sobre verde. Paleta de Gullo: verde #458c50, hueso #f1f0ee.
+</footer>
+</div>
+
+<script>
+/* Todas las marcas viven en una rejilla de 28x28 y usan currentColor. */
+const M = {
+  /* A · monograma YJ con cinta */
+  A: `<g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 5.5 14 14.5"/><path d="M22 5.5 14 14.5"/>
+        <path d="M14 14.5v5.5a3.4 3.4 0 0 1-3.4 3.4H9.4"/>
+      </g>
+      <g stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+        <rect x="9.6" y="12.2" width="8.8" height="4.6" rx="1.3" fill="currentColor" stroke="none"/>
+        <path d="M11.9 12.2v4.6" stroke-width="1" opacity=".38" stroke="#fff"/>
+        <path d="M16.1 12.2v4.6" stroke-width="1" opacity=".38" stroke="#fff"/>
+      </g>`,
+  /* B · Y de cinturon, dos bandas cruzadas con nudo */
+  B: `<g fill="currentColor">
+        <rect x="4.2" y="6.4" width="12.4" height="4.1" rx="1.4" transform="rotate(38 4.2 6.4)"/>
+        <rect x="23.8" y="6.4" width="12.4" height="4.1" rx="1.4" transform="rotate(142 23.8 6.4)"/>
+        <rect x="11.9" y="15.4" width="4.2" height="8.6" rx="1.5"/>
+        <rect x="9.9" y="13.1" width="8.2" height="4.4" rx="1.5"/>
+      </g>
+      <g stroke="#fff" stroke-width="1" opacity=".34" stroke-linecap="round">
+        <path d="M12.6 13.1v4.4"/><path d="M15.4 13.1v4.4"/>
+      </g>`,
+  /* C · Y del agarre: un brazo engancha al otro */
+  C: `<g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 5.5 14 14.5v8.5"/>
+        <path d="M22 5.5c0 4.2-2.6 6.4-5.6 7.6-2 .8-3.2 1.9-3.2 3.6 0 1.5 1.2 2.6 2.8 2.6"/>
+      </g>`,
+  /* D · la mano con esparadrapo (para que se vea el problema de tamano) */
+  D: `<g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 15V6.6a1.7 1.7 0 0 1 3.4 0V15"/>
+        <path d="M14.4 15V5.4a1.7 1.7 0 0 1 3.4 0V15"/>
+        <path d="M17.8 15v-6a1.7 1.7 0 0 1 3.4 0v8"/>
+        <path d="M11 15v-1.4a1.7 1.7 0 0 0-3.4 0v4.9c0 3.1 2.5 5.6 5.6 5.6h3.4c3.1 0 5.6-2.5 5.6-5.6"/>
+      </g>
+      <g fill="currentColor">
+        <rect x="10.1" y="8.1" width="5.2" height="2.5" rx=".9"/>
+        <rect x="13.5" y="11.2" width="5.2" height="2.5" rx=".9"/>
+      </g>`,
+  /* E · Y dentro de la rejilla del heatmap */
+  E: (()=>{ const on=new Set(['0,0','4,0','1,1','3,1','2,2','2,3','2,4']); let s='';
+      for(let y=0;y<5;y++) for(let x=0;x<5;x++){
+        const k=x+','+y, X=3+x*4.6, Y=3+y*4.6;
+        s+=`<rect x="${X}" y="${Y}" width="3.7" height="3.7" rx=".9" fill="currentColor"
+             opacity="${on.has(k)?1:0.17}"/>`;}
+      return s; })(),
+  /* F · el tatami: cuadrado, circulo y la Y dentro */
+  F: `<rect x="2.6" y="2.6" width="22.8" height="22.8" rx="4.4" fill="none"
+        stroke="currentColor" stroke-width="1.7" opacity=".45"/>
+      <circle cx="14" cy="14" r="8.2" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".3"/>
+      <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9.4 9 14 14.2"/><path d="M18.6 9 14 14.2"/><path d="M14 14.2v5"/>
+      </g>`,
+};
+
+const INFO = [
+  {k:'A', rec:1, t:'A · Monograma YJ con cinta',
+   d:'Una sola letra: la Y arriba, la cola de la J abajo, y una banda de esparadrapo envolviendo la unión. El chiste está dentro sin explicarlo.',
+   v:'<b>Lo mejor:</b> es lo único de la lista que a 16px sigue siendo reconocible, porque la cinta se convierte en una mancha sólida que ancla la forma. Y a una tinta funciona igual. <b>Riesgo:</b> hay que dibujar la cinta con cuidado o parece un tachón.'},
+  {k:'B', rec:0, t:'B · Y de cinturón',
+   d:'Dos bandas planas que se cruzan formando la Y, con el nudo como bloque en el centro. Es un cinturón atado, visto de frente.',
+   v:'<b>Lo mejor:</b> enlaza con el sistema de avatares de cinturón que ya tenemos, así que la marca y la app hablan el mismo idioma. <b>Riesgo:</b> a tamaño pequeño el nudo y las bandas se juntan y pierde la Y.'},
+  {k:'C', rec:0, t:'C · Y del agarre',
+   d:'Una Y donde el brazo derecho no baja recto: engancha al izquierdo. Es un agarre, un gancho, un control de cuello.',
+   v:'<b>Lo mejor:</b> la más bonita de las seis y la que más gusta a quien entrena, porque el gancho solo lo lee alguien que ha hecho ese agarre. <b>Riesgo:</b> depende de un trazo fino, y eso es exactamente lo que se pierde en un icono recortado.'},
+  {k:'D', rec:0, t:'D · La mano vendada',
+   d:'Tu idea, dibujada lo más limpia que sé. Tres dedos arriba y dos bandas de esparadrapo cruzando.',
+   v:'<b>Míralo a 16px</b> y ya está dicho todo: es una mancha. No es que la idea sea mala, es que este no es su sitio. <b>Dónde sí:</b> pegatina, camiseta, pantalla de carga, cabecera del informe.'},
+  {k:'E', rec:0, t:'E · Y en la rejilla',
+   d:'La Y dibujada con celdas encendidas de un heatmap. La firma visual real del producto no es un cinturón: es la rejilla.',
+   v:'<b>Lo mejor:</b> dice "esto es un producto de datos" antes de que abras la app, y aguanta cualquier tamaño porque son cuadrados. <b>Riesgo:</b> es frío. No huele a gimnasio.'},
+  {k:'F', rec:0, t:'F · El tatami',
+   d:'Cuadrado redondeado y círculo, que es la marca universal de un tatami de competición, con la Y dentro.',
+   v:'<b>Lo mejor:</b> legible y muy "federación". <b>Riesgo:</b> genérico — hay cien logos de artes marciales así, y el círculo dentro del cuadrado desaparece a tamaño pequeño.'},
+];
+
+const TAM = [56, 28, 16];
+function tiras(k){
+  const svg = (px, color) => `<svg width="${px}" height="${px}" viewBox="0 0 28 28"
+    style="color:${color};display:block">${M[k]}</svg>`;
+  const col = (color) => TAM.map(px =>
+    `<div class="px">${svg(px,color)}<span>${px}</span></div>`).join('');
+  return `<div class="tiras">
+    <div class="tira claro">${col('#458c50')}</div>
+    <div class="tira verde">${col('#ffffff')}</div>
+  </div>`;
+}
+document.getElementById('rejilla').innerHTML = INFO.map(i => `
+  <div class="card ${i.rec?'rec':''}">
+    ${i.rec?'<span class="rec-t">mi recomendación</span>':''}
+    <h3>${i.t}</h3>
+    <p class="d">${i.d}</p>
+    ${tiras(i.k)}
+    <p class="v">${i.v}</p>
+  </div>`).join('');
+
+document.getElementById('iconos').innerHTML = [
+  {bg:'#458c50', fg:'#ffffff', lb:'verde, para la pantalla de inicio'},
+  {bg:'#f1f0ee', fg:'#458c50', lb:'hueso, versión clara'},
+  {bg:'#141413', fg:'#ffffff', lb:'monocromo, para el favicon'},
+].map(o => `<div class="appic">
+    <div class="sq" style="background:${o.bg};color:${o.fg}">
+      <svg width="50" height="50" viewBox="0 0 28 28" style="display:block">${M.A}</svg></div>
+    <div class="lb">${o.lb}</div></div>`).join('');
+</script>
+</body></html>

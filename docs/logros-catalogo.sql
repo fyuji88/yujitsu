@@ -15,6 +15,16 @@
 --     "Veces conseguido" = número de instancias del ámbito en las que
 --     el predicado se cumplió, no número de eventos.
 --
+--  EL IDIOMA DE LOS NOMBRES. La regla NO es "siempre en español". Es esta:
+--
+--      el nombre va en el idioma en el que el chiste funcione,
+--      y NUNCA se traduce uno que ya funcionaba.
+--
+--  EL RODILLO no se convierte en THE ROLLING PIN, porque una traduccion mata
+--  la gracia. Pero FLAWLESS VICTORY no traduce nada — es otro chiste, que
+--  nace en ingles y aterriza igual de bien en un gimnasio de Barcelona porque
+--  todo el mundo ha jugado al Mortal Kombat.
+--
 --  RENOMBRADOS. Dos logros cambiaron de nombre VISIBLE el 31 de julio, a
 --  peticion de Felipe: `sin_marcar` paso de SIN MARCAR a FLAWLESS VICTORY, y
 --  `de_vuelta` de DE VUELTA a HIGHLANDER. LAS CLAVES NO SE TOCARON, que es lo
