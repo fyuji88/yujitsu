@@ -35,8 +35,23 @@ Comprobado **antes** de revocar que no hace falta para nada: las tres pantallas
 sin sesión usan solo `supabase().auth.*`, que habla con GoTrue y no con
 PostgREST. Cero consultas a tablas antes del login.
 
-**2 · CI.** `.github/workflows/ci.yml`: Postgres de servicio, `db/*.sql` desde
-cero, `rls.sql`, `puntos.sql`, `test:puntos`, `test:contraste` y `npm run build`.
+**2 · CI, y corriendo en verde de verdad.**
+`.github/workflows/ci.yml`: Postgres de servicio, `db/*.sql` desde cero,
+`rls.sql`, `puntos.sql`, `test:puntos`, `test:contraste` y `npm run build`.
+Los once pasos en verde en 1m01s.
+
+**Y cazó dos cosas en sus dos primeras vueltas**, que es la mejor defensa que
+puede tener:
+
+- `puntos.sql` usaba `pg_read_file`, que se ejecuta **dentro de Postgres**. Con
+  la base en la misma máquina funciona y no se nota; en CI el servidor es un
+  contenedor que no ve el disco del runner, así que el fichero "no existe".
+  Ahora el fixture se lee del lado del cliente, con el backtick de psql — y de
+  paso deja de hacer falta ser superusuario. Es exactamente la diferencia entre
+  "me funciona en local" y "funciona".
+- `checkout@v4` y `setup-node@v4` apuntaban a Node 20, deprecado y forzado a
+  Node 24. Hoy es un aviso; el día que lo retiren sería un CI roto sin haber
+  tocado nada. Subidas a v5.
 
 **3 · La calibración deja de ser "cuando haya datos".** Disparador medible:
 200 rolls reales de 5 personas distintas, excluyendo demo, con
