@@ -79,7 +79,17 @@ interface Rival {
   id: string; nom: string; cin: string; rolls: number; favor: number; contra: number;
 }
 interface Semana { semana: string; rolls: number; favor: number; contra: number }
-interface Tecnica { nom: string; ok: number; tot: number }
+interface Variante { id: string; nom: string; ok: number; tot: number }
+interface Tecnica {
+  nom: string;
+  mecanica_id: string;
+  ok: number;
+  tot: number;
+  /** Solo si la mecánica tiene más de una técnica con datos. */
+  variantes: Variante[] | null;
+  /** La guarda de volumen la decide SQL: dos técnicas con 5 intentos cada una. */
+  compara: boolean;
+}
 
 interface Datos {
   kpi: {
@@ -572,29 +582,98 @@ function Evolucion({ filas }: { filas: Semana[] }) {
 }
 
 function Tecnicas({ filas }: { filas: Tecnica[] }) {
+  /**
+   * Plegado por MECÁNICA, y se despliega tocando.
+   *
+   * Catorce kimuras son catorce kimuras, se hayan precisado o no: nadie pierde
+   * nada por precisar, que es la condición para que alguien lo haga. El
+   * desglose ya viene dentro de cada fila desde `analisis()`, así que
+   * desplegar no pide nada a la red.
+   */
+  const [abierta, setAbierta] = useState<string | null>(null);
   if (!filas.length) return null;
   const max = Math.max(...filas.map((r) => r.tot));
+  const pct = (v: Variante) => Math.round((v.ok / v.tot) * 100);
   return (
     <div className="tarjeta" data-testid="tecnicas">
       <h2>Tus sumisiones</h2>
-      <p className="cap">Finalizadas sobre intentadas.</p>
+      <p className="cap">Finalizadas sobre intentadas, agrupadas por mecánica.</p>
       <div className="bars">
-        {filas.map((r) => (
-          <div className="brow" key={r.nom}
-            style={{ gridTemplateColumns: '98px 1fr 48px' }}
-            title={`${r.nom}: ${r.ok} finalizadas de ${r.tot} intentadas`}>
-            <div className="nm">{r.nom}</div>
-            <div className="track">
-              <span className="fill" style={{
-                background: 'var(--rejilla)', left: 0, width: `${(r.tot / max) * 100}%`,
-              }} />
-              <span className="fill" style={{
-                background: 'var(--dato-yo)', left: 0, width: `${(r.ok / max) * 100}%`,
-              }} />
+        {filas.map((r) => {
+          const desplegable = !!r.variantes?.length;
+          const abierto = abierta === r.mecanica_id;
+          return (
+            <div key={r.mecanica_id}>
+              <div className="brow" data-testid={`mecanica-${r.mecanica_id}`}
+                role={desplegable ? 'button' : undefined}
+                tabIndex={desplegable ? 0 : undefined}
+                onClick={() => desplegable && setAbierta(abierto ? null : r.mecanica_id)}
+                onKeyDown={(e) => {
+                  if (desplegable && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    setAbierta(abierto ? null : r.mecanica_id);
+                  }
+                }}
+                style={{
+                  gridTemplateColumns: '98px 1fr 48px',
+                  cursor: desplegable ? 'pointer' : undefined,
+                  // 44px de objetivo táctil cuando se puede tocar.
+                  minHeight: desplegable ? 44 : undefined,
+                }}
+                title={`${r.nom}: ${r.ok} finalizadas de ${r.tot} intentadas`}>
+                <div className="nm">
+                  {desplegable && <span aria-hidden>{abierto ? '▾ ' : '▸ '}</span>}
+                  {r.nom}
+                </div>
+                <div className="track">
+                  <span className="fill" style={{
+                    background: 'var(--rejilla)', left: 0, width: `${(r.tot / max) * 100}%`,
+                  }} />
+                  <span className="fill" style={{
+                    background: 'var(--dato-yo)', left: 0, width: `${(r.ok / max) * 100}%`,
+                  }} />
+                </div>
+                <div className="val">{r.ok}/{r.tot}</div>
+              </div>
+
+              {abierto && r.variantes && (
+                <div data-testid={`variantes-${r.mecanica_id}`}
+                  style={{ margin: '2px 0 8px 14px' }}>
+                  {r.variantes.map((v) => (
+                    <div className="brow" key={v.id}
+                      style={{ gridTemplateColumns: '84px 1fr 48px' }}
+                      title={`${v.nom}: ${v.ok} de ${v.tot}`}>
+                      <div className="nm" style={{ fontSize: 12 }}>{v.nom}</div>
+                      <div className="track">
+                        <span className="fill" style={{
+                          background: 'var(--rejilla)', left: 0, width: `${(v.tot / max) * 100}%`,
+                        }} />
+                        <span className="fill" style={{
+                          background: 'var(--dato-yo)', left: 0, width: `${(v.ok / max) * 100}%`,
+                        }} />
+                      </div>
+                      <div className="val">{v.ok}/{v.tot}</div>
+                    </div>
+                  ))}
+                  {/* La frase que justifica el bloque entero. Solo cuando los
+                      números dan para ella: `compara` lo decide SQL, porque 1
+                      de 1 no es el 100%. */}
+                  {r.compara && (
+                    <p className="nota" data-testid={`compara-${r.mecanica_id}`}
+                      style={{ marginTop: 6 }}>
+                      {[...r.variantes]
+                        .filter((v) => v.tot >= 5)
+                        .sort((a, b) => pct(b) - pct(a))
+                        .slice(0, 2)
+                        .map((v) => `tu ${v.nom.toLowerCase()} entra el ${pct(v)}%`)
+                        .join(', y ')}.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
-            <div className="val">{r.ok}/{r.tot}</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       <p className="nota">Barra llena = finalizadas · barra clara = intentadas.</p>
     </div>

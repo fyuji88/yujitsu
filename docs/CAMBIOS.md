@@ -21,9 +21,18 @@ Qué es obligatorio y qué no:
 ## 2026-08-03 · Mecánicas: el catálogo deja de ser una lista plana
 
 **Migración:** `bjj_29_mecanicas` (`db/24_mecanicas.sql`). Etiqueta 29 porque 28
-es el puente; el fichero es el 24º de `db/`. **NO aplicada a producción**: se
-despliega aparte, junto con el panel de análisis plegado, que es lo único del
-cliente que la necesita. Probada desde cero y sobre la base local con datos.
+es el puente; el fichero es el 24º de `db/`. **Aplicada a producción**: 64
+técnicas madre, 8 variantes, 0 sumisiones sin `control`, 19/19 vistas con
+`security_invoker`, ninguna función ejecutable por `anon`, y `EL ARTISTA` ya
+contando por mecánica.
+
+**Se aplicó en tres llamadas por el MCP, y la tercera es cirugía sobre la
+definición viva de `v_logros_conseguidos`** en vez del texto del fichero: son
+360 líneas de las que cambia una rama. Antes de aplicarla se comprobó que las
+dos versiones dan **el mismo resultado en el caso que las distingue** —con 3
+técnicas pero 2 mecánicas ninguna concede el logro; con 3 mecánicas las dos lo
+conceden— y el `raise` del bloque hace que, si el predicado no está donde se
+espera, falle en vez de recrear la vista sin cambiarla.
 
 **Antes que nada: había un bug en producción y lo destapó esta tanda.** Desde
 `bjj_27`, el cliente seguía escribiendo `sesiones.tipo` y `rolls.orden`, que ese
@@ -69,16 +78,16 @@ columnas no llevan modalidad ni fecha, y el panel tiene filtro gi/nogi: usarla
 ahí mezclaría gi y no-gi en silencio, que es justo lo que CLAUDE.md prohíbe. La
 vista queda como el agregado sin filtrar.
 
-**El despliegue va en dos**, y esta vez a propósito. El arreglo del bug de
-sincronización **no depende de `bjj_29`** —esas columnas las renombró `bjj_27`,
-que ya está en producción— así que sale solo y ya. El panel plegado sí la
-necesita, y hasta que la migración esté aplicada no se despliega: al revés
-rompería el panel de técnicas, que es la lección de la tanda anterior.
+**El despliegue fue en dos, a propósito.** Primero el arreglo del bug de
+sincronización, que no dependía de `bjj_29`; después la migración y, con ella,
+el panel plegado. Primero la base, después el push — la lección de la tanda
+anterior, esta vez aplicada.
+
+**Y el arreglo funcionó a la vista:** entre un despliegue y otro producción pasó
+de 253 a 254 rolls y de 65 a 67 sesiones. Eso es cola que llevaba atascada desde
+`bjj_27` y que subió en cuanto el cliente dejó de mandar `tipo` y `orden`.
 
 **Sabido roto:**
-- **`bjj_29` está escrita y probada pero no aplicada**, y con ella se queda sin
-  desplegar `src/app/analisis/page.tsx` (el panel plegado). Van juntas: primero
-  la migración, después el push.
 - **El chip de precisar NO está en la pantalla.** El SQL, la RPC y el helper del
   cliente están hechos y probados; falta el paso por el que se toca. Es lo único
   del encargo que queda sin terminar, y lo digo claro porque sin él la fase 2 no
