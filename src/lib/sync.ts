@@ -93,6 +93,10 @@ function alVocabularioDeAhora(tabla: TablaRemota, fila: unknown): unknown {
  */
 function esFalloDeDatos(e: { code?: string; message?: string }): boolean {
   const c = e.code ?? '';
+  // 23505 es "ya existe una fila con ese id", y eso NO es un fallo: es que el
+  // envio anterior si llego y solo se perdio la respuesta. Se trata aparte, en
+  // `yaEstaba()`, y el elemento se da por entregado.
+  if (c === '23505') return false;
   // PostgREST rechaza la peticion: el esquema no la acepta tal cual.
   if (c.startsWith('PGRST')) return true;
   // SQLSTATE: 22 dato invalido - 23 integridad - 42 sintaxis o permisos (RLS).
@@ -108,6 +112,18 @@ function esFalloDeDatos(e: { code?: string; message?: string }): boolean {
  * -> eventos`. Un roll sin su sesion lo rechaza la clave foranea, y ese roll se
  * quedaba fuera para siempre. Lo cazo `pruebas/cola.js`.
  */
+/**
+ * "Ya existe una fila con ese id."
+ *
+ * Con `upsert` no deberia pasar, pero si pasa significa que el envio anterior
+ * SI llego y lo que se perdio fue la respuesta — que es justo el caso para el
+ * que existe la cola. Reintentarlo eternamente seria absurdo y marcarlo como
+ * error seria mentir: el dato esta a salvo. Se da por entregado.
+ */
+function yaEstaba(e: { code?: string }): boolean {
+  return e.code === '23505';
+}
+
 const ESPERAS = [1_000, 2_000, 5_000, 15_000, 60_000];
 let fallosSeguidos = 0;
 let esperarHasta = 0;
@@ -129,6 +145,10 @@ function reprogramar() {
  */
 async function marcar(p: EnvioPendiente, error: { code?: string; message: string }) {
   if (!(await local.outbox.get(p.id))) return;
+  if (yaEstaba(error)) {
+    await local.outbox.delete(p.id);
+    return;
+  }
   const datos = esFalloDeDatos(error);
   await local.outbox.update(p.id, {
     intentos: p.intentos + 1,

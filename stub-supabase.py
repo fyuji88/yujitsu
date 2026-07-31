@@ -440,10 +440,22 @@ class H(BaseHTTPRequestHandler):
                 for f in filas:
                     cols = ', '.join(f.keys())
                     vals = ', '.join(literal(v) for v in f.values())
+                    # UPSERT, NO INSERT. La cola sube con `upsert` a proposito:
+                    # es lo que hace que reintentar tras perder cobertura no
+                    # duplique filas, y es un invariante escrito en CLAUDE.md.
+                    # El stub hacia un `insert` pelado, asi que un reintento
+                    # —el caso NORMAL cuando vuelve la red— reventaba con
+                    # "duplicate key". Un arnes que rompe el invariante que
+                    # protege el producto inventa fallos que no existen, y
+                    # cuesta lo mismo de arreglar que de diagnosticar.
+                    upd = ', '.join(f"{c} = excluded.{c}"
+                                    for c in f.keys() if c != 'id')
+                    choque = (f"on conflict (id) do update set {upd}" if upd
+                              else "on conflict (id) do nothing")
                     # `insert ... returning` no vale dentro de un subselect en
                     # Postgres: tiene que ser un CTE.
                     consultar(f"with x as (insert into {tabla} ({cols}) "
-                              f"values ({vals}) returning *) "
+                              f"values ({vals}) {choque} returning *) "
                               f"select coalesce(jsonb_agg(x), '[]'::jsonb) from x")
                 return self.responder(201, filas)
             except Exception as e:                # noqa: BLE001

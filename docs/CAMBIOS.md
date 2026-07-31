@@ -18,6 +18,63 @@ Qué es obligatorio y qué no:
 
 ---
 
+## 2026-08-05 · Blindar el registro en vivo
+
+**Migraciones:** ninguna. Es todo cliente, como pedía el encargo.
+
+**La píldora distingue dos cosas que no son la misma.** `sin subir` va a llegar
+solo; `con error` necesita que alguien mire. Antes las metía a las dos en "error
+al sincronizar", que hacía parecer grave lo pasajero y pasajero lo grave. Es
+tocable y abre un detalle con qué hay, desde cuándo, el motivo del rechazo y
+reintentar.
+
+**Decisión: descartar solo se ofrece para lo que el servidor rechaza.** Lo que
+sigue en cola va a entrar solo, y poner un botón de tirarlo sería invitar a
+perder un roll por impaciencia. Y nunca automático: la cola no descarta nada
+jamás, solo una persona.
+
+**Decisión: la espera creciente es GLOBAL, no por elemento.** La primera versión
+le daba a cada uno su propio reloj, y eso **rompe el orden `sesiones → rolls →
+eventos`**: si una sesión estaba cumpliendo su espera y su roll ya tocaba, el
+roll salía solo y la clave foránea lo rechazaba. Se vio tal cual en el
+recorrido — *llegó la sesión y el roll, y los eventos se quedaron fuera*. Un
+fallo de red no le pasa a una fila, le pasa a la conexión.
+
+**Decisión: un 23505 es "ya estaba", no un fallo.** Con `upsert` no debería
+pasar, y si pasa significa que el envío anterior sí llegó y lo que se perdió fue
+la respuesta — que es justo el caso para el que existe la cola. Se da por
+entregado en vez de parquearlo como error.
+
+**Y el arnés mentía de dos formas, las dos graves:**
+
+1. `consultar()` corría psql **sin `ON_ERROR_STOP`**: tras un ERROR psql seguía,
+   el `commit` se volvía rollback y el proceso salía con 0. Una escritura
+   **rechazada por Postgres le llegaba al cliente como 201**, la cola la daba
+   por subida y la borraba. Pérdida silenciosa de datos dentro de las pruebas,
+   que es el peor sitio: hace que los recorridos den verde justo cuando deberían
+   estar rojos.
+2. El puente hacía `insert` pelado donde el cliente hace `upsert`, así que un
+   reintento —**el caso normal cuando vuelve la red**— reventaba con "duplicate
+   key". Un arnés que rompe el invariante que protege el producto inventa fallos
+   que no existen. Y no devolvía `code`, así que el cliente no podía distinguir
+   un 4xx de una caída de red: ahora devuelve el SQLSTATE, como PostgREST.
+
+**`pruebas/cola.js`**, octavo recorrido, 16 comprobaciones: modo avión con la
+píldora contando, recarga (sigue ahí, está en IndexedDB), vuelta de la red y
+**comprobación en la base de que llegó todo, no solo la sesión**, un 4xx que
+sale como error y **no entra en bucle**, descarte a mano, y el aviso al cerrar.
+Corrido tres veces seguidas antes de darlo por estable.
+
+**Sabido roto:**
+- El recolector de errores (Sentry) sigue pendiente: hace falta una cuenta y una
+  clave que da Felipe. Sin él seguimos enterándonos de los fallos porque alguien
+  los cuenta.
+- Los recorridos que escriben tienen que limpiar lo suyo o la semilla deriva y
+  `analisis.js` empieza a fallar solo, lejos de su causa. Ya pasó durante esta
+  tanda. Los tres que escriben lo hacen; el siguiente que se añada, también.
+
+---
+
 ## 2026-08-04 (tarde) · Sellar los eventos espejo
 
 **Migración:** `bjj_31_sellar_el_espejo` (`db/26_sellar_el_espejo.sql`),

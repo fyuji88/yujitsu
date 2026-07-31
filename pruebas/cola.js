@@ -129,6 +129,19 @@ const pildora = (page) => page.getByTestId('sync').textContent();
   for (let i = 0; i < 30 && !(await pildora(page)).includes('al día'); i++) {
     await page.waitForTimeout(1000);
   }
+  // Si no drena, DECIR QUE SE QUEDO DENTRO. Un test que solo dice "no pasó"
+  // obliga a montar un diagnóstico a mano cada vez que falla.
+  if (!(await pildora(page)).includes('al día')) {
+    const atasco = await page.evaluate(async () => {
+      const d = await new Promise((r) => {
+        const q = indexedDB.open('bjj-tracker'); q.onsuccess = () => r(q.result); });
+      const q = d.transaction('outbox', 'readonly').objectStore('outbox').getAll();
+      const t = await new Promise((r) => { q.onsuccess = () => r(q.result); });
+      return t.map((x) => `${x.tabla} · ${x.estado ?? 'pendiente'} · ${x.intentos} intentos · ${(x.ultimoError || 'sin error').slice(0, 110)}`);
+    });
+    console.log('  ATASCADO:');
+    for (const linea of atasco) console.log('    ' + linea);
+  }
   comprobar((await pildora(page)).includes('al día'),
     'vuelve la red y sube solo, sin tocar nada: la píldora vuelve a "al día"');
 

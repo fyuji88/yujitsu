@@ -35,6 +35,7 @@ const RECORRIDOS = [
   ['logros.js', 'los logros: coleccion, ranking del mes y feed sin inundar'],
   ['pantalla.js', 'la pantalla encendida: se pide al rodar y se suelta al acabar'],
   ['precisar.js', 'precisar: el chip, y el invariante contra Postgres de verdad'],
+  ['cola.js', 'la cola: modo avion, recarga, 4xx que no se reintenta, y el aviso al cerrar'],
 ];
 
 async function vivo(url) {
