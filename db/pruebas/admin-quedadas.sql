@@ -43,6 +43,17 @@ begin
 
   select id, user_id into v_admin, v_admin_user
     from practicantes where user_id is not null order by created_at limit 1;
+
+  -- Sin una ficha con cuenta no hay a quien poner de admin, y sin admin no se
+  -- puede probar NADA de esto. Se AVISA y se sale, no se falla: en el CI la
+  -- base se construye desde cero y puede no haber ninguna. Lo que no se puede
+  -- es dar por probado lo que no se ha probado, y por eso el aviso es ruidoso.
+  if v_admin is null then
+    raise notice 'AVISO  no hay ninguna ficha con cuenta: NO se ha probado NADA';
+    raise notice '       de administrar un Open Mat. Siembra con';
+    raise notice '       db/pruebas/semilla-demo.sql para cubrirlo.';
+    return;
+  end if;
   insert into practicantes (nombre, cinturon, usa_sistema)
   values ('Uno de prueba', 'blanca', false) returning id into v_uno;
   insert into practicantes (nombre, cinturon, usa_sistema)
