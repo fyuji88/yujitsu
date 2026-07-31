@@ -74,6 +74,24 @@ jobs:
           PGURL: postgresql://postgres:postgres@localhost:5432/bjj
         run: python3 scripts/comprobar-vocabulario.py
 
+      # Los tipos, generados desde la base y comparados con lo commiteado.
+      #
+      # ESTO ES EL ARREGLO, no el cinturon. `database.types.ts` es un
+      # subconjunto escrito a mano, y cuando bjj_27 renombro `sesiones.tipo` y
+      # `rolls.orden` nadie lo actualizo: el typecheck daba verde porque ese
+      # fichero ERA la unica fuente que consultaba, y cada sesion y cada roll
+      # propio fallaban al sincronizar. Ahora el esquema real se vuelca aqui y
+      # `database.types.ts` comprueba contra el en tiempo de compilacion.
+      #
+      # Si esto sale rojo: `PSQL=psql PGURL=... python3 scripts/generar-tipos.py`
+      # y commitea el resultado.
+      - name: Los tipos cuadran con la base
+        env:
+          PGURL: postgresql://postgres:postgres@localhost:5432/bjj
+        run: |
+          python3 scripts/generar-tipos.py
+          git diff --exit-code -- src/lib/esquema.generado.ts             || { echo "::error::src/lib/esquema.generado.ts esta desfasado. Regenera y commitea."; exit 1; }
+
       # Estas dos se montan su propio escenario, asi que corren sobre el
       # esquema recien creado. Las demas (`logros.sql`, `informe.sql`,
       # `quedadas.sql`…) dan por hecho que ya hay un equipo y datos, y hoy no

@@ -262,3 +262,46 @@ export interface EnfoqueRow {
   tecnicas: string[];
   created_at: string;
 }
+
+/* ============================================================
+   LA RED QUE FALTABA: esto se comprueba contra la base, no contra sí mismo
+   ============================================================
+
+   Este fichero es un subconjunto del esquema **escrito a mano**, y eso tiene un
+   precio que ya pagamos: `bjj_27` renombró `sesiones.tipo` → `formato` y
+   `rolls.orden` → `orden_en_sesion`, aquí no se actualizó, y **cada sesión y
+   cada roll propio fallaron al sincronizar durante días**.
+
+   El typecheck no podía verlo: preguntaba a este fichero, que era justo el que
+   mentía. Y los recorridos tampoco, porque el stub capturaba las escrituras en
+   vez de aplicarlas.
+
+   Ahora `scripts/generar-tipos.py` vuelca el esquema real a
+   `esquema.generado.ts` y lo de abajo comprueba, **en tiempo de compilación**,
+   que cada campo declarado aquí existe allí. Un renombrado sin actualizar esto
+   deja de compilar — que es la única forma de que nadie pueda no enterarse.
+
+   No hay código en tiempo de ejecución: son tipos, se borran al compilar.
+   ============================================================ */
+
+import type { Tablas } from './esquema.generado';
+
+/** Falla la compilación si `T` no es exactamente `true`. */
+type Exige<T extends true> = T;
+
+/** Los campos de `T` que NO son columnas de `Tabla`. Vacío = todo bien. */
+type Sobran<T, Tabla> = Exclude<keyof T, keyof Tabla>;
+
+// Si alguno de estos tres se pone rojo, el mensaje dice qué campo sobra: es un
+// campo que el cliente escribiría y que la base no tiene.
+type _Sesion = Exige<Sobran<SesionInsert, Tablas['sesiones']> extends never ? true : false>;
+type _Roll   = Exige<Sobran<RollInsert,   Tablas['rolls']>    extends never ? true : false>;
+type _Evento = Exige<Sobran<EventoInsert, Tablas['eventos']>  extends never ? true : false>;
+
+// Y que los TIPOS cuadren, no solo los nombres: un `smallint` que pasa a
+// `integer`, o un enum al que se le añade un valor, se ve aquí.
+type _SesionT = Exige<SesionInsert extends Partial<Tablas['sesiones']> ? true : false>;
+type _RollT   = Exige<RollInsert   extends Partial<Tablas['rolls']>    ? true : false>;
+type _EventoT = Exige<EventoInsert extends Partial<Tablas['eventos']>  ? true : false>;
+
+export type { _Sesion, _Roll, _Evento, _SesionT, _RollT, _EventoT };

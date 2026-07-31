@@ -18,6 +18,42 @@ Qué es obligatorio y qué no:
 
 ---
 
+## 2026-08-04 · Los tipos, generados desde la base
+
+**Migración:** ninguna.
+
+**El arreglo del agujero que costó el bug de `bjj_27`**, no el cinturón.
+`scripts/generar-tipos.py` vuelca el esquema real a `src/lib/esquema.generado.ts`
+y `database.types.ts` **comprueba contra él en tiempo de compilación**. Un
+renombrado sin actualizar el cliente deja de compilar.
+
+**Decisión: NO se regenera `database.types.ts`.** Está escrito a mano a
+propósito: es un subconjunto y lleva dentro el porqué de cada decisión —por qué
+`p_par` se llama así, por qué `posicion` es física, por qué `orden_en_sesion` no
+es el orden de la quedada—. Regenerarlo borraría justo lo que hace que valga
+algo. Se genera un fichero **aparte**, que nadie lee, y el de mano compara
+contra él. Las dos mitades se quedan: el comentario donde hace falta y la verdad
+donde tiene que estar.
+
+**Probado viéndolo fallar, dos veces.** Reintroduciendo el bug real
+(`orden_en_sesion` → `orden`) deja de compilar; y con un campo que **no usa
+nadie** salta el aserto solo, en `database.types.ts:299` — que es el caso que
+importa, porque un campo opcional que nunca se escribe no lo caza el punto de
+uso.
+
+**Y el generador ya cazó una desviación**: mi base local de desarrollo seguía
+teniendo `sesiones.molestias`, que `bjj_26` borró. Por eso el fichero se genera
+desde el esquema **canónico** —el que el CI construye desde cero— y no desde una
+base de trabajo, que deriva sin avisar.
+
+**En CI**: se regenera y se compara con lo commiteado. Si el esquema se movió y
+nadie regeneró, rojo, con el comando para arreglarlo en el mensaje.
+
+**Sabido roto:** falta sellar los eventos espejo. Es lo último que queda de este
+bloque.
+
+---
+
 ## 2026-08-03 (noche) · Una sola fuente para "intentos por técnica"
 
 **Migración:** `bjj_30_una_sola_fuente` (`db/25_una_sola_fuente.sql`), aplicada a
