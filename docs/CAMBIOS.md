@@ -18,6 +18,52 @@ Qué es obligatorio y qué no:
 
 ---
 
+## 2026-08-08 · Una sesión por Open Mat, no una por día
+
+**Migración:** `bjj_34_sesion_por_quedada` (`db/29_sesion_por_quedada.sql`).
+
+`sesion_del_dia` agrupaba por (practicante, fecha, modalidad, academia), así que
+**dos Open Mats el mismo día caían en la misma sesión** y solo uno podía tener
+informe. No era hipotético: Felipe tiene dos reales este domingo, los dos nogi y
+en el mismo sitio. Estaba anotado como sabido roto desde `bjj_33`; deja de
+estarlo. `p_quedada` entra ahora en la clave de búsqueda.
+
+**Las dos condiciones, verificadas antes de tocar nada:**
+- `sesiones` **no tiene más restricción única que la PK** —los otros tres
+  índices no son únicos—, así que no hay índice que rehacer ni filas que migrar.
+- **La cola no serializa esta llamada.** El cliente no llama nunca a
+  `sesion_del_dia`: la llaman `registrar_roll_observado` y `espejar_roll`, las
+  dos dentro de Postgres. Es el tercer cambio de firma de la semana y era lo
+  primero que había que descartar.
+
+**Lo primero que se prueba es que con nulo NO cambia nada.** `p_quedada` nulo
+significa "me da igual la quedada", que es exactamente lo que hacía antes —
+incluido encontrar una sesión ya enganchada. Un cambio de firma que altere el
+caso que ya funcionaba es peor que no hacerlo.
+
+**En la pantalla:** el selector de Open Mat sale **siempre que haya alguno hoy**,
+no solo cuando hay dos, y «A ninguno» es una opción de primera clase con su
+explicación — entrenar sin Open Mat es lo normal. Y con una sesión ya abierta se
+puede **pasar al otro Open Mat**: abre una sesión nueva para ese, y la de antes
+se queda con sus rolls. Ese es el domingo de Felipe.
+
+**Se me olvidó el `revoke`, y lo cazó el caso 27 de la batería de RLS.** Recrear
+`sesion_del_dia` le devolvió `EXECUTE` a `PUBLIC`, y `anon` hereda de PUBLIC.
+**Es la tercera vez** —`bjj_27`, `bjj_31` y ahora— y las tres las ha cazado esa
+batería, no yo.
+
+**Sabido roto:**
+- **El modo observador sigue colapsando los dos Open Mats.**
+  `registrar_roll_observado` llama a `sesion_del_dia` **sin** quedada, así que
+  con nulo encuentra la primera sesión del día y los rolls del segundo Open Mat
+  caen en la del primero. Lo arreglado aquí cubre el camino de **rolls propios**
+  de punta a punta; el observado necesita pasarle la quedada a esa RPC, que es
+  un cuarto cambio de firma sobre la única llamada que la cola serializa. **No
+  lo he hecho**: es la función sobre la que se ha avisado dos veces, y merece su
+  propia decisión. Está en el backlog.
+
+---
+
 ## 2026-08-07 · El informe salía vacío porque faltaba la tubería
 
 **Migración:** `bjj_33_enganchar_la_quedada` (`db/28_enganchar_la_quedada.sql`).

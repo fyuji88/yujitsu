@@ -34,6 +34,12 @@ interface SesionAbierta {
   modalidad: Modalidad;
   tipo: TipoSesion;
   rolls: number;
+  /**
+   * De qué Open Mat es esta sesión, o null si se entrena suelto. Desde bjj_34
+   * hay UNA SESIÓN POR OPEN MAT: sin guardarlo aquí no se sabría a cuál
+   * pertenece la que está abierta, y no se podría ofrecer cambiar al otro.
+   */
+  quedadaId?: string | null;
 }
 
 /**
@@ -321,8 +327,18 @@ function Flujo({ sesion }: { sesion: Sesion }) {
     setPila(pila.slice(0, i));
   }
 
-  const abrirSesion = useCallback(async (modalidad: Modalidad, tipo: TipoSesion) => {
-    const s: SesionAbierta = { id: nuevoId(), fecha: hoy(), modalidad, tipo, rolls: 0 };
+  /**
+   * `q` explícito y no `quedadaHoy`: desde bjj_34 hay UNA SESIÓN POR OPEN MAT,
+   * así que abrir la segunda del día tiene que poder decir cuál, sin depender
+   * de lo que estuviera seleccionado antes.
+   */
+  const abrirSesion = useCallback(async (
+    modalidad: Modalidad, tipo: TipoSesion,
+    q?: { id: string; equipo_id: string } | null,
+  ) => {
+    const s: SesionAbierta = {
+      id: nuevoId(), fecha: hoy(), modalidad, tipo, rolls: 0, quedadaId: q?.id ?? null,
+    };
     await encolar('sesiones', {
       id: s.id,
       practicante_id: sesion.practicante.id,
@@ -332,14 +348,14 @@ function Flujo({ sesion }: { sesion: Sesion }) {
       academia: sesion.practicante.academia,
       // Si hay una quedada hoy en tu equipo y estás apuntado, viene sola: en el
       // caso normal son cero toques. "Roll libre" es lo que sale si no hay.
-      equipo_id: quedadaHoy?.equipo_id ?? miEquipo,
-      quedada_id: quedadaHoy?.id ?? null,
+      equipo_id: q?.equipo_id ?? miEquipo,
+      quedada_id: q?.id ?? null,
     });
     localStorage.setItem(CLAVE_SESION, JSON.stringify(s));
     setAbierta(s);
     setModalidadObs(modalidad);
     void vaciarCola();
-  }, [sesion.practicante, quedadaHoy, miEquipo]);
+  }, [sesion.practicante, miEquipo]);
 
   function limpiarRoll() {
     setOponente(null);
@@ -524,6 +540,11 @@ function Flujo({ sesion }: { sesion: Sesion }) {
     await supabase().rpc('enganchar_del_dia', { p_quedada: quedadaId });
   }, []);
 
+  /** Los Open Mats de hoy que no son el de la sesión abierta. */
+  const otrosOpenMats = abierta
+    ? quedadasHoy.filter((x) => x.id !== abierta.quedadaId)
+    : [];
+
   const terminar = () => (observando ? terminarObservado() : terminarPropio());
 
   // ---------------------------------------------------------------- pantallas
@@ -536,9 +557,13 @@ function Flujo({ sesion }: { sesion: Sesion }) {
         {/* AUTOMATICO PERO NUNCA SILENCIOSO. Se ve a que Open Mat va a ir lo
             que registres, y se puede quitar o cambiar. Un enganche que no se
             ve es peor que no engancharlo: cuando esta mal, nadie lo sabe. */}
-        {quedadasHoy.length > 1 && (
+        {quedadasHoy.length > 0 && (
           <>
-            <h2 className="sec">¿A cuál vas?</h2>
+            <h2 className="sec">¿Es de un Open Mat?</h2>
+            <p className="hint" style={{ marginTop: 0 }}>
+              Cada Open Mat tiene su propia sesión y su propio informe. Entrenar
+              sin Open Mat es lo normal: «A ninguno» no es un descuido.
+            </p>
             <div className="chips" data-testid="elige-quedada">
               {quedadasHoy.map((x) => (
                 <button className="chip" key={x.id} data-testid={`quedada-${x.id}`}
@@ -568,9 +593,12 @@ function Flujo({ sesion }: { sesion: Sesion }) {
         )}
         <h2 className="sec">Modalidad</h2>
         <div className="chips">
-          <button className="chip" onClick={() => abrirSesion('gi', 'sparring')}>Gi</button>
-          <button className="chip" onClick={() => abrirSesion('nogi', 'sparring')}>No-gi</button>
-          <button className="chip" onClick={() => abrirSesion('nogi', 'open_mat')}>Open mat</button>
+          <button className="chip" data-testid="modalidad-gi"
+            onClick={() => abrirSesion('gi', 'sparring', quedadaHoy)}>Gi</button>
+          <button className="chip" data-testid="modalidad-nogi"
+            onClick={() => abrirSesion('nogi', 'sparring', quedadaHoy)}>No-gi</button>
+          <button className="chip" data-testid="modalidad-openmat"
+            onClick={() => abrirSesion('nogi', 'open_mat', quedadaHoy)}>Open mat</button>
         </div>
         <h2 className="sec">O mira a otros</h2>
         <div style={{ marginTop: 4 }}>
@@ -1029,6 +1057,29 @@ function Flujo({ sesion }: { sesion: Sesion }) {
         <div className="pos">{abierta?.modalidad === 'gi' ? 'Gi' : 'No-gi'}</div>
         <div className="rol">{abierta?.rolls ?? 0} rolls registrados hoy</div>
       </div>
+      {/* EL DOMINGO DE FELIPE: dos Open Mats el mismo dia. Cada uno tiene su
+          sesion y su informe, asi que hace falta poder pasar de uno a otro sin
+          cerrar nada. Solo se ofrecen los que todavia no tienen sesion abierta
+          hoy — el que ya estas usando no se ofrece dos veces. */}
+      {otrosOpenMats.length > 0 && (
+        <>
+          <h2 className="sec">¿Te vas a otro Open Mat?</h2>
+          <div className="chips" data-testid="cambiar-openmat">
+            {otrosOpenMats.map((x) => (
+              <button className="chip" key={x.id}
+                data-testid={`cambiar-a-${x.id}`}
+                onClick={() => void abrirSesion(abierta!.modalidad, abierta!.tipo, x)}>
+                {x.titulo}
+              </button>
+            ))}
+          </div>
+          <p className="hint" style={{ marginTop: 6 }}>
+            Se abre una sesión nueva para ese Open Mat. La de ahora se queda con
+            sus rolls.
+          </p>
+        </>
+      )}
+
       <div style={{ display: 'flex', gap: 9, marginTop: 18 }}>
         <button className="primary" data-testid="nuevo-roll" onClick={nuevoRoll}>
           + Nuevo roll

@@ -118,6 +118,12 @@ jobs:
       - name: La tuberia de la quedada
         run: psql -v ON_ERROR_STOP=1 -f db/pruebas/enganchar-quedada.sql
 
+      # Una sesion por Open Mat. Lo primero que comprueba es que con p_quedada
+      # nulo NO cambia nada: un cambio de firma que altere el caso que ya
+      # funcionaba es peor que no hacerlo.
+      - name: Una sesion por Open Mat
+        run: psql -v ON_ERROR_STOP=1 -f db/pruebas/sesion-por-quedada.sql
+
       - name: El marcador contra el fixture compartido
         run: psql -v ruta="$PWD/src/lib/__fixtures__/puntos.json" -f db/pruebas/puntos.sql
 

@@ -88,7 +88,8 @@ quinta es la que te dice si se está muriendo despacio.
 | | Iniciativa |
 |---|---|
 | ~~🔴 Alta~~ | ~~**El informe del Open Mat sale vacío**~~ — **hecho** (`bjj_33`): faltaba la tubería, no los datos. `sesiones.quedada_id` no lo escribía nadie (0 de 71). Ahora se engancha al abrir sesión, en observador y hacia atrás, y `cerrar_quedada` se planta si no hay nada que contar. |
-| 🟡 Media | **`sesion_del_dia` mezcla dos entrenos del mismo día.** Agrupa por (practicante, fecha, modalidad, academia): quien entrena por la mañana en su gimnasio y por la tarde va al Open Mat con la misma modalidad y academia cae en la misma sesión, y engancharla arrastra los rolls de la mañana. Con academias distintas no pasa. Salió al montar `bjj_33` y se dejó fuera a propósito. |
+| ~~🟡 Media~~ | ~~**`sesion_del_dia` mezcla dos entrenos del mismo día**~~ — **hecho** (`bjj_34`): `p_quedada` entra en la clave de búsqueda. Dos Open Mats el mismo día son dos sesiones y dos informes. Con nulo se comporta como antes, y eso es lo primero que prueba la suite. |
+| 🔴 **Alta** | **El modo observador sigue colapsando los dos Open Mats.** `registrar_roll_observado` llama a `sesion_del_dia` sin quedada, así que los rolls del segundo caen en la sesión del primero. Hace falta pasarle la quedada — cuarto cambio de firma sobre la única llamada que la cola serializa, así que merece su propia decisión: se puede hacer con `default null` y los elementos ya encolados seguirían entrando. |
 
 | | Iniciativa |
 |---|---|
