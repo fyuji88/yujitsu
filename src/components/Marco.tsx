@@ -2,12 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import {
   arrancarSync, observarSync, retenerCola, vaciarCola, type EstadoSync,
 } from '@/lib/sync';
-import { contarPendientes, olvidarDatosDelUsuario } from '@/lib/db';
+import {
+  contarPendientes, descartar, olvidarDatosDelUsuario, reintentarYa, todoLoPendiente,
+  type EnvioPendiente,
+} from '@/lib/db';
 import { BotonTema, useTema } from '@/components/Tema';
 import { aplicarAcento } from '@/lib/tema';
 import { TEXTOS } from '@/lib/textos/es';
@@ -37,7 +40,8 @@ export function Marco(
   const ruta = usePathname();
   const [s, setS] = useState<Sesion | null>(null);
   const [cargando, setCargando] = useState(true);
-  const [sync, setSync] = useState<EstadoSync>({ enCola: 0, enviando: false, error: null });
+  const [verCola, setVerCola] = useState(false);
+  const [sync, setSync] = useState<EstadoSync>({ enCola: 0, enviando: false, error: null, conError: 0 });
   const [saliendo, setSaliendo] = useState(false);
   const [pendientesAlSalir, setPendientesAlSalir] = useState<number | null>(null);
   const [equipo, setEquipo] = useState<{ nombre: string; color_acento: string | null } | null>(null);
@@ -127,13 +131,25 @@ export function Marco(
     router.replace('/login');
   }
 
-  const pastilla = sync.error
-    ? { cls: 'sync err', txt: 'error al sincronizar' }
+  /**
+   * LA PILDORA DICE LA VERDAD, Y DISTINGUE DOS COSAS QUE NO SON LA MISMA:
+   *
+   *   - `sin subir`  todavia no ha llegado, pero va a llegar: la cola lo sigue
+   *                  intentando con espera creciente.
+   *   - `con error`  el servidor lo ha rechazado y reintentar no lo arregla.
+   *                  Necesita que una persona mire y decida.
+   *
+   * Meterlo todo en un "error al sincronizar" hacia que lo primero pareciera
+   * grave y lo segundo pareciera pasajero. Son justo al reves.
+   */
+  const pastilla = sync.conError > 0
+    ? { cls: 'sync err', txt: `⚠ ${sync.conError} con error` }
     : sync.enviando
-      ? { cls: 'sync', txt: '↑ enviando…' }
+      ? { cls: 'sync', txt: '↑ subiendo…' }
       : sync.enCola > 0
-        ? { cls: 'sync off', txt: `● ${sync.enCola} en cola` }
-        : { cls: 'sync ok', txt: '✓ sincronizado' };
+        ? { cls: 'sync off', txt: `● ${sync.enCola} sin subir` }
+        : { cls: 'sync ok', txt: '✓ al día' };
+  const hayCola = sync.enCola + sync.conError > 0;
 
   return (
     <div className="phone">
@@ -149,7 +165,15 @@ export function Marco(
           <div className="t2">{sub ?? (s ? s.practicante.nombre : '…')}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-          <span className={pastilla.cls} data-testid="sync">{pastilla.txt}</span>
+          {/* Tocable SOLO si hay algo que mirar: una pildora que se puede
+              pulsar y no lleva a ningun sitio enseña a no pulsarla. */}
+          {hayCola ? (
+            <button className={pastilla.cls} data-testid="sync"
+              style={{ border: 0, font: 'inherit', cursor: 'pointer' }}
+              onClick={() => setVerCola(true)}>{pastilla.txt}</button>
+          ) : (
+            <span className={pastilla.cls} data-testid="sync">{pastilla.txt}</span>
+          )}
           <BotonTema />
           {s && (
             <button className="salir" data-testid="salir" disabled={saliendo}
@@ -157,6 +181,8 @@ export function Marco(
           )}
         </div>
       </div>
+
+      {verCola && <DetalleCola onCerrar={() => setVerCola(false)} />}
 
       <main>
         {pendientesAlSalir !== null && (
@@ -200,6 +226,103 @@ export function Marco(
         <Link href="/equipo" className={ruta === '/equipo' ? 'on' : ''}>{TEXTOS.equipo}</Link>
         <Link href="/practicantes" className={ruta === '/practicantes' ? 'on' : ''}>Gente</Link>
       </nav>
+    </div>
+  );
+}
+
+/**
+ * Qué hay sin subir, desde cuándo, y qué se puede hacer con ello.
+ *
+ * EXISTE PORQUE UN NÚMERO NO BASTA. "3 sin subir" tranquiliza o alarma según el
+ * día; lo que hace falta es poder mirar qué son, desde cuándo esperan, y —si el
+ * servidor los rechaza— leer el motivo y decidir. Descartar es una decisión de
+ * una persona, nunca de la cola: es la única forma de que algo salga de aquí
+ * sin haber llegado.
+ */
+function DetalleCola({ onCerrar }: { onCerrar: () => void }) {
+  const [filas, setFilas] = useState<EnvioPendiente[]>([]);
+  const [ocupado, setOcupado] = useState(false);
+
+  const cargar = useCallback(async () => {
+    setFilas(await todoLoPendiente());
+  }, []);
+  useEffect(() => { void cargar(); }, [cargar]);
+
+  const cuando = (ms: number) => {
+    const min = Math.round((Date.now() - ms) / 60000);
+    if (min < 1) return 'ahora mismo';
+    if (min < 60) return `hace ${min} min`;
+    const h = Math.round(min / 60);
+    return h < 24 ? `hace ${h} h` : `hace ${Math.round(h / 24)} días`;
+  };
+
+  const QUE_ES: Record<string, string> = {
+    sesiones: 'sesión', rolls: 'roll', eventos: 'acción', roll_observado: 'roll observado',
+  };
+
+  return (
+    <div className="hoja" data-testid="detalle-cola"
+      style={{ margin: '10px 0', padding: 12, border: '1px solid var(--rejilla)',
+        borderRadius: 12, background: 'var(--superficie)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <h2 className="sec" style={{ margin: 0, flex: 1 }}>Lo que falta por subir</h2>
+        <button className="ghost" data-testid="cerrar-cola" onClick={onCerrar}>Cerrar</button>
+      </div>
+
+      {!filas.length && (
+        <p className="hint" data-testid="cola-vacia">
+          No queda nada: todo lo que has registrado está guardado.
+        </p>
+      )}
+
+      {filas.map((p) => (
+        <div key={p.id} className="fila" data-testid={`cola-${p.id}`}
+          style={{ alignItems: 'flex-start', gap: 8, padding: '8px 0' }}>
+          <span className="n" style={{ flex: 1, minWidth: 0 }}>
+            {QUE_ES[p.tabla] ?? p.tabla}
+            <small>
+              {cuando(p.creado)}
+              {p.intentos > 0 && ` · ${p.intentos} ${p.intentos === 1 ? 'intento' : 'intentos'}`}
+            </small>
+            {p.estado === 'atencion' && (
+              <small data-testid={`error-${p.id}`} style={{ color: 'var(--error)' }}>
+                {p.ultimoError ?? 'el servidor lo rechazó'}
+              </small>
+            )}
+          </span>
+          {/* Descartar SOLO lo que el servidor rechaza. Lo que sigue en cola va
+              a entrar solo, y ofrecer un botón de tirarlo sería invitar a
+              perder un roll por impaciencia. */}
+          {p.estado === 'atencion' && (
+            <button className="ghost" disabled={ocupado}
+              data-testid={`descartar-${p.id}`}
+              style={{ padding: '7px 10px', fontSize: 12, color: 'var(--error)' }}
+              onClick={async () => {
+                setOcupado(true);
+                await descartar(p.id);
+                await cargar();
+                await vaciarCola();
+                setOcupado(false);
+              }}>Descartar</button>
+          )}
+        </div>
+      ))}
+
+      {filas.length > 0 && (
+        <div style={{ marginTop: 10 }}>
+          <button className="primary" disabled={ocupado} data-testid="reintentar-ya"
+            onClick={async () => {
+              setOcupado(true);
+              // Reintentar de verdad: lo que estaba en "necesita atención"
+              // vuelve a la cola, porque si el usuario le da al botón es que
+              // cree que la causa ya no está.
+              for (const p of filas) if (p.estado === 'atencion') await reintentarYa(p.id);
+              await vaciarCola(true);   // el usuario manda: sin esperas
+              await cargar();
+              setOcupado(false);
+            }}>Reintentar ahora</button>
+        </div>
+      )}
     </div>
   );
 }

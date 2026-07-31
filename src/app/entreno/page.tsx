@@ -115,7 +115,7 @@ function Flujo({ sesion }: { sesion: Sesion }) {
    * el, cuarenta segundos de roll en el suelo bastan para que el movil se
    * bloquee y se pierda medio registro.
    */
-  usarPantallaEncendida(fase === 'roll');
+  const pantallaEncendida = usarPantallaEncendida(fase === 'roll');
 
   const [modo, setModo] = useState<Modo>('propio');
   const [practA, setPractA] = useState<PracticanteRow | null>(null);
@@ -763,6 +763,18 @@ function Flujo({ sesion }: { sesion: Sesion }) {
                 </div>
               </>
             )}
+
+        {/* QUE SE VEA. El wakeLock es invisible por definición: si funciona no
+            pasa nada, y si falla tampoco pasa nada visible hasta que se te
+            apaga el móvil a mitad de roll. Sin este indicador nadie sabe en
+            cuál de los dos casos está. En navegadores que no lo soportan
+            —Safari anterior a 16.4— se dice la verdad en vez de callar. */}
+        <p className="hint" data-testid="pantalla-encendida"
+          style={{ marginTop: 14, fontSize: 12 }}>
+          {pantallaEncendida
+            ? '🔆 La pantalla se mantiene encendida mientras dure el roll.'
+            : '⚠ Este navegador no puede evitar que la pantalla se apague.'}
+        </p>
 
         <h2 className="sec">Eventos ({eventos.length})</h2>
         <Timeline eventos={eventos} nombreA={nombreA} nombreB={nombreB}

@@ -43,6 +43,14 @@ export interface EnvioPendiente {
   creado: number;
   intentos: number;
   ultimoError?: string;
+  /**
+   * `atencion` es un 4xx: el servidor ha dicho que ese dato no entra, y
+   * reintentarlo no lo va a arreglar. Deja de reintentarse SOLO, pero **no se
+   * borra nunca**: se enseña y lo decide una persona. Descartar en silencio
+   * algo que alguien registró es el único fallo que este producto no se puede
+   * permitir.
+   */
+  estado?: 'pendiente' | 'atencion';
 }
 
 class BaseLocal extends Dexie {
@@ -120,12 +128,45 @@ export async function desencolar(id: string) {
   await local.outbox.delete(id);
 }
 
+/**
+ * Lo que toca enviar: todo menos lo que necesita mano.
+ *
+ * OJO CON FILTRAR POR TIEMPO AQUI. La primera version daba a cada elemento su
+ * propia espera, y eso ROMPE EL ORDEN POR TABLAS: si una sesion estaba
+ * cumpliendo su espera y su roll ya tocaba, el roll salia solo y Postgres lo
+ * rechazaba por clave foranea. Se vio en `pruebas/cola.js`: llegaba la sesion y
+ * el roll, y los eventos se quedaban fuera.
+ *
+ * La espera creciente es GLOBAL y vive en `sync.ts`, que es donde tiene
+ * sentido: un fallo de red no es de un elemento, es de todos.
+ */
 export async function pendientes() {
+  return (await local.outbox.orderBy('creado').toArray())
+    .filter((p) => p.estado !== 'atencion');
+}
+
+/** Todo lo que no ha llegado, incluido lo que espera y lo que falló. */
+export async function todoLoPendiente() {
   return local.outbox.orderBy('creado').toArray();
 }
 
 export async function contarPendientes() {
   return local.outbox.count();
+}
+
+/**
+ * Descartar a mano un elemento que el servidor rechaza.
+ *
+ * Es la única forma de que algo salga de la cola sin haber llegado, y por eso
+ * la decide una persona desde la píldora. Nunca automático.
+ */
+export async function descartar(id: string) {
+  await local.outbox.delete(id);
+}
+
+/** Vuelve a poner en la cola algo que estaba en "necesita atención". */
+export async function reintentarYa(id: string) {
+  await local.outbox.update(id, { estado: 'pendiente', intentos: 0 });
 }
 
 /**
