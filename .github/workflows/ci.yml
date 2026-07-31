@@ -112,6 +112,12 @@ jobs:
       - name: Administrar un Open Mat
         run: psql -v ON_ERROR_STOP=1 -f db/pruebas/admin-quedadas.sql
 
+      # La tuberia de la quedada. La comprobacion que manda es la ultima: que
+      # se dispare un logro de ambito quedada. Nunca se habia disparado ninguno,
+      # para nadie, porque sesiones.quedada_id no lo escribia nadie.
+      - name: La tuberia de la quedada
+        run: psql -v ON_ERROR_STOP=1 -f db/pruebas/enganchar-quedada.sql
+
       - name: El marcador contra el fixture compartido
         run: psql -v ruta="$PWD/src/lib/__fixtures__/puntos.json" -f db/pruebas/puntos.sql
 

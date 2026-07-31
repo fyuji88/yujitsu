@@ -148,6 +148,16 @@ function Flujo({ sesion }: { sesion: Sesion }) {
    * feed del equipo — que es casi todas.
    */
   const [miEquipo, setMiEquipo] = useState<string | null>(null);
+  /** Todas las de hoy a las que estás apuntado. Si hay dos, se pregunta. */
+  const [quedadasHoy, setQuedadasHoy] = useState<
+    { id: string; equipo_id: string; titulo: string; lugar: string | null }[]>([]);
+  /**
+   * El Open Mat de la tanda de observación. Se elige UNA vez al empezar y vale
+   * para toda la tarde: cuando hay gente esperando en el tatami, un toque al
+   * principio es lo que se puede pagar. Preguntarlo en cada roll sería un peaje
+   * y la gente dejaría de registrar.
+   */
+  const [quedadaObs, setQuedadaObs] = useState<string | null>(null);
 
   useEffect(() => {
     const guardada = localStorage.getItem(CLAVE_SESION);
@@ -169,10 +179,16 @@ function Flujo({ sesion }: { sesion: Sesion }) {
   }, []);
 
   useEffect(() => {
+    // TODAS las de hoy, no una. Con `.maybeSingle()` y dos Open Mats el mismo
+    // dia la consulta fallaba y no se enganchaba NINGUNA — el caso raro se
+    // llevaba por delante tambien el caso normal.
     void supabase().from('v_mi_quedada_hoy').select('id,equipo_id,titulo,lugar')
-      .maybeSingle()
       .then(({ data }) => {
-        if (data) setQuedadaHoy(data as typeof quedadaHoy);
+        const qs = (data ?? []) as NonNullable<typeof quedadaHoy>[];
+        setQuedadasHoy(qs);
+        // Una sola: se engancha sola. Dos: se pregunta, porque adivinar aqui
+        // es meter los rolls en el Open Mat equivocado.
+        if (qs.length === 1) setQuedadaHoy(qs[0]);
       });
   }, []);
 
@@ -492,6 +508,22 @@ function Flujo({ sesion }: { sesion: Sesion }) {
     }
   }
 
+  /**
+   * Cuelga del Open Mat las sesiones de esta tanda.
+   *
+   * Va por `enganchar_del_dia()` y no por un parámetro más en
+   * `registrar_roll_observado()`: esa función ya tiene DOS firmas por el puente
+   * de `p_grupo` y es lo único que la cola serializa dentro de IndexedDB. Una
+   * tercera firma es pedir el mismo problema otra vez.
+   *
+   * Es idempotente, así que llamarla tras cada roll no cuesta nada y cubre el
+   * caso de que la tanda se corte a la mitad.
+   */
+  const enganchar = useCallback(async (quedadaId: string | null) => {
+    if (!quedadaId) return;
+    await supabase().rpc('enganchar_del_dia', { p_quedada: quedadaId });
+  }, []);
+
   const terminar = () => (observando ? terminarObservado() : terminarPropio());
 
   // ---------------------------------------------------------------- pantallas
@@ -501,11 +533,37 @@ function Flujo({ sesion }: { sesion: Sesion }) {
       <>
         <h1>Nuevo entreno</h1>
         <p className="hint">Se abre una vez al llegar. Después, cada roll es un toque.</p>
+        {/* AUTOMATICO PERO NUNCA SILENCIOSO. Se ve a que Open Mat va a ir lo
+            que registres, y se puede quitar o cambiar. Un enganche que no se
+            ve es peor que no engancharlo: cuando esta mal, nadie lo sabe. */}
+        {quedadasHoy.length > 1 && (
+          <>
+            <h2 className="sec">¿A cuál vas?</h2>
+            <div className="chips" data-testid="elige-quedada">
+              {quedadasHoy.map((x) => (
+                <button className="chip" key={x.id} data-testid={`quedada-${x.id}`}
+                  style={quedadaHoy?.id === x.id
+                    ? { borderColor: 'var(--marca)', color: 'var(--marca-texto)' } : undefined}
+                  onClick={() => setQuedadaHoy(x)}>
+                  {x.titulo}
+                </button>
+              ))}
+              <button className="chip" data-testid="quedada-ninguna"
+                style={!quedadaHoy ? { borderColor: 'var(--marca)', color: 'var(--marca-texto)' } : undefined}
+                onClick={() => setQuedadaHoy(null)}>
+                A ninguno
+              </button>
+            </div>
+          </>
+        )}
         {quedadaHoy && (
           <p className="hint" data-testid="quedada-hoy" style={{ color: 'var(--marca-texto)' }}>
             Hoy hay <b>{quedadaHoy.titulo}</b>
             {quedadaHoy.lugar && <> en {quedadaHoy.lugar}</>} y estás apuntado:
-            lo que registres se guarda en ese {TEXTOS.quedada}.
+            lo que registres se guarda en ese {TEXTOS.quedada}.{' '}
+            <button className="x" data-testid="quitar-quedada"
+              style={{ padding: 0, font: 'inherit', textDecoration: 'underline' }}
+              onClick={() => setQuedadaHoy(null)}>quitar</button>
           </p>
         )}
         <h2 className="sec">Modalidad</h2>
@@ -549,6 +607,31 @@ function Flujo({ sesion }: { sesion: Sesion }) {
             </button>
           ))}
         </div>
+
+        {quedadasHoy.length > 0 && (
+          <>
+            <h2 className="sec">¿Es de un Open Mat?</h2>
+            <p className="hint" style={{ marginTop: 0 }}>
+              Se elige una vez y vale para toda la tarde. De aquí salen el
+              informe, el ranking y los títulos.
+            </p>
+            <div className="chips" data-testid="obs-quedada">
+              {quedadasHoy.map((x) => (
+                <button className="chip" key={x.id} data-testid={`obs-quedada-${x.id}`}
+                  style={quedadaObs === x.id
+                    ? { borderColor: 'var(--marca)', color: 'var(--marca-texto)' } : undefined}
+                  onClick={() => setQuedadaObs(x.id)}>
+                  {x.titulo}
+                </button>
+              ))}
+              <button className="chip" data-testid="obs-quedada-ninguna"
+                style={!quedadaObs ? { borderColor: 'var(--marca)', color: 'var(--marca-texto)' } : undefined}
+                onClick={() => setQuedadaObs(null)}>
+                Suelto
+              </button>
+            </div>
+          </>
+        )}
 
         <h2 className="sec">Posición de salida</h2>
         <div className="chips">

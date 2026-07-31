@@ -713,6 +713,52 @@ begin
   end if;
 end $$;
 
+-- Enganchar una sesion TUYA al Open Mat de otro equipo. La guarda esta en
+-- `enganchar_sesion_a_quedada`, no en una politica: sin ella cualquiera colgaria
+-- su entreno del Open Mat de otro gimnasio y le ensuciaria el informe.
+do $$
+declare v_q uuid; v_s uuid;
+begin
+  select id into v_q from quedadas
+   where equipo_id = 'b0000000-0000-4000-9000-00000000000b' limit 1;
+  select id into v_s from sesiones
+   where practicante_id = 'a0000000-0000-4000-8000-000000000001' limit 1;
+  if v_q is null or v_s is null then
+    perform pr_caso('equipo', 'un admin de A NO puede enganchar al Open Mat del B',
+                    true, '(faltan datos: caso no ejercido)');
+  else
+    begin
+      perform enganchar_sesion_a_quedada(v_s, v_q);
+      perform pr_caso('equipo', 'un admin de A NO puede enganchar al Open Mat del B',
+                      false, 'lo engancho, y no deberia');
+    exception when insufficient_privilege or check_violation then
+      perform pr_caso('equipo', 'un admin de A NO puede enganchar al Open Mat del B', true);
+    end;
+  end if;
+end $$;
+
+-- Y enganchar la sesion de OTRO que no has registrado tu.
+do $$
+declare v_q uuid; v_s uuid;
+begin
+  select id into v_q from quedadas
+   where equipo_id = 'a0000000-0000-4000-9000-00000000000a' limit 1;
+  select id into v_s from sesiones
+   where practicante_id = 'a0000000-0000-4000-8000-000000000002' limit 1;
+  if v_q is null or v_s is null then
+    perform pr_caso('equipo', 'nadie engancha la sesion de otro que no registro',
+                    true, '(faltan datos: caso no ejercido)');
+  else
+    begin
+      perform enganchar_sesion_a_quedada(v_s, v_q);
+      perform pr_caso('equipo', 'nadie engancha la sesion de otro que no registro',
+                      false, 'la engancho, y no deberia');
+    exception when insufficient_privilege or check_violation then
+      perform pr_caso('equipo', 'nadie engancha la sesion de otro que no registro', true);
+    end;
+  end if;
+end $$;
+
 -- Meter gente en el equipo de otro. `miembros_alta_admin` exige es_admin.
 do $$
 begin

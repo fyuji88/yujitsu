@@ -18,6 +18,63 @@ Qué es obligatorio y qué no:
 
 ---
 
+## 2026-08-07 · El informe salía vacío porque faltaba la tubería
+
+**Migración:** `bjj_33_enganchar_la_quedada` (`db/28_enganchar_la_quedada.sql`).
+
+**El diagnóstico, medido: 0 de 71 sesiones tenían `quedada_id`. Ninguna, nunca.**
+Y de esa columna cuelga todo el bloque: `metricas_quedada` hace
+`from rolls join sesiones where s.quedada_id = p_quedada`, así que devolvía cero
+filas siempre. El informe, el ranking, los títulos y los **tres** logros de
+ámbito quedada estaban construidos y alimentándose de una columna que **nadie
+escribía**. El informe no estaba roto: estaba desconectado.
+
+(El encargo decía cuatro logros de ámbito quedada; son tres: `artista`,
+`ambidiestro`, `notario`. Ninguno se había disparado nunca, para nadie.)
+
+**Decisión: una RPC aparte, no un parámetro más en
+`registrar_roll_observado`.** Esa función ya tiene DOS firmas por el puente de
+`p_grupo` y es lo único que la cola serializa dentro de IndexedDB. Una tercera
+firma es pedir el mismo problema otra vez. Se añaden
+`enganchar_sesion_a_quedada`, `desenganchar_sesion`, `enganchar_del_dia` y
+`alcance_quedada`.
+
+**Decisión: `enganchar_del_dia` sirve para dos cosas** —el modo observador y el
+arreglo hacia atrás— porque son la misma operación con distinto disparador.
+Engancha lo que puedes: lo tuyo, lo cuyos rolls registraste, y —si eres admin—
+lo de quien está apuntado.
+
+**La guarda de fecha es la que más veces va a salvar el dato**: impide colgar el
+entreno del martes del Open Mat del domingo, que es el error fácil desde el
+botón de "enganchar las de hoy" y el que nadie detectaría después.
+
+**`cerrar_quedada` ya no cierra sin nada que contar.** Hay tres informes en
+producción escritos con cero rolls, sin una advertencia, y cerrar es de una sola
+dirección. Ahora se planta con un mensaje que dice qué pasa **y qué hacer**, y
+la pantalla enseña el alcance antes: *"se van a incluir 14 rolls de 5 personas"*.
+
+**Un fallo del cliente que salió por el camino:** `v_mi_quedada_hoy` se leía con
+`.maybeSingle()`, así que con **dos** Open Mats el mismo día la consulta fallaba
+y no se enganchaba **ninguna** — el caso raro se llevaba por delante el normal.
+Ahora se leen todas y, si hay dos, se pregunta.
+
+**Sabido roto:**
+- **`sesion_del_dia` agrupa por (practicante, fecha, modalidad, academia).** Si
+  alguien entrena por la mañana en su gimnasio y por la tarde va al Open Mat con
+  la misma modalidad y la misma academia, los dos entrenos caen en la **misma
+  sesión**, y engancharla arrastraría también los rolls de la mañana. Con
+  academias distintas no pasa. **No se arregla en esta tanda**: está en el
+  backlog.
+- Los tres informes vacíos y las quedadas ya cerradas **se quedan como están**.
+  Eso lo decide Felipe.
+- En `pruebas/cola.js`, la comprobación de cuántos elementos lista el detalle
+  pasa a `>= 1`: entre instalar el bloqueo y recargar, la cola puede haber
+  subido parte, y cuántos quedan depende de la carrera y no del producto. Lo que
+  prueba ahora es que el detalle **lista** lo que falta; el cuántos lo comprueba
+  la píldora justo antes.
+
+---
+
 ## 2026-08-06 · Administrar un Open Mat
 
 **Migración:** `bjj_32_admin_de_quedadas` (`db/27_admin_de_quedadas.sql`).

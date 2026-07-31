@@ -136,6 +136,26 @@ function Panel({ sesion }: { sesion: Sesion }) {
     setOcupado(false);
   }
 
+  /**
+   * Enganchar las sesiones del día a este Open Mat.
+   *
+   * EXISTE PORQUE ALGUIEN SE VA A OLVIDAR. Poder arreglarlo al día siguiente es
+   * la diferencia entre tener informe y tener un agujero — que es exactamente
+   * lo que teníamos: 0 de 71 sesiones enganchadas, y tres informes vacíos.
+   */
+  async function engancharDelDia(qid: string) {
+    setOcupado(true); setError(null);
+    const { data, error } = await supabase().rpc('enganchar_del_dia', { p_quedada: qid });
+    if (error) setError(error.message);
+    else {
+      setAviso(Number(data) > 0
+        ? `Enganchadas ${data} ${Number(data) === 1 ? 'sesión' : 'sesiones'}.`
+        : 'No había ninguna sesión de ese día que pudieras enganchar.');
+      await cargar();
+    }
+    setOcupado(false);
+  }
+
   /** Apuntar a otra persona. Por la RPC, nunca con un insert directo. */
   async function apuntarA(qid: string, practicanteId: string) {
     setOcupado(true); setError(null);
@@ -223,7 +243,31 @@ function Panel({ sesion }: { sesion: Sesion }) {
    * estado: el informe se guarda tal como estaba esa tarde, para que corregir
    * un roll el martes no cambie lo que ya se compartió el domingo.
    */
+  /**
+   * Cerrar enseña ANTES lo que va a incluir.
+   *
+   * Cerrar es de una sola dirección, y hasta ahora escribía informes vacíos sin
+   * decir nada: hay tres en producción con cero rolls. Ahora la base se planta
+   * si no hay nada enganchado, y aquí se ve el alcance antes de pulsar.
+   */
   async function cerrar(qid: string) {
+    const { data: alc } = await supabase().rpc('alcance_quedada', { p_quedada: qid });
+    const a = (alc ?? {}) as { rolls?: number; personas?: number };
+    if (!a.rolls) {
+      setError('No hay ninguna sesión enganchada a este Open Mat: el informe '
+        + 'saldría vacío. Pulsa «Enganchar las sesiones del día» y vuelve a cerrarlo.');
+      return;
+    }
+    if (!confirm(
+      `Se van a incluir ${a.rolls} rolls de ${a.personas} personas.
+
+`
+      + 'Cerrar publica el informe y no se deshace.',
+    )) return;
+    return cerrarDeVerdad(qid);
+  }
+
+  async function cerrarDeVerdad(qid: string) {
     setOcupado(true); setError(null);
     const { data, error } = await supabase().rpc('cerrar_quedada', { p_quedada: qid });
     setOcupado(false);
@@ -368,6 +412,14 @@ function Panel({ sesion }: { sesion: Sesion }) {
                     data-testid={`editar-${q.id}`}
                     onClick={() => setEditando(editando === q.id ? null : q.id)}>
                     Editar
+                  </button>
+                  {/* De aqui salen el informe, el ranking, los titulos y los
+                      tres logros de ambito quedada. Sin esto la columna
+                      `sesiones.quedada_id` no la escribia nadie: 0 de 71. */}
+                  <button className="ghost" disabled={ocupado}
+                    data-testid={`enganchar-${q.id}`}
+                    onClick={() => void engancharDelDia(q.id)}>
+                    Enganchar las sesiones del día
                   </button>
                   <button className="ghost" disabled={ocupado}
                     data-testid={`cerrar-${q.id}`} onClick={() => void cerrar(q.id)}>

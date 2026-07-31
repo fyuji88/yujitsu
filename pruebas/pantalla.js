@@ -142,6 +142,24 @@ const ESPIA = `
       await window.__sb.from('rolls').delete().eq('id', r.id);
     }
     await window.__sb.from('sesiones').delete().eq('id', sid);
+    // Y ademas: cualquier sesion MIA de hoy que se haya quedado vacia. El
+    // enganche automatico y `sesion_del_dia` pueden crear una segunda sin que
+    // este recorrido la conozca, y una sesion de mas mueve el recuento
+    // que comprueba `analisis.js` — que falla despues, lejos de aqui.
+    const { data: me } = await window.__sb.auth.getUser();
+    const { data: yo } = await window.__sb.from('practicantes')
+      .select('id').eq('user_id', me.user.id);
+    const hoy = new Date().toISOString().slice(0, 10);
+    const { data: mias } = await window.__sb.from('sesiones')
+      .select('id').eq('practicante_id', yo?.[0]?.id).eq('fecha', hoy);
+    for (const x of mias ?? []) {
+      const { data: rs } = await window.__sb.from('rolls').select('id').eq('sesion_id', x.id);
+      for (const r of rs ?? []) {
+        await window.__sb.from('eventos').delete().eq('roll_id', r.id);
+        await window.__sb.from('rolls').delete().eq('id', r.id);
+      }
+      await window.__sb.from('sesiones').delete().eq('id', x.id);
+    }
     localStorage.removeItem('bjj.sesion-abierta');
     return `${(rolls ?? []).length} rolls y su sesion`;
   });

@@ -87,6 +87,11 @@ quinta es la que te dice si se está muriendo despacio.
 
 | | Iniciativa |
 |---|---|
+| ~~🔴 Alta~~ | ~~**El informe del Open Mat sale vacío**~~ — **hecho** (`bjj_33`): faltaba la tubería, no los datos. `sesiones.quedada_id` no lo escribía nadie (0 de 71). Ahora se engancha al abrir sesión, en observador y hacia atrás, y `cerrar_quedada` se planta si no hay nada que contar. |
+| 🟡 Media | **`sesion_del_dia` mezcla dos entrenos del mismo día.** Agrupa por (practicante, fecha, modalidad, academia): quien entrena por la mañana en su gimnasio y por la tarde va al Open Mat con la misma modalidad y academia cae en la misma sesión, y engancharla arrastra los rolls de la mañana. Con academias distintas no pasa. Salió al montar `bjj_33` y se dejó fuera a propósito. |
+
+| | Iniciativa |
+|---|---|
 | ~~🔴 Alta~~ | ~~**Administrar un Open Mat**~~ — **hecho** (`bjj_32`): editar, cancelar (que conserva), borrar solo si no cuelga nada, apuntar y quitar a otra persona por la RPC, y las plazas vigiladas por trigger. Ni una política nueva: la RLS ya lo permitía. |
 | 🟢 Baja | **Que un no-admin pueda crear un Open Mat.** Hoy `quedadas_admin` es la única política de escritura. Es una decisión de producto, no un arreglo: si se abre, hay que decidir quién puede y qué pasa con las plazas. |
 

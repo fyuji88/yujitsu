@@ -40,6 +40,8 @@ TABLAS_PUENTE = ('sesiones', 'rolls', 'eventos',
                  'enfoques', 'logros', 'v_logros_practicante', 'v_logros_mes',
                  'v_tecnicas_practicante')
 RPC_PUENTE = ('analisis', 'analisis_rolls_celda', 'unirse_con_codigo',
+              'enganchar_del_dia', 'enganchar_sesion_a_quedada',
+              'desenganchar_sesion', 'alcance_quedada', 'cerrar_quedada',
               'precisar_tecnica',
               'crear_equipo', 'regenerar_codigo', 'apuntarse_a_quedada',
               'cancelar_inscripcion', 'quedada_por_token', 'feed',
