@@ -248,10 +248,14 @@ declare d text; nuevo text;
 begin
   d := pg_get_functiondef('public.cerrar_quedada(uuid, boolean)'::regprocedure);
 
+  -- El anclaje es SOLO la linea, sin el comentario de despues: la copia de
+  -- produccion vino por MCP y alli los comentarios se recortaron, asi que un
+  -- anclaje que incluyera "-- Congelado" fallaba contra produccion y funcionaba
+  -- en local. Lo bueno de que el bloque tenga `raise` es que eso salio como un
+  -- error ruidoso y no como una funcion recreada sin el cambio.
   nuevo := replace(d,
 '  v_yo := private.practicante_actual();
-
-  -- Congelado',
+',
 '  v_yo := private.practicante_actual();
 
   -- SIN ROLLS NO SE CIERRA. Cerrar es de una sola direccion, y un informe vacio
@@ -263,8 +267,7 @@ begin
     raise exception ''no hay sesiones enganchadas a este Open Mat, asi que el informe saldria vacio. Engancha las sesiones del dia desde la pantalla del Open Mat y vuelve a cerrarlo''
       using errcode = ''check_violation'';
   end if;
-
-  -- Congelado');
+');
 
   if nuevo = d then
     raise exception 'NO ENCONTRE donde meter la guarda: cerrar_quedada no es la que esperaba';
