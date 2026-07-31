@@ -48,6 +48,22 @@ RPC_PUENTE = ('analisis', 'analisis_rolls_celda', 'unirse_con_codigo',
 RPC_CONJUNTO = ('analisis_rolls_celda', 'quedada_por_token', 'feed')
 
 
+def como_postgrest(e):
+    """
+    El error de psql, con la forma que devuelve PostgREST.
+
+    El cliente decide con `code` si reintentar o no: un 23503 (clave foranea) o
+    un 42501 (RLS) no se arreglan insistiendo, y una caida de red si. Si el
+    stub no manda `code`, esa decision no se puede probar aqui — y era justo
+    una de las cosas que el recorrido tenia que comprobar.
+    """
+    texto = str(e)
+    m = re.search(r'ERROR:\s+([0-9A-Z]{5}):\s*(.*)', texto, re.S)
+    if m:
+        return {'code': m.group(1), 'message': m.group(2).strip().splitlines()[0]}
+    return {'message': texto}
+
+
 def consultar(sql):
     """
     Ejecuta contra el Postgres local COMO EL USUARIO AUTENTICADO, no como
@@ -65,6 +81,12 @@ def consultar(sql):
     # en vez de null. Con el marcador, lo de despues es el resultado y lo de
     # antes no se mira.
     envuelto = (
+        # `VERBOSITY verbose` hace que psql imprima el SQLSTATE en el error.
+        # Sin el, el stub devolvia solo el texto y el cliente no podia
+        # distinguir un 4xx de una caida de red: PostgREST SI manda `code`, asi
+        # que sin esto el stub mentia sobre la forma del error. Lo cazo
+        # `pruebas/cola.js`, que probaba justo esa distincion.
+        "\\set VERBOSITY verbose\n"
         "begin;"
         f"select set_config('request.jwt.claims', '{{\"sub\":\"{USER_ID}\"}}', true);"
         "set local role authenticated;"
@@ -77,7 +99,14 @@ def consultar(sql):
     # que el check de `reacciones` lo rechazara. Por stdin con encoding
     # explicito no hay conversion por el medio. De paso desaparece el limite de
     # longitud de la linea de comandos.
-    r = subprocess.run([PSQL, PGURL, '-Atq'], input=envuelto,
+    # `-v ON_ERROR_STOP=1` NO ES OPCIONAL, y su ausencia era grave: sin el,
+    # psql sigue tras un ERROR, el `commit` final se convierte en rollback y el
+    # proceso sale con 0. O sea que una escritura RECHAZADA por Postgres —una
+    # clave foranea, la RLS— le llegaba al cliente como 201, la cola daba el
+    # elemento por subido y lo borraba. Perdida silenciosa de datos dentro del
+    # arnes de pruebas, que es el peor sitio donde tenerla: hace que los
+    # recorridos den verde justo cuando deberian estar rojos.
+    r = subprocess.run([PSQL, PGURL, '-Atq', '-v', 'ON_ERROR_STOP=1'], input=envuelto,
                        capture_output=True, text=True, encoding='utf-8',
                        env={**os.environ, 'PGCLIENTENCODING': 'UTF8'}, timeout=30)
     if r.returncode != 0:
@@ -295,7 +324,7 @@ class H(BaseHTTPRequestHandler):
                     return self.responder(200, self.uno_o_lista(
                         filtrar(filas, parse_qs(u.query))))
                 except Exception as e:            # noqa: BLE001
-                    return self.responder(400, {'message': str(e)})
+                    return self.responder(400, como_postgrest(e))
             with LOCK:
                 return self.responder(200, self.uno_o_lista(
                     filtrar(TABLAS.get(tabla, []), parse_qs(u.query))))
@@ -388,7 +417,7 @@ class H(BaseHTTPRequestHandler):
                         sql = f"select to_jsonb({fn}({argumentos}))"
                     return self.responder(200, consultar(sql))
                 except Exception as e:            # noqa: BLE001
-                    return self.responder(400, {'message': str(e)})
+                    return self.responder(400, como_postgrest(e))
             if fn != 'registrar_roll_observado':
                 return self.responder(404, {'message': f'funcion {fn} desconocida'})
             # Se imita lo justo: sin cuenta no hay espejo, igual que espejar_roll().
@@ -418,7 +447,7 @@ class H(BaseHTTPRequestHandler):
                               f"select coalesce(jsonb_agg(x), '[]'::jsonb) from x")
                 return self.responder(201, filas)
             except Exception as e:                # noqa: BLE001
-                return self.responder(403, {'message': str(e)})
+                return self.responder(400, como_postgrest(e))
 
         m = re.match(r'^/rest/v1/(\w+)$', u.path)
         if m:
@@ -466,7 +495,7 @@ class H(BaseHTTPRequestHandler):
                           f"select coalesce(jsonb_agg(x), '[]'::jsonb) from x")
                 return self.responder(200, [])
             except Exception as e:                # noqa: BLE001
-                return self.responder(403, {'message': str(e)})
+                return self.responder(400, como_postgrest(e))
 
         m = re.match(r'^/rest/v1/(\w+)$', u.path)
         if m:
@@ -490,7 +519,7 @@ class H(BaseHTTPRequestHandler):
                           f"returning *) select coalesce(jsonb_agg(x), '[]'::jsonb) from x")
                 return self.responder(200, [])
             except Exception as e:                # noqa: BLE001
-                return self.responder(403, {'message': str(e)})
+                return self.responder(400, como_postgrest(e))
 
         m = re.match(r'^/rest/v1/(\w+)$', u.path)
         if m:
