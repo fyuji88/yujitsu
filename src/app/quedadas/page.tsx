@@ -295,7 +295,12 @@ function Panel({ sesion }: { sesion: Sesion }) {
   // que desaparecia de las dos: la unica señal de que se ha cancelado era que
   // ya no estaba. Justo al reves de lo que hace falta, porque ese es el momento
   // en que la gente TIENE que enterarse de que no hay entreno.
-  const proximas = quedadas.filter((q) => q.fecha >= hoy);
+  // CANCELADO SI, CERRADO NO. Un cancelado se queda arriba y tachado, que es el
+  // punto: la gente tiene que enterarse de que no hay entreno. Pero uno CERRADO
+  // con fecha futura casaba tambien con 'pasadas' —que incluye todo lo cerrado—
+  // y salia DUPLICADO en la pantalla. Lo introduje yo al quitar el filtro de
+  // estado entero en vez de acotarlo.
+  const proximas = quedadas.filter((q) => q.fecha >= hoy && q.estado !== 'cerrada');
   const pasadas = quedadas.filter((q) => q.fecha < hoy || q.estado === 'cerrada');
   const puedoCrear = equipos.some((g) => soyAdminDe(g.id));
 
