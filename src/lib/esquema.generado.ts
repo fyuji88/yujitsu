@@ -47,6 +47,7 @@ export interface Tablas {
     segundo_roll: number | null;
     tecnica_precisada_por: string | null;
     tecnica_precisada_en: string | null;
+    par_evento_id: string | null;
   };
   inscripciones: {
     id: string;

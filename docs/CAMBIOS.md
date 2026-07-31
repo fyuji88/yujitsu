@@ -18,6 +18,36 @@ Qué es obligatorio y qué no:
 
 ---
 
+## 2026-08-04 (tarde) · Sellar los eventos espejo
+
+**Migración:** `bjj_31_sellar_el_espejo` (`db/26_sellar_el_espejo.sql`),
+aplicada a producción. **1424 eventos sellados, 612 pares.**
+
+El diagnóstico bueno no era mío: yo lo había cerrado como "descartado" porque
+emparejar por `created_at` es frágil. Pero eso era la solución mala, no el
+problema — **lo que faltaba era el enlace**. `eventos.par_evento_id` es a los
+eventos lo que `par_id` es a los rolls: `registrar_roll_observado()` lo genera y
+`espejar_roll()` lo copia, así que `precisar_tecnica()` actualiza los dos. Un
+solo hecho físico deja de poder tener dos nombres.
+
+**El relleno hacia atrás empareja por POSICIÓN dentro del roll**, que es el
+orden en que `espejar_roll()` los insertó. Comprobado **antes** de escribir
+nada: 99 pares con dos rolls, los 99 con el mismo número de eventos, ninguno
+descuadrado. No se ordena por `id` —el espejo tiene ids nuevos— sino por lo que
+el espejo copia tal cual, y nunca por `actor`, que es lo único que se invierte.
+Si quedan dos eventos empatados en todo eso son indistinguibles para lo que
+`precisar` hace, así que la ambigüedad restante es inofensiva por construcción.
+
+**Y una comprobación mía que pasaba en vacío.** El bloque que verifica el
+relleno dijo "todo bien" en una base **sin ningún par espejo**: no había mirado
+nada. Ahora dice cuántos pares ha comprobado, y avisa a gritos cuando son cero.
+Una comprobación que no puede fallar no es una comprobación — la tercera regla
+de CLAUDE.md, aplicada a mí mismo.
+
+**Sabido roto:** nada nuevo. Con esto se cierra el bloque de mecánicas.
+
+---
+
 ## 2026-08-04 · Los tipos, generados desde la base
 
 **Migración:** ninguna.

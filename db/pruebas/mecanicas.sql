@@ -216,6 +216,41 @@ begin
   end if;
   raise notice 'PASS  enfoque en TARIKOPLATA no cuenta la kimura normal (% vez)', n;
 
+  -- ================================================== 7 · el espejo (bjj_31)
+  -- Un solo hecho fisico no puede acabar con dos nombres. Se prueba con un
+  -- roll observado REAL, que es el unico que genera espejo.
+  declare
+    v_par_roll uuid := gen_random_uuid();
+    r          jsonb;
+    v_ev2      uuid;
+    v_sello    uuid;
+  begin
+    perform set_config('request.jwt.claims', json_build_object('sub', v_yo_user)::text, true);
+    r := registrar_roll_observado(v_par_roll, v_yo, v_otro, current_date, 'nogi',
+         5::smallint, 'de_pie', 'neutral', 'sumision_favor',
+         ('[{"actor":"yo","tipo":"sumision","posicion":"montada","rol":"arriba",'
+          || '"objetivo":"hombro","completado":true,"segundo_roll":60,'
+          || '"tecnica_slug":"kimura"}]')::jsonb);
+
+    if (r->>'roll_b') is null then
+      raise notice 'AVISO  el compañero no tiene cuenta: el espejo NO se ha probado';
+    else
+      select e.id, e.par_evento_id into v_ev2, v_sello
+        from eventos e where e.roll_id = (r->>'roll_a')::uuid and e.tecnica_id = v_kimura;
+      if v_sello is null then
+        raise exception 'FALLO: el evento nuevo no lleva par_evento_id';
+      end if;
+      select count(*) into n from eventos where par_evento_id = v_sello;
+      if n <> 2 then raise exception 'FALLO: el sello aparece % veces, deberian ser 2', n; end if;
+      raise notice 'PASS  registrar_roll_observado sella los dos eventos del mismo hecho';
+
+      perform precisar_tecnica(v_ev2, v_tariko);
+      select count(*) into n from eventos where par_evento_id = v_sello and tecnica_id = v_tariko;
+      if n <> 2 then raise exception 'FALLO: precisar solo llego a % de 2 espejos', n; end if;
+      raise notice 'PASS  precisar PROPAGA al espejo: el mismo hecho, un solo nombre';
+    end if;
+  end;
+
   raise notice '######## MECANICAS: todo pasa ########';
 end $$;
 
