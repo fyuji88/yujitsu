@@ -43,7 +43,7 @@ quinta es la que te dice si se está muriendo despacio.
 | 🔴 **Alta** | **Aviso de versión nueva** dentro de la app, nunca recarga silenciosa y jamás en mitad de un roll. Y **migraciones compatibles hacia atrás**: expandir → migrar → contraer. Hoy se hacen cambios que rompen clientes viejos. |
 | 🔴 **Alta** | **`docs/CAMBIOS.md`, escrito por Claude Code** al terminar cada tanda, como parte de la definición de terminado. Migraciones, **decisiones** y **sabido roto** — las dos últimas obligatorias, porque son lo que el `git log` no cuenta. Se audita en la retro del domingo. Es lo que evita que el PM proponga cosas ya hechas. |
 | 🟡 Media | **Entorno de pruebas.** Hoy cada migración va directa a producción. Usar ramas de Supabase. |
-| 🟡 Media | **Dos administradores por grupo** y credenciales que no cuelguen solo de tu correo personal. Continuidad barata. |
+| 🟡 Media | **Dos administradores por equipo** y credenciales que no cuelguen solo de tu correo personal. Continuidad barata. |
 | 🟢 Baja | **Semilla de demo en el repo** (`db/98_datos_demo.sql`) para que cualquier rama arranque con la base poblada. |
 
 # 2 · Seguridad y privacidad
@@ -84,6 +84,11 @@ quinta es la que te dice si se está muriendo despacio.
 | 🟢 Baja | **Comparativa lado a lado** de dos practicantes. Exige mismos ejes y escala; hacerlo mal invita a conclusiones falsas. |
 
 # 4 · Social y comunidad
+
+| | Iniciativa |
+|---|---|
+| ~~🔴 Alta~~ | ~~**Administrar un Open Mat**~~ — **hecho** (`bjj_32`): editar, cancelar (que conserva), borrar solo si no cuelga nada, apuntar y quitar a otra persona por la RPC, y las plazas vigiladas por trigger. Ni una política nueva: la RLS ya lo permitía. |
+| 🟢 Baja | **Que un no-admin pueda crear un Open Mat.** Hoy `quedadas_admin` es la única política de escritura. Es una decisión de producto, no un arreglo: si se abre, hay que decidir quién puede y qué pasa con las plazas. |
 
 | | Iniciativa |
 |---|---|

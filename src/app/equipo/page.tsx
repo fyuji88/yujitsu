@@ -94,6 +94,28 @@ function Panel({ sesion }: { sesion: Sesion }) {
     void cargar();
   }
 
+  /**
+   * Sacar a alguien del equipo.
+   *
+   * NO BORRA NADA SUYO, y la confirmación lo dice: deja de ver los datos del
+   * equipo y el equipo deja de ver los suyos. Es un cambio de visibilidad, no
+   * un borrado — confundir las dos cosas en un botón rojo es cómo alguien
+   * destruye datos creyendo que ordena.
+   */
+  async function sacar(equipoId: string, practicanteId: string, nombre: string) {
+    if (!confirm(
+      `¿Sacar a ${nombre} del ${TEXTOS.equipo}?\n\n`
+      + 'No se borra nada suyo: deja de ver los datos del equipo y el equipo '
+      + 'deja de ver los suyos.',
+    )) return;
+    setOcupado(true); setError(null);
+    const { error } = await supabase().from('miembros_equipo').delete()
+      .eq('equipo_id', equipoId).eq('practicante_id', practicanteId);
+    if (error) setError(error.message);
+    else await cargar();
+    setOcupado(false);
+  }
+
   /** Alta manual de alguien del roster que todavía no está en el equipo. */
   async function anadir(equipoId: string, practicanteId: string) {
     setOcupado(true); setError(null);
@@ -196,32 +218,82 @@ function Panel({ sesion }: { sesion: Sesion }) {
                   </span>
                   <span className="pill">{m.rol_en_equipo}</span>
                   {admin && m.practicante_id !== sesion.practicante.id && (
-                    <button className="ghost" disabled={ocupado}
-                      style={{ padding: '7px 10px', fontSize: 12 }}
-                      onClick={() => void cambiarRol(g.id, m.practicante_id,
-                        m.rol_en_equipo === 'admin' ? 'miembro' : 'admin')}>
-                      {m.rol_en_equipo === 'admin' ? 'Quitar admin' : 'Hacer admin'}
-                    </button>
+                    <>
+                      <button className="ghost" disabled={ocupado}
+                        style={{ padding: '7px 10px', fontSize: 12 }}
+                        onClick={() => void cambiarRol(g.id, m.practicante_id,
+                          m.rol_en_equipo === 'admin' ? 'miembro' : 'admin')}>
+                        {m.rol_en_equipo === 'admin' ? 'Quitar admin' : 'Hacer admin'}
+                      </button>
+                      {/* La confirmacion dice QUE HACE, no "¿estas seguro?".
+                          Sacar a alguien no borra nada suyo: cambia quien ve
+                          que. Quien lo pulse tiene que saber eso. */}
+                      <button className="ghost" disabled={ocupado}
+                        data-testid={`sacar-${m.practicante_id}`}
+                        style={{ padding: '7px 10px', fontSize: 12, color: 'var(--error)' }}
+                        onClick={() => void sacar(g.id, m.practicante_id,
+                          m.ficha?.nombre ?? 'esta persona')}>
+                        Sacar
+                      </button>
+                    </>
                   )}
                 </div>
               ))}
             </div>
 
-            {admin && fuera.length > 0 && (
+            {admin && (
               <>
-                <h2 className="sec">Añadir del roster</h2>
-                <p className="hint" style={{ marginTop: 0 }}>
-                  Para quien ya está dado de alta como contacto y no tiene cuenta.
-                </p>
-                <div className="chips">
-                  {fuera.map((p) => (
-                    <button className="chip" key={p.id} disabled={ocupado}
-                      data-testid={`anadir-${p.nombre}`}
-                      onClick={() => void anadir(g.id, p.id)}>
-                      + {p.nombre}
-                    </button>
-                  ))}
-                </div>
+                {/* ============================================================
+                    DOS CASOS QUE NO SE TRATAN IGUAL, Y NO ES UN DESCUIDO.
+
+                    Un CONTACTO SIN CUENTA se añade directamente: es una ficha
+                    que creaste tú, no hay nadie a quien preguntar.
+
+                    Una PERSONA CON CUENTA no. Meterla en el equipo le da acceso
+                    de lectura a los rolls de todos, y le da al equipo acceso a
+                    los suyos. Eso es un cambio de privilegios sobre los datos
+                    de otra persona, y no se hace por sorpresa. Para eso está el
+                    código de unión: tú lo compartes, ella entra.
+                    ============================================================ */}
+                {fuera.filter((p) => !p.usa_sistema).length > 0 && (
+                  <>
+                    <h2 className="sec">Añadir del roster</h2>
+                    <p className="hint" style={{ marginTop: 0 }}>
+                      Contactos sin cuenta: fichas que creaste tú para poder
+                      registrar rolls con ellos.
+                    </p>
+                    <div className="chips">
+                      {fuera.filter((p) => !p.usa_sistema).map((p) => (
+                        <button className="chip" key={p.id} disabled={ocupado}
+                          data-testid={`anadir-${p.nombre}`}
+                          onClick={() => void anadir(g.id, p.id)}>
+                          + {p.nombre}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {fuera.some((p) => p.usa_sistema) && (
+                  <>
+                    <h2 className="sec">Con cuenta se entra con el código</h2>
+                    <p className="hint" style={{ marginTop: 0 }}
+                      data-testid="por-que-codigo">
+                      A quien tiene cuenta no lo metemos nosotros: entrar en un{' '}
+                      {TEXTOS.equipo} le da acceso a los rolls de todos y da al{' '}
+                      {TEXTOS.equipo} acceso a los suyos. Eso lo decide cada uno.
+                      Pásale el código <b>{g.codigo_union}</b> y entra en un toque.
+                    </p>
+                    <div className="tl">
+                      {fuera.filter((p) => p.usa_sistema).map((p) => (
+                        <div className="fila" key={p.id}>
+                          <span className="n">{p.nombre}<small>tiene cuenta</small></span>
+                          <span className="pill">le pasas el código</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </>
             )}
           </div>

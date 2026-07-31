@@ -165,6 +165,19 @@ function comprobar(cond, m) {
   await page.screenshot({
     path: path.join(process.env.PERFIL ?? SALIDA, 'enfoque.png'), fullPage: true });
 
+  // ---------- dejar la semilla como estaba ----------
+  //
+  // Limpia al ENTRAR y tambien al SALIR. Solo al entrar no basta: si una pasada
+  // deja un enfoque abierto, el que falla es el recorrido SIGUIENTE, y falla
+  // lejos de su causa. Paso de verdad — `enfoques.js` se puso rojo dentro del
+  // lote y pasaba solo, que es el sintoma clasico de un vecino sucio.
+  const limpiados = await page.evaluate(async () => {
+    const { data } = await window.__sb.from('enfoques').select('id');
+    for (const e of data ?? []) await window.__sb.from('enfoques').delete().eq('id', e.id);
+    return (data ?? []).length;
+  });
+  ok(`la semilla queda como estaba: ${limpiados} enfoques borrados`);
+
   console.log(`\n######## ENFOQUES: ${n} comprobaciones ########`);
   await ctx.close();
 })().catch((e) => { console.error(e.message); process.exit(1); });

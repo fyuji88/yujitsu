@@ -656,6 +656,75 @@ select pr_caso('externo', 'el invitado NO ve el roster del equipo',
   (select count(*) from practicantes where id = :A2) = 0,
   've ' || (select count(*)::text from practicantes) || ' practicantes');
 
+-- ============================================================
+--  EL EQUIPO EQUIVOCADO  (bjj_32)
+-- ============================================================
+--
+--  Ser admin no es un grado, es un grado EN UN EQUIPO. A1 lo es del A y no del
+--  B, y estos tres son justo los que un `es_admin()` mal puesto —o llamado con
+--  el equipo que no es— dejaria pasar. Los tres van juntos porque los tres se
+--  arreglan igual y se rompen igual.
+select pr_es(:UA1);
+
+-- Editar la quedada de otro equipo. La politica es `quedadas_admin`, que exige
+-- `es_admin(equipo_id)` de ESA quedada.
+do $$
+declare v_q uuid;
+begin
+  insert into quedadas (equipo_id, titulo, fecha, modalidad, creado_por)
+  values ('b0000000-0000-4000-9000-00000000000b', 'Del equipo B',
+          current_date + 2, 'nogi', 'b0000000-0000-4000-8000-000000000001')
+  returning id into v_q;
+  perform pr_caso('equipo', 'un admin de A NO puede crear en el equipo B', false,
+                  'la creo, y no deberia');
+exception when insufficient_privilege or check_violation then
+  perform pr_caso('equipo', 'un admin de A NO puede crear en el equipo B', true);
+end $$;
+
+do $$
+declare n int;
+begin
+  update quedadas set titulo = 'secuestrada'
+   where equipo_id = 'b0000000-0000-4000-9000-00000000000b';
+  get diagnostics n = row_count;
+  perform pr_caso('equipo', 'un admin de A NO puede editar una quedada del B',
+                  n = 0, 'edito ' || n || ' filas');
+end $$;
+
+-- Apuntar a alguien en la quedada de otro equipo. Aqui no manda la RLS sino la
+-- comprobacion explicita de `apuntarse_a_quedada`, que es la unica via: un
+-- insert directo se saltaria el reparto de plazas.
+do $$
+declare v_q uuid;
+begin
+  select id into v_q from quedadas
+   where equipo_id = 'b0000000-0000-4000-9000-00000000000b' limit 1;
+  if v_q is null then
+    perform pr_caso('equipo', 'un admin de A NO puede apuntar a nadie en una quedada del B',
+                    true, '(no hay quedada del B: caso no ejercido)');
+  else
+    begin
+      perform apuntarse_a_quedada(v_q, null, 'a0000000-0000-4000-8000-000000000002');
+      perform pr_caso('equipo', 'un admin de A NO puede apuntar a nadie en una quedada del B',
+                      false, 'apunto a alguien, y no deberia');
+    exception when insufficient_privilege then
+      perform pr_caso('equipo', 'un admin de A NO puede apuntar a nadie en una quedada del B', true);
+    end;
+  end if;
+end $$;
+
+-- Meter gente en el equipo de otro. `miembros_alta_admin` exige es_admin.
+do $$
+begin
+  insert into miembros_equipo (equipo_id, practicante_id, rol_en_equipo)
+  values ('b0000000-0000-4000-9000-00000000000b',
+          'c0000000-0000-4000-8000-000000000001', 'miembro');
+  perform pr_caso('equipo', 'un admin de A NO puede meter gente en el equipo B', false,
+                  'lo metio, y no deberia');
+exception when insufficient_privilege then
+  perform pr_caso('equipo', 'un admin de A NO puede meter gente en el equipo B', true);
+end $$;
+
 select pr_admin();
 
 -- ============================================================

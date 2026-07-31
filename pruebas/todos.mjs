@@ -36,6 +36,7 @@ const RECORRIDOS = [
   ['pantalla.js', 'la pantalla encendida: se pide al rodar y se suelta al acabar'],
   ['precisar.js', 'precisar: el chip, y el invariante contra Postgres de verdad'],
   ['cola.js', 'la cola: modo avion, recarga, 4xx que no se reintenta, y el aviso al cerrar'],
+  ['admin-quedadas.js', 'administrar un Open Mat: editar, plazas, apuntar a otro, cancelar'],
 ];
 
 async function vivo(url) {

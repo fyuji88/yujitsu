@@ -21,7 +21,9 @@ import type {
  * permiso de lectura sobre `quedadas`, así que su quedada se resuelve por RPC.
  */
 
-interface Ficha { id: string; nombre: string }
+/**  distingue al contacto sin cuenta, que es a quien mas sentido
+ * tiene apuntar tu: entrena y no usa la app. */
+interface Ficha { id: string; nombre: string; usa_sistema: boolean }
 
 interface Informe {
   quedada: { titulo: string; fecha: string; lugar: string | null };
@@ -53,6 +55,7 @@ function Panel({ sesion }: { sesion: Sesion }) {
   const [aviso, setAviso] = useState<string | null>(null);
   const [creando, setCreando] = useState(false);
   const [informe, setInforme] = useState<{ quedada: string; datos: Informe } | null>(null);
+  const [editando, setEditando] = useState<string | null>(null);
 
   const cargar = useCallback(async () => {
     const sb = supabase();
@@ -61,7 +64,7 @@ function Panel({ sesion }: { sesion: Sesion }) {
       sb.from('miembros_equipo').select('*'),
       sb.from('quedadas').select('*').order('fecha', { ascending: false }),
       sb.from('inscripciones').select('*'),
-      sb.from('practicantes').select('id,nombre').order('nombre'),
+      sb.from('practicantes').select('id,nombre,usa_sistema').order('nombre'),
     ]);
     setEquipos((g.data ?? []) as EquipoRow[]);
     setMiembros((m.data ?? []) as MiembroRow[]);
@@ -83,6 +86,78 @@ function Panel({ sesion }: { sesion: Sesion }) {
         setInvitada((fila ?? null) as Record<string, unknown> | null);
       });
   }, [invitacion]);
+
+  /**
+   * Editar. La RLS ya deja al admin hacer el update; aqui solo se manda lo que
+   * cambia. Las reglas de plazas NO estan aqui: viven en el trigger, porque
+   * cualquier cosa que solo viva en React se salta con una llamada a la API.
+   */
+  async function editar(qid: string, cambios: Partial<QuedadaRow>) {
+    setOcupado(true); setError(null);
+    const { error } = await supabase().from('quedadas').update(cambios).eq('id', qid);
+    // El mensaje del trigger ya trae el numero ("hay 8 apuntados"): se enseña
+    // tal cual en vez de traducirlo a un generico que no dice nada.
+    if (error) setError(error.message);
+    else { setEditando(null); await cargar(); }
+    setOcupado(false);
+  }
+
+  /**
+   * Cancelar es la accion destructiva por defecto, y NO borra.
+   *
+   * Un Open Mat cancelado sigue viendose, tachado y con sus apuntados: la gente
+   * necesita enterarse de que no hay entreno, y ese es justo el momento en que
+   * no puedes hacerlo desaparecer.
+   */
+  async function cancelar(qid: string) {
+    if (!confirm('¿Cancelar este Open Mat? Sigue viéndose, tachado, para que la gente se entere.')) return;
+    await editar(qid, { estado: 'cancelada' });
+  }
+
+  /**
+   * Borrar SOLO si no cuelga nada. Comprobado contra el esquema:
+   *   - `inscripciones` y `quedada_informes` van en CASCADE: borrar se lleva
+   *     los apuntados y el informe sin avisar;
+   *   - `sesiones` va en SET NULL: los rolls no se pierden, pero se
+   *     DESENGANCHAN, y con eso los cuatro logros de ambito quedada dejan de
+   *     contar para esas sesiones. Nadie se entera nunca.
+   * Borrar parece limpieza y en realidad cambia el historial de otra gente en
+   * silencio. Por eso el boton no existe si hay algo colgando.
+   */
+  const sePuedeBorrar = (qid: string) =>
+    inscripciones.filter((i) => i.quedada_id === qid).length === 0;
+
+  async function borrar(qid: string) {
+    if (!confirm('¿Borrar este Open Mat? No queda nada apuntado, así que no se pierde nada.')) return;
+    setOcupado(true); setError(null);
+    const { error } = await supabase().from('quedadas').delete().eq('id', qid);
+    if (error) setError(error.message);
+    else await cargar();
+    setOcupado(false);
+  }
+
+  /** Apuntar a otra persona. Por la RPC, nunca con un insert directo. */
+  async function apuntarA(qid: string, practicanteId: string) {
+    setOcupado(true); setError(null);
+    const { error } = await supabase().rpc('apuntarse_a_quedada', {
+      p_quedada: qid, p_token: null, p_practicante: practicanteId,
+    });
+    if (error) setError(error.message);
+    else await cargar();
+    setOcupado(false);
+  }
+
+  /** Quitar a otra persona. Promueve al primero de la lista, en la RPC. */
+  async function quitarA(qid: string, practicanteId: string, nombre: string) {
+    if (!confirm(`¿Quitar a ${nombre}? Si había alguien en lista de espera, sube.`)) return;
+    setOcupado(true); setError(null);
+    const { error } = await supabase().rpc('cancelar_inscripcion', {
+      p_quedada: qid, p_practicante: practicanteId,
+    });
+    if (error) setError(error.message);
+    else await cargar();
+    setOcupado(false);
+  }
 
   const soyAdminDe = (equipoId: string) => miembros.some(
     (m) => m.equipo_id === equipoId && m.practicante_id === sesion.practicante.id
@@ -171,7 +246,12 @@ function Panel({ sesion }: { sesion: Sesion }) {
   if (cargando) return <p className="empty">Cargando…</p>;
 
   const hoy = new Date().toISOString().slice(0, 10);
-  const proximas = quedadas.filter((q) => q.fecha >= hoy && q.estado !== 'cancelada');
+  // UN OPEN MAT CANCELADO SIGUE EN LA LISTA, tachado. Antes se filtraba fuera
+  // de 'proximas' y no entraba en 'pasadas' —su fecha aun no ha llegado—, asi
+  // que desaparecia de las dos: la unica señal de que se ha cancelado era que
+  // ya no estaba. Justo al reves de lo que hace falta, porque ese es el momento
+  // en que la gente TIENE que enterarse de que no hay entreno.
+  const proximas = quedadas.filter((q) => q.fecha >= hoy);
   const pasadas = quedadas.filter((q) => q.fecha < hoy || q.estado === 'cerrada');
   const puedoCrear = equipos.some((g) => soyAdminDe(g.id));
 
@@ -245,7 +325,19 @@ function Panel({ sesion }: { sesion: Sesion }) {
               background: 'var(--superficie)', border: '1px solid var(--borde)',
               borderRadius: 13, padding: 14, marginTop: 10,
             }}>
-            <div style={{ fontSize: 16, fontWeight: 620 }}>{q.titulo}</div>
+            <div style={{ fontSize: 16, fontWeight: 620 }}>
+              {q.estado === 'cancelada' ? (
+                <span data-testid={`cancelada-${q.id}`}
+                  style={{ textDecoration: 'line-through', color: 'var(--tenue)' }}>
+                  {q.titulo}
+                </span>
+              ) : q.titulo}
+              {q.estado === 'cancelada' && (
+                <span className="pill" style={{ marginLeft: 8, color: 'var(--error)' }}>
+                  cancelado
+                </span>
+              )}
+            </div>
             <div style={{ fontSize: 12.5, color: 'var(--texto-2)', marginTop: 3 }}>
               {q.fecha}{q.hora_inicio && ` · ${q.hora_inicio.slice(0, 5)}`}
               {q.lugar && ` · ${q.lugar}`} · {q.modalidad === 'gi' ? 'Gi' : 'No-gi'}
@@ -271,12 +363,43 @@ function Panel({ sesion }: { sesion: Sesion }) {
                 </button>
               )}
               {admin && q.estado === 'abierta' && (
+                <>
+                  <button className="ghost" disabled={ocupado}
+                    data-testid={`editar-${q.id}`}
+                    onClick={() => setEditando(editando === q.id ? null : q.id)}>
+                    Editar
+                  </button>
+                  <button className="ghost" disabled={ocupado}
+                    data-testid={`cerrar-${q.id}`} onClick={() => void cerrar(q.id)}>
+                    Cerrar
+                  </button>
+                  <button className="ghost" disabled={ocupado}
+                    data-testid={`cancelar-${q.id}`}
+                    style={{ color: 'var(--error)' }}
+                    onClick={() => void cancelar(q.id)}>
+                    Cancelar
+                  </button>
+                </>
+              )}
+              {/* Borrar SOLO si no cuelga nada. Si hay alguien apuntado, el
+                  boton no existe — no se enseña deshabilitado, porque un boton
+                  apagado invita a preguntar por que y este no tiene respuesta
+                  buena: la respuesta es "usa Cancelar". */}
+              {admin && sePuedeBorrar(q.id) && (
                 <button className="ghost" disabled={ocupado}
-                  data-testid={`cerrar-${q.id}`} onClick={() => void cerrar(q.id)}>
-                  Cerrar
+                  data-testid={`borrar-${q.id}`}
+                  style={{ color: 'var(--error)' }}
+                  onClick={() => void borrar(q.id)}>
+                  Borrar
                 </button>
               )}
             </div>
+
+            {admin && editando === q.id && (
+              <Editar q={q} ocupado={ocupado}
+                onGuardar={(c) => void editar(q.id, c)}
+                onCancelar={() => setEditando(null)} />
+            )}
 
             {admin && (
               <>
@@ -293,9 +416,43 @@ function Panel({ sesion }: { sesion: Sesion }) {
                         <span className="pill">
                           {i.estado === 'apuntado' ? 'viene' : `espera ${i.orden_en_lista}`}
                         </span>
+                        <button className="ghost" disabled={ocupado}
+                          data-testid={`quitar-${q.id}-${i.practicante_id}`}
+                          style={{ padding: '7px 10px', fontSize: 12 }}
+                          onClick={() => void quitarA(q.id, i.practicante_id,
+                            roster.find((p) => p.id === i.practicante_id)?.nombre ?? 'esta persona')}>
+                          Quitar
+                        </button>
                       </div>
                     ))}
                 </div>
+
+                {/* APUNTAR A OTRO. Se ofrecen los del equipo y los contactos
+                    sin cuenta: los contactos son justo para esto, gente que
+                    entrena y no usa la app. Va por la RPC, que es la que sabe
+                    de plazas y de lista de espera. */}
+                {q.estado === 'abierta' && (() => {
+                  const yaEstan = new Set(inscripciones
+                    .filter((i) => i.quedada_id === q.id && i.estado !== 'cancelado')
+                    .map((i) => i.practicante_id));
+                  const faltan = roster.filter((p) => !yaEstan.has(p.id));
+                  if (!faltan.length) return null;
+                  return (
+                    <>
+                      <h2 className="sec" style={{ marginBottom: 6 }}>Apuntar a alguien</h2>
+                      <div className="chips">
+                        {faltan.map((p) => (
+                          <button className="chip" key={p.id} disabled={ocupado}
+                            data-testid={`apuntar-${q.id}-${p.id}`}
+                            onClick={() => void apuntarA(q.id, p.id)}>
+                            + {p.nombre}
+                            {!p.usa_sistema && <small>sin cuenta</small>}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  );
+                })()}
                 <p className="hint">
                   Enlace para invitar a alguien de fuera:{' '}
                   <code style={{ wordBreak: 'break-all' }}>
@@ -489,5 +646,96 @@ function VistaInforme(
         <button className="ghost" onClick={onCerrar} data-testid="cerrar-informe">Cerrar</button>
       </div>
     </div>
+  );
+}
+
+/**
+ * Editar un Open Mat.
+ *
+ * Solo manda lo que ha cambiado. Las plazas las vigila el trigger de la base y
+ * no esta pantalla: si bajas por debajo de los apuntados, el error viene de
+ * Postgres con el numero dentro y se enseña tal cual. Poner esa regla aquí
+ * ademas seria tenerla en dos sitios, y el de arriba se puede saltar.
+ */
+function Editar(
+  { q, ocupado, onGuardar, onCancelar }: {
+    q: QuedadaRow; ocupado: boolean;
+    onGuardar: (c: Partial<QuedadaRow>) => void; onCancelar: () => void;
+  },
+) {
+  const [d, setD] = useState({
+    titulo: q.titulo,
+    fecha: q.fecha,
+    hora_inicio: q.hora_inicio?.slice(0, 5) ?? '',
+    duracion_min: q.duracion_min?.toString() ?? '',
+    lugar: q.lugar ?? '',
+    plazas_max: q.plazas_max?.toString() ?? '',
+    modalidad: q.modalidad,
+    admite_externos: q.admite_externos,
+    notas: q.notas ?? '',
+  });
+  const campo = (k: keyof typeof d) => ({
+    value: String(d[k] ?? ''),
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setD((x) => ({ ...x, [k]: e.target.value })),
+  });
+
+  return (
+    <form data-testid={`form-editar-${q.id}`}
+      style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--rejilla)' }}
+      onSubmit={(e) => {
+        e.preventDefault();
+        onGuardar({
+          titulo: d.titulo.trim(),
+          fecha: d.fecha,
+          hora_inicio: d.hora_inicio || null,
+          duracion_min: d.duracion_min ? Number(d.duracion_min) : null,
+          lugar: d.lugar.trim() || null,
+          plazas_max: d.plazas_max ? Number(d.plazas_max) : null,
+          modalidad: d.modalidad,
+          admite_externos: d.admite_externos,
+          notas: d.notas.trim() || null,
+        });
+      }}>
+      <label htmlFor={`t-${q.id}`}>Título</label>
+      <input id={`t-${q.id}`} data-testid={`ed-titulo-${q.id}`} {...campo('titulo')} />
+
+      <label htmlFor={`f-${q.id}`}>Día</label>
+      <input id={`f-${q.id}`} type="date" data-testid={`ed-fecha-${q.id}`} {...campo('fecha')} />
+
+      <label htmlFor={`h-${q.id}`}>Hora</label>
+      <input id={`h-${q.id}`} type="time" {...campo('hora_inicio')} />
+
+      <label htmlFor={`l-${q.id}`}>Dónde</label>
+      <input id={`l-${q.id}`} {...campo('lugar')} />
+
+      <label htmlFor={`p-${q.id}`}>Plazas (vacío = sin tope)</label>
+      <input id={`p-${q.id}`} type="number" min={0} inputMode="numeric"
+        data-testid={`ed-plazas-${q.id}`} {...campo('plazas_max')} />
+
+      <label htmlFor={`d-${q.id}`}>Duración (min)</label>
+      <input id={`d-${q.id}`} type="number" min={0} inputMode="numeric" {...campo('duracion_min')} />
+
+      <label htmlFor={`m-${q.id}`}>Modalidad</label>
+      <select id={`m-${q.id}`} {...campo('modalidad')}>
+        <option value="gi">Gi</option>
+        <option value="nogi">No-gi</option>
+      </select>
+
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
+        <input type="checkbox" checked={d.admite_externos}
+          onChange={(e) => setD((x) => ({ ...x, admite_externos: e.target.checked }))} />
+        Admite invitados de fuera
+      </label>
+
+      <label htmlFor={`n-${q.id}`}>Notas</label>
+      <input id={`n-${q.id}`} {...campo('notas')} />
+
+      <div style={{ display: 'flex', gap: 9, marginTop: 14 }}>
+        <button className="primary" type="submit" disabled={ocupado}
+          data-testid={`guardar-${q.id}`}>Guardar</button>
+        <button className="ghost" type="button" onClick={onCancelar}>Descartar</button>
+      </div>
+    </form>
   );
 }

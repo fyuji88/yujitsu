@@ -18,6 +18,63 @@ Qué es obligatorio y qué no:
 
 ---
 
+## 2026-08-06 · Administrar un Open Mat
+
+**Migración:** `bjj_32_admin_de_quedadas` (`db/27_admin_de_quedadas.sql`).
+Ni una política nueva: **la RLS ya lo permitía todo**. Lo que faltaba no era
+permiso, era que la lógica de plazas no se pudiera saltar.
+
+**Decisión: apuntar a otro va por la RPC, nunca por un insert directo.** La RLS
+deja a un admin insertar en `inscripciones`, y si lo hace se salta el reparto de
+plazas: acabas con nueve personas en ocho, o con alguien en `apuntado` que
+debería estar en `lista_espera`. `apuntarse_a_quedada` y `cancelar_inscripcion`
+llevan ahora un `p_practicante` opcional que exige `es_admin` si no eres tú.
+
+**El cambio de firma, mirado antes de tocarlo** —la lección de `p_grupo`—: se
+comprobó que **la cola no serializa esa llamada** (solo lleva sesiones, rolls,
+eventos y el roll observado), y se **tiró la versión vieja** en vez de añadir
+una sobrecarga, porque con las dos una llamada `{p_quedada, p_token}` encajaría
+en ambas y PostgREST no sabría cuál. Hay una prueba de que la llamada de hoy
+sigue resolviendo.
+
+**Decisión: las plazas las vigila un trigger, no la pantalla.** La RLS deja al
+admin hacer un `update quedadas` directo, así que una regla que solo viva en
+React se salta con una llamada a la API. Bajar por debajo de los apuntados se
+rechaza con el número dentro (*"no puedes bajar a 0 plazas: hay 1 apuntados"*) y
+subir promueve desde la lista. **La promoción está escrita una vez** —
+`private.promover_lista_espera()`— y la llaman los tres caminos.
+
+**Decisión: borrar solo si no cuelga nada, y el botón no existe si cuelga algo.**
+Comprobado en el esquema: `inscripciones` y `quedada_informes` van en CASCADE y
+`sesiones` en SET NULL. Borrar parece limpieza y en realidad se lleva los
+apuntados, el informe, y **desengancha rolls de otra gente** — con lo que los
+cuatro logros de ámbito quedada dejan de contar para esas sesiones y nadie se
+entera. No se enseña apagado: no se enseña.
+
+**Decisión: a quien tiene cuenta no lo mete el admin.** Entrar en un equipo le
+da acceso a los rolls de todos y da al equipo acceso a los suyos: eso es un
+cambio de privilegios sobre datos de otra persona y no se hace por sorpresa. La
+pantalla lo dice y enseña el código de unión, para que parezca una decisión y no
+una función que falta. Los contactos sin cuenta sí se añaden directos.
+
+**Un fallo real que salió al probarlo:** un Open Mat cancelado **desaparecía de
+las dos listas** —lo filtraba `proximas` y su fecha aún no había llegado para
+`pasadas`—, así que la única señal de que se había cancelado era que ya no
+estaba. Justo al revés de lo que hace falta.
+
+**Pruebas:** `db/pruebas/admin-quedadas.sql` (los cuatro caminos de las plazas,
+en CI), cuatro casos de "equipo equivocado" en `rls.sql` —que sube a **59**— y
+`pruebas/admin-quedadas.js`, 11 comprobaciones en navegador. La batería entera
+son **9 recorridos**, corridos dos lotes seguidos.
+
+**Sabido roto:**
+- Que un no-admin cree un Open Mat sigue sin poder ser: hoy `quedadas_admin` es
+  la única política de escritura. Es una decisión de producto, no un arreglo.
+- `enfoques.js` no limpiaba lo suyo y tumbaba al recorrido siguiente dentro del
+  lote. Ya limpia. Es la tercera vez que pasa esto: **el que escribe, limpia**.
+
+---
+
 ## 2026-08-05 · Blindar el registro en vivo
 
 **Migraciones:** ninguna. Es todo cliente, como pedía el encargo.

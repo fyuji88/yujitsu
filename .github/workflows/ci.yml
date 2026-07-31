@@ -106,6 +106,12 @@ jobs:
       - name: Las mecanicas y precisar
         run: psql -v ON_ERROR_STOP=1 -f db/pruebas/mecanicas.sql
 
+      # Administrar un Open Mat: los cuatro caminos de las plazas (con una
+      # libre dos altas dejan un apuntado y un lista_espera; subir promueve;
+      # quitar promueve; bajar por debajo se rechaza) y que cancelar conserva.
+      - name: Administrar un Open Mat
+        run: psql -v ON_ERROR_STOP=1 -f db/pruebas/admin-quedadas.sql
+
       - name: El marcador contra el fixture compartido
         run: psql -v ruta="$PWD/src/lib/__fixtures__/puntos.json" -f db/pruebas/puntos.sql
 
