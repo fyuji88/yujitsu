@@ -18,6 +18,53 @@ Qué es obligatorio y qué no:
 
 ---
 
+## 2026-08-01 (noche) · El informe del Open Mat, completo
+
+**Cero migraciones**, comprobado: `git diff db/` sale vacío. No se ha tocado
+`sesion_del_dia`, `registrar_roll_observado`, `cerrar_quedada` ni `bjj.ts`.
+
+**LO QUE NO SE PUDO HACER COMO PEDÍA EL ENCARGO, y es lo primero que hay que
+saber.** Decía «leyendo `private.metricas_quedada(quedada_id)`». El navegador
+**no puede llamar esa función**: vive en `private` y PostgREST solo publica
+`public` — que es exactamente el motivo por el que ese esquema existe.
+Comprobado contra producción, no deducido del código: contesta `404 PGRST202`.
+Un envoltorio en `public` sería una línea, pero es una migración. Así que los
+números salen de `v_puntos_roll` y `v_logros_sesion`, las dos en `public`,
+legibles, y **las mismas de las que sale el ranking congelado**: los dos
+números vienen del mismo sitio y no pueden separarse.
+
+**Decisiones:**
+- **Títulos congelados, tabla en vivo.** Los títulos son un juicio hecho al
+  cerrar y se quedan como estaban; la tabla no premia, enseña. Los informes
+  viejos siguen luciendo sus títulos sin regenerar nada.
+- **Salen todos**: con inscripción o con algún roll, aunque vayan a cero.
+- **La cabecera cuenta lo mismo que la tabla.** El informe congelado dice «3
+  asistentes» (los que tenían sesión al cerrar) y la lista tiene seis
+  apuntados; dejar los dos números habría cambiado una contradicción por otra.
+- **Orden lexicográfico**, no ponderado: sumisiones > puntos > logros >
+  dominancia. El cuarto escalón queda escrito y desactivado hasta que exista el
+  reloj de posesión. Las columnas enseñan los números que deciden el orden.
+- **Los logros valen aquí y no valdrían en un ranking del mes**, y está escrito
+  donde se calcula para frenar a quien quiera reutilizarlo.
+
+**Sabido roto:**
+- **La contradicción de «Battle for Namek» tenía DOS causas, no una.** Además
+  del espejo, `cerrar_quedada` corta el ranking congelado con
+  `having count(*) >= 2`, así que Krilin quedaba fuera por tener un solo roll.
+  Esa regla no se ha tocado: solo afecta al informe congelado.
+- **Felipe tiene dos sesiones vacías enganchadas a ese Open Mat**, las dos con
+  cero rolls, y por eso `asistentes` decía 3. No se ha limpiado nada de
+  producción.
+- **`v_logros_sesion` tarda ~3,4 s**, así que el informe tarda eso en pintar la
+  tabla. Es el mismo suelo del feed y se arregla en el mismo sitio.
+- **`logros.js` sigue fallando** por ser día 1 de mes. Comprobado que falla
+  igual sin nada de esto.
+
+**Backlog:** tachado el informe incompleto; añadido el `>= 2` del ranking
+congelado y las dos sesiones vacías de Felipe.
+
+---
+
 ## 2026-08-01 (tarde) · El espejo, el Open Mat visible, y los estados de error
 
 **Sin migraciones**, a propósito: es la víspera del primer Open Mat con gente.
