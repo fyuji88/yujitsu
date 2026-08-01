@@ -18,6 +18,71 @@ Qué es obligatorio y qué no:
 
 ---
 
+## 2026-08-01 · El observador sabe de qué Open Mat es, y el revoke de verdad
+
+**Migraciones:** `bjj_35_observador_con_quedada` y `bjj_36_el_revoke_de_verdad`,
+las dos aplicadas. `bjj_37` (`db/32`) **está en el repo y NO aplicada**: falla a
+propósito, ver abajo.
+
+`bjj_34` separó las sesiones por el camino de los rolls propios, pero el
+observador llamaba a `sesion_del_dia` sin quedada, así que los rolls del segundo
+Open Mat seguían cayendo en la sesión del primero. Ahora `p_quedada` viaja en
+`registrar_roll_observado()`, con tres guardas (existe / es de un equipo tuyo /
+la fecha cuadra) porque es SECURITY DEFINER.
+
+**Decisiones:**
+- **Se reemplaza la firma, no se sobrecarga.** Con dos `p_par` vivas, un cuerpo
+  con los nombres de hoy encajaría en las dos y PostgREST contestaría ambiguo.
+  El puente de `p_grupo` no se toca: su conjunto de nombres es distinto. **Las
+  tres formas resuelven a una sola firma, medido en producción**, y la regla que
+  se comprueba es la de PostgREST, no la de Postgres.
+- **`espejar_roll` no cambia de firma**: lee la quedada de la sesión del
+  original. El espejo va donde fue el original sin que nadie se acuerde.
+- **Fuera el `enganchar_del_dia()` de Entreno.** No era solo redundante: era
+  *malo* con dos Open Mats: agarra todas tus sesiones de esa fecha que no sean
+  ya de ese Open Mat, así que al cerrar la tanda de las 16:00 se habría llevado
+  los rolls de las 10:00. Sigue en Quedadas, que es donde sirve.
+- **La causa del revoke, encontrada.** `bjj_25` puso `alter default privileges
+  IN SCHEMA public revoke execute on functions from public`, **y esa forma es un
+  no-op**: medido, no supuesto. La que funciona es la global, sin `in schema`.
+  Por eso llevaba tres migraciones revocando a mano y las tres las cazó el caso
+  48. En producción: de **9 funciones ejecutables por `anon` a 0**, sin que
+  ninguna se quedara sin permiso.
+- **`private` necesitaba permiso explícito**, y casi muerde: sus ayudantes los
+  ejecutaba `authenticated` a través de PUBLIC. Al quitarlo, la batería se
+  plantó con `permission denied for function mis_quedadas`. Se cambió un permiso
+  implícito por uno explícito, con su `alter default` para los futuros.
+
+**Sabido roto:**
+- **`bjj_37` no está aplicada y falla a propósito.** `supabase_admin` sigue
+  regalándole a `anon` privilegios sobre toda tabla, secuencia y función nueva
+  de `public` (36 entradas). `postgres` no puede cerrarlo. **Felipe: el SQL para
+  pegar en el panel está en la cabecera de `db/32`**, y luego se vuelve a
+  aplicar el fichero, que pasa en silencio si quedó cerrado.
+- **La cola de los demás no la puedo mirar** desde aquí: vive en el IndexedDB de
+  cada móvil. En vez de eso se probó que un elemento ya encolado —diez nombres,
+  sin `p_quedada`— sigue resolviendo y entrando con quedada nula. Es compatible
+  hacia atrás por construcción, no por suerte.
+- **«Suelto» no abre sesión nueva si ya hay una del día.** Con `p_quedada` nulo
+  `sesion_del_dia` reutiliza la primera que encuentra, y eso es deliberado
+  (bjj_34). El precio: un roll marcado «Suelto» después de observar en un Open
+  Mat acaba contando en ese Open Mat. La prueba lo dice en voz alta.
+- **`db/pruebas/semilla-demo.sql` llevaba rota desde `bjj_27`** (`r.orden`), o
+  sea que los recorridos no corrían contra la semilla determinista. Arreglado.
+- **El stub no cruzaba `registrar_roll_observado` a Postgres**: lo imitaba en
+  memoria y esa imitación no crea sesiones. Costó una tarde — el recorrido decía
+  que la sesión salía suelta y quien la creaba era el stub. Ya va por el puente.
+- **`logros.js` falla el día 1 de mes**: el ranking es del mes en curso y la
+  semilla no garantiza logros ahí. No es regresión —falla igual sin las
+  migraciones de hoy—. Al backlog.
+
+**Backlog:** tachado "el observador colapsa los dos Open Mats". Añadidos el
+`bjj_37` del panel, el `logros.js` del día 1, y que `enganchar-quedada.sql` y
+`sesion-por-quedada.sql` se saltan enteras en CI por falta de cuentas — la nueva
+`observador-quedada.sql` se monta las suyas y no nace con ese problema.
+
+---
+
 ## 2026-08-08 · Una sesión por Open Mat, no una por día
 
 **Migración:** `bjj_34_sesion_por_quedada` (`db/29_sesion_por_quedada.sql`).

@@ -39,7 +39,8 @@ TABLAS_PUENTE = ('sesiones', 'rolls', 'eventos',
                  'quedadas', 'inscripciones', 'v_mi_quedada_hoy', 'reacciones',
                  'enfoques', 'logros', 'v_logros_practicante', 'v_logros_mes',
                  'v_tecnicas_practicante')
-RPC_PUENTE = ('analisis', 'analisis_rolls_celda', 'unirse_con_codigo',
+RPC_PUENTE = ('registrar_roll_observado',
+              'analisis', 'analisis_rolls_celda', 'unirse_con_codigo',
               'enganchar_del_dia', 'enganchar_sesion_a_quedada',
               'desenganchar_sesion', 'alcance_quedada', 'cerrar_quedada',
               'precisar_tecnica',
@@ -422,6 +423,13 @@ class H(BaseHTTPRequestHandler):
                     return self.responder(400, como_postgrest(e))
             if fn != 'registrar_roll_observado':
                 return self.responder(404, {'message': f'funcion {fn} desconocida'})
+            # SIN `PGURL` se imita, y la imitacion NO crea sesiones: devuelve
+            # dos ids inventados y ya. Eso basta para probar la cola y la
+            # pantalla, pero NO sirve para nada que dependa de donde acaba el
+            # roll —el Open Mat, el informe, el espejo—, porque aqui no acaba
+            # en ningun sitio. Para eso hay que arrancar el stub con `PGURL`.
+            # Costo una tarde: el recorrido decia que la sesion salia suelta y
+            # la que la creaba era esta imitacion, no la app.
             # Se imita lo justo: sin cuenta no hay espejo, igual que espejar_roll().
             b = next((p for p in TABLAS['practicantes']
                       if p['id'] == (args or {}).get('p_practicante_b')), None)

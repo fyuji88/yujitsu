@@ -124,6 +124,27 @@ exception when insufficient_privilege then
   return 'sin permiso, ni llega a la politica';
 end $$;
 
+-- Los ayudantes, con permiso EXPLICITO.
+--
+-- Antes de `bjj_36` no hacia falta: toda funcion nueva nacia ejecutable por
+-- PUBLIC, y de ahi lo heredaban `authenticated` y `anon`. Justo eso es lo que
+-- esa migracion cierra, asi que el andamiaje de esta bateria se quedo sin
+-- permiso y el caso 1 fallaba con `permission denied for function pr_caso`.
+--
+-- Es un `grant` sobre el ANDAMIAJE, no sobre nada del producto: `rls_res` y su
+-- secuencia ya se conceden diez lineas mas arriba por el mismo motivo. Ninguna
+-- comprobacion se ablanda con esto.
+do $$
+declare f record;
+begin
+  for f in select p.oid::regprocedure as sig from pg_proc p
+            join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname = 'public' and p.proname like 'pr\_%'
+  loop
+    execute format('grant execute on function %s to authenticated, anon', f.sig);
+  end loop;
+end $$;
+
 -- ============================================================
 --  EL ESCENARIO
 --

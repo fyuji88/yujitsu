@@ -479,6 +479,10 @@ function Flujo({ sesion }: { sesion: Sesion }) {
         completado: ev.completado,
         segundo_roll: ev.segundo ?? null,
       })),
+      // El Open Mat elegido al empezar la tanda. Va DENTRO de la llamada y no
+      // en un enganchado posterior: la RPC es quien crea la sesión, así que es
+      // el único sitio donde se puede decidir a cuál va.
+      p_quedada: quedadaObs,
     };
     await encolarRollObservado(args);
     setUltimo(args);
@@ -524,21 +528,12 @@ function Flujo({ sesion }: { sesion: Sesion }) {
     }
   }
 
-  /**
-   * Cuelga del Open Mat las sesiones de esta tanda.
-   *
-   * Va por `enganchar_del_dia()` y no por un parámetro más en
-   * `registrar_roll_observado()`: esa función ya tiene DOS firmas por el puente
-   * de `p_grupo` y es lo único que la cola serializa dentro de IndexedDB. Una
-   * tercera firma es pedir el mismo problema otra vez.
-   *
-   * Es idempotente, así que llamarla tras cada roll no cuesta nada y cubre el
-   * caso de que la tanda se corte a la mitad.
-   */
-  const enganchar = useCallback(async (quedadaId: string | null) => {
-    if (!quedadaId) return;
-    await supabase().rpc('enganchar_del_dia', { p_quedada: quedadaId });
-  }, []);
+  /* Aquí vivía un `enganchar_del_dia()` que se llamaba al terminar la tanda.
+     Se va, y no solo porque bjj_35 lo haga innecesario: era ACTIVAMENTE MALO
+     con dos Open Mats el mismo día. Esa función se lleva todas tus sesiones de
+     esa fecha que no sean ya de ese Open Mat, así que al cerrar la tanda de las
+     16:00 habría arrastrado los rolls de las 10:00. Sigue estando en Quedadas,
+     que es donde sirve: arreglar el día que se te olvidó. */
 
   /** Los Open Mats de hoy que no son el de la sesión abierta. */
   const otrosOpenMats = abierta

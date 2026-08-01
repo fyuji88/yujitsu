@@ -226,6 +226,22 @@ export interface ArgsRollObservado {
   p_rol_inicio: Rol;
   p_resultado: ResultadoRoll;
   p_eventos: EventoObservado[];
+  /**
+   * El Open Mat del que cuelga el roll, o null si es suelto (bjj_35).
+   *
+   * OPCIONAL A PROPÓSITO, y no por comodidad: es lo que hace que un elemento
+   * encolado ANTES del despliegue —que lleva los otros diez nombres y ninguno
+   * más— siga resolviendo a esta misma función cuando el móvil recupere
+   * cobertura. En Postgres el parámetro tiene `default null`, y PostgREST
+   * empareja por conjunto de nombres.
+   *
+   * No se hace por `enganchar_del_dia()` después: esa función agarra TODAS las
+   * sesiones tuyas de ese día que no sean ya de ese Open Mat, así que en un
+   * domingo de dos Open Mats se llevaría los rolls del primero al segundo.
+   * Sigue existiendo, pero para arreglarlo al día siguiente desde Quedadas,
+   * que es donde sí es lo correcto.
+   */
+  p_quedada?: string | null;
 }
 
 export interface TecnicaRow {

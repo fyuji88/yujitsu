@@ -124,6 +124,20 @@ jobs:
       - name: Una sesion por Open Mat
         run: psql -v ON_ERROR_STOP=1 -f db/pruebas/sesion-por-quedada.sql
 
+      # El observador y el Open Mat. Lo primero que comprueba, y lo que de
+      # verdad justifica que este en CI, es que NINGUN conjunto de nombres
+      # encaje con dos firmas de `registrar_roll_observado` a la vez: esa
+      # funcion tiene dos vivas —la de hoy y el puente de `p_grupo`— y si
+      # alguien añade una tercera, PostgREST empieza a contestar "ambiguo" y la
+      # cola se atasca en el movil de alguien, no aqui.
+      #
+      # Y esta se monta sus propias cuentas en vez de avisar y saltarse. Las
+      # dos de arriba buscan practicantes con `user_id` y en CI no hay ninguno,
+      # asi que llevan tiempo en verde sin comprobar nada. Anotado en el
+      # backlog; esta al menos no nace igual.
+      - name: El observador y el Open Mat
+        run: psql -v ON_ERROR_STOP=1 -f db/pruebas/observador-quedada.sql
+
       - name: El marcador contra el fixture compartido
         run: psql -v ruta="$PWD/src/lib/__fixtures__/puntos.json" -f db/pruebas/puntos.sql
 

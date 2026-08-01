@@ -261,7 +261,7 @@ select r.id, 'yo', 'sumision', a.pos,
        (k % 3 <> 1),
        40 + (k % 7) * 25
   from (
-    select r.id, (row_number() over (order by s.fecha, r.orden))::int - 1 as k
+    select r.id, (row_number() over (order by s.fecha, r.orden_en_sesion))::int - 1 as k
       from rolls r join sesiones s on s.id = r.sesion_id
      where s.practicante_id = (select id from practicantes where user_id is not null)
   ) r
@@ -277,7 +277,7 @@ select r.id, 'yo', 'sumision', a.pos,
              else 'arriba' end)::bjj_rol,
        a.obj, t.id, (k % 4 <> 2), 120 + (k % 5) * 20
   from (
-    select r.id, (row_number() over (order by s.fecha, r.orden))::int - 1 as k
+    select r.id, (row_number() over (order by s.fecha, r.orden_en_sesion))::int - 1 as k
       from rolls r join sesiones s on s.id = r.sesion_id
      where s.practicante_id = (select id from practicantes where user_id is not null)
   ) r
@@ -294,7 +294,7 @@ select r.id, 'oponente', 'sumision', d.pos,
              then 'abajo' else 'arriba' end)::bjj_rol,
        d.obj, t.id, (k % 5 <> 3), 70 + (k % 6) * 30
   from (
-    select r.id, (row_number() over (order by s.fecha, r.orden))::int - 1 as k
+    select r.id, (row_number() over (order by s.fecha, r.orden_en_sesion))::int - 1 as k
       from rolls r join sesiones s on s.id = r.sesion_id
      where s.practicante_id = (select id from practicantes where user_id is not null)
   ) r
@@ -322,7 +322,7 @@ select r.id,
                    when 2 then 'arriba' else 'neutral' end)::bjj_rol,
        'ninguno', true, 30 + (k % 8) * 22
   from (
-    select r.id, (row_number() over (order by s.fecha, r.orden))::int - 1 as k
+    select r.id, (row_number() over (order by s.fecha, r.orden_en_sesion))::int - 1 as k
       from rolls r join sesiones s on s.id = r.sesion_id
      where s.practicante_id = (select id from practicantes where user_id is not null)
   ) r;
@@ -370,7 +370,7 @@ select r.id,
              else 'arriba' end)::bjj_rol,
        a.obj, t.id, (k % 4 <> 1), 60 + (k % 5) * 25
   from (
-    select r.id, (row_number() over (order by s.practicante_id, s.fecha, r.orden))::int - 1 as k
+    select r.id, (row_number() over (order by s.practicante_id, s.fecha, r.orden_en_sesion))::int - 1 as k
       from rolls r join sesiones s on s.id = r.sesion_id
      where s.practicante_id in ('dbdb0000-0000-0000-0000-000000000001'::uuid,
                                 'dbdb0000-0000-0000-0000-000000000002'::uuid)
