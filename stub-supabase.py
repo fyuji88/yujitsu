@@ -38,7 +38,15 @@ TABLAS_PUENTE = ('sesiones', 'rolls', 'eventos',
                  'practicantes', 'tecnicas', 'equipos', 'miembros_equipo',
                  'quedadas', 'inscripciones', 'v_mi_quedada_hoy', 'reacciones',
                  'enfoques', 'logros', 'v_logros_practicante', 'v_logros_mes',
-                 'v_tecnicas_practicante')
+                 'v_tecnicas_practicante',
+                 # El informe del Open Mat: los puntos y los logros ya vienen
+                 # calculados de SQL, y sin cruzarlos el recorrido probaria
+                 # una tabla de ceros creyendo que prueba el ranking.
+                 'v_puntos_roll', 'v_logros_sesion',
+                 # Lo escribe cerrar_quedada() contra Postgres; sin cruzarlo,
+                 # el cliente lo lee de la imitacion vacia y contesta 'todavia
+                 # no tiene informe' justo despues de haberlo generado.
+                 'quedada_informes')
 RPC_PUENTE = ('registrar_roll_observado',
               'analisis', 'analisis_rolls_celda', 'unirse_con_codigo',
               'enganchar_del_dia', 'enganchar_sesion_a_quedada',
@@ -249,6 +257,15 @@ def filtrar(filas, query):
             continue
         if v == 'not.is.null':
             out = [f for f in out if f.get(clave) is not None]
+            continue
+        # `in.(a,b,c)`. Lo usa el informe del Open Mat, que pide los rolls de
+        # varias sesiones de una vez en lugar de una consulta por sesion.
+        # PostgREST entrecomilla los valores cuando llevan comas o espacios;
+        # los uuid no, pero se limpia igual para no depender de eso.
+        m = re.match(r'^in\.\((.*)\)$', v, re.S)
+        if m:
+            dentro = {x.strip().strip('"') for x in m.group(1).split(',') if x.strip()}
+            out = [f for f in out if str(f.get(clave)) in dentro]
             continue
         raise RuntimeError(
             f'el stub no sabe el filtro "{clave}={v}". Anadelo a filtrar() '

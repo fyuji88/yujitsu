@@ -1,11 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Marco, type Sesion } from '@/components/Marco';
 import { supabase } from '@/lib/supabase';
 import type { PostgrestError } from '@supabase/supabase-js';
 import { Cargando, PanelError } from '@/components/Estado';
+import {
+  armarRanking, caraACara, datoDelDia,
+  type FilaRanking, type FuentesInforme, type Pareja,
+} from '@/lib/informe';
 import { TEXTOS } from '@/lib/textos/es';
 import type {
   EquipoRow, InscripcionRow, MiembroRow, Modalidad, PracticanteRow, QuedadaRow,
@@ -25,7 +29,9 @@ import type {
 
 /**  distingue al contacto sin cuenta, que es a quien mas sentido
  * tiene apuntar tu: entrena y no usa la app. */
-interface Ficha { id: string; nombre: string; usa_sistema: boolean }
+interface Ficha {
+  id: string; nombre: string; usa_sistema: boolean; cinturon: string;
+}
 
 interface Informe {
   quedada: { titulo: string; fecha: string; lugar: string | null };
@@ -33,8 +39,14 @@ interface Informe {
   rolls: number;
   ranking: { id: string; nombre: string; cinturon: string; rolls: number;
              media: number; favor: number; contra: number }[];
+  /**
+   * Congelados a propósito: son un juicio hecho al cerrar la quedada y así
+   * deben quedarse. La TABLA sí se calcula en vivo — ver `VistaInforme`.
+   * `z` ya venía en el jsonb y no estaba declarado aquí; es lo que ordena el
+   * dato del día.
+   */
   titulos: { titulo: string; quien: string; porque: string;
-             valor: number | null }[];
+             valor: number | null; z?: number | null }[];
 }
 
 export default function Quedadas() {
@@ -76,7 +88,7 @@ function Panel({ sesion }: { sesion: Sesion }) {
       sb.from('miembros_equipo').select('*'),
       sb.from('quedadas').select('*').order('fecha', { ascending: false }),
       sb.from('inscripciones').select('*'),
-      sb.from('practicantes').select('id,nombre,usa_sistema').order('nombre'),
+      sb.from('practicantes').select('id,nombre,usa_sistema,cinturon').order('nombre'),
     ]);
     // SI FALLA UNA, FALLA LA PANTALLA. Antes se cogía `data ?? []` de las cinco,
     // así que un fallo en `quedadas` pintaba «no hay ninguna quedada» y un fallo
@@ -93,6 +105,17 @@ function Panel({ sesion }: { sesion: Sesion }) {
   }, []);
 
   useEffect(() => { void cargar(); }, [cargar]);
+
+  /**
+   * El roster por id, memoizado.
+   *
+   * `useMemo` y no un objeto suelto en el JSX, y no es un detalle de estilo:
+   * `VistaInforme` lo lleva en las dependencias de su efecto, así que un objeto
+   * nuevo en cada render relanzaba la carga sin parar y el ranking se quedaba
+   * en «cargando» para siempre. No fallaba nada — simplemente no terminaba.
+   */
+  const fichasPorId = useMemo(
+    () => Object.fromEntries(roster.map((p) => [p.id, p])), [roster]);
 
   // La quedada de una invitación no se puede leer de la tabla si no eres del
   // equipo: se pide por RPC, que devuelve esa y solo esa.
@@ -573,7 +596,10 @@ function Panel({ sesion }: { sesion: Sesion }) {
         </div>
       ))}
 
-      {informe && <VistaInforme datos={informe.datos} onCerrar={() => setInforme(null)} />}
+      {informe && (
+        <VistaInforme quedadaId={informe.quedada} datos={informe.datos}
+          fichas={fichasPorId} onCerrar={() => setInforme(null)} />
+      )}
 
       {equipos.length > 0 && !proximas.length && !pasadas.length && (
         <p className="hint" data-testid="sin-quedadas">
@@ -669,24 +695,138 @@ function Formulario(
 /**
  * El informe de una quedada.
  *
- * Se pinta lo que se guardó al cerrarla, no un cálculo nuevo: si alguien
- * corrige un roll el martes, esto sigue diciendo lo que pasó el domingo.
+ * LA DIVISION QUE LO HACE SEGURO, y es deliberada:
  *
- * El ranking va por puntos estimados por roll y no por sumisiones, porque
- * premia a quien domina aunque no finalice — que es lo que se quería medir.
+ *   - LOS TITULOS SE QUEDAN CONGELADOS, tal como se guardaron al cerrar. Son un
+ *     juicio hecho esa tarde —el reparto por z-score, uno por cabeza— y asi
+ *     deben quedarse: si alguien corrige un roll el martes, el titulo que se
+ *     llevo Krilin el domingo sigue siendo suyo.
+ *   - LA TABLA SE CALCULA EN VIVO. Ahi no se premia, se ensena, y ensenar mal a
+ *     quien vino es peor que ensenarlo tarde. Los informes viejos siguen
+ *     luciendo sus titulos y la tabla se enriquece para todos, sin regenerar
+ *     nada y sin tocar `cerrar_quedada`.
+ *
+ * DE DONDE SALEN LOS NUMEROS. No de `private.metricas_quedada()`: esa funcion
+ * no la puede llamar el navegador —PostgREST solo publica `public`, que es el
+ * motivo de que ese esquema exista— y comprobarlo contra produccion devuelve
+ * `404 PGRST202`. Se piden de `v_puntos_roll` y `v_logros_sesion`, que estan en
+ * `public`, son legibles, y son LAS MISMAS de las que sale el ranking
+ * congelado. Los dos numeros vienen del mismo sitio y no pueden separarse.
  */
 function VistaInforme(
-  { datos, onCerrar }: { datos: Informe; onCerrar: () => void },
+  { quedadaId, datos, fichas, onCerrar }: {
+    quedadaId: string;
+    datos: Informe;
+    fichas: Record<string, Ficha>;
+    onCerrar: () => void;
+  },
 ) {
+  const [filas, setFilas] = useState<FilaRanking[] | null>(null);
+  const [parejas, setParejas] = useState<Pareja[]>([]);
+  const [fallo, setFallo] = useState<PostgrestError | null>(null);
+  const [intento, setIntento] = useState(0);
+
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      setFilas(null); setFallo(null);
+      const sb = supabase();
+
+      const ses = await sb.from('sesiones').select('id,practicante_id')
+        .eq('quedada_id', quedadaId);
+      if (!vivo) return;
+      if (ses.error) { setFallo(ses.error); return; }
+      const sesiones = (ses.data ?? []) as FuentesInforme['sesiones'];
+      const idsSesion = sesiones.map((x) => x.id);
+
+      const ins = await sb.from('inscripciones').select('practicante_id,estado')
+        .eq('quedada_id', quedadaId);
+      if (!vivo) return;
+      if (ins.error) { setFallo(ins.error); return; }
+      const inscritos = ((ins.data ?? []) as { practicante_id: string; estado: string }[])
+        .filter((i) => i.estado === 'apuntado').map((i) => i.practicante_id);
+
+      if (!idsSesion.length) {
+        // Ninguna sesion enganchada. No es un error: es un Open Mat al que
+        // nadie colgo nada, y se dice con la lista de apuntados a cero.
+        setFilas(armarRanking({
+          sesiones: [], rolls: [], eventos: [], puntos: [], logros: [],
+          inscritos, fichas,
+        }));
+        setParejas([]);
+        return;
+      }
+
+      const rl = await sb.from('rolls').select('id,sesion_id,oponente_id')
+        .in('sesion_id', idsSesion);
+      if (!vivo) return;
+      if (rl.error) { setFallo(rl.error); return; }
+      const rolls = (rl.data ?? []) as FuentesInforme['rolls'];
+      const idsRoll = rolls.map((r) => r.id);
+
+      const [ev, pt, lg] = await Promise.all([
+        sb.from('eventos').select('roll_id,actor,tipo,completado,segundo_roll')
+          .in('roll_id', idsRoll),
+        sb.from('v_puntos_roll').select('roll_id,autor_id,puntos_autor')
+          .in('roll_id', idsRoll),
+        // `v_logros_sesion` tarda ~3,4 s: recalcula los logros del historico
+        // entero y no baja al filtrar. Por eso el panel ensena «cargando» en
+        // vez de aparecer de golpe, y por eso va en paralelo con las otras dos.
+        sb.from('v_logros_sesion').select('sesion_id,practicante_id,veces')
+          .in('sesion_id', idsSesion),
+      ]);
+      if (!vivo) return;
+      const malo = ev.error ?? pt.error ?? lg.error;
+      if (malo) { setFallo(malo); return; }
+
+      const fuentes: FuentesInforme = {
+        sesiones,
+        rolls,
+        eventos: (ev.data ?? []) as FuentesInforme['eventos'],
+        puntos: (pt.data ?? []) as FuentesInforme['puntos'],
+        logros: (lg.data ?? []) as FuentesInforme['logros'],
+        inscritos,
+        fichas,
+      };
+      setFilas(armarRanking(fuentes));
+      setParejas(caraACara(fuentes));
+    })();
+    return () => { vivo = false; };
+  }, [quedadaId, fichas, intento]);
+
+  const dato = datoDelDia(datos.titulos);
+  const huecos = (filas ?? []).filter((f) => f.sinRolls).length;
+  const totalRolls = (filas ?? []).reduce((t, f) => t + f.rolls, 0);
+  const COLS = '18px 1fr 30px 34px 30px';
+
   return (
     <div data-testid="informe" style={{
       background: 'var(--superficie)', border: '1px solid var(--borde)',
       borderRadius: 13, padding: 14, marginTop: 14,
     }}>
       <div style={{ fontSize: 16, fontWeight: 620 }}>{datos.quedada.titulo}</div>
+      {/* LA CABECERA CUENTA LO MISMO QUE LA TABLA, o volvemos al problema.
+          El informe congelado dice «3 asistentes» —los que tenían sesión
+          enganchada al cerrar— mientras la lista tiene seis apuntados. Dos
+          números distintos del mismo Open Mat en la misma tarjeta es
+          exactamente la contradicción que había que quitar, así que arriba se
+          cuenta lo que se enseña abajo. Los títulos siguen congelados; esto es
+          aritmética de la propia tabla, no un juicio nuevo. */}
       <div style={{ fontSize: 12.5, color: 'var(--tenue)', marginTop: 3 }}>
-        {datos.quedada.fecha} · {datos.asistentes} asistentes · {datos.rolls} rolls
+        {datos.quedada.fecha}
+        {filas !== null && <> · {filas.length} en la lista · {totalRolls} rolls</>}
       </div>
+
+      {/* EL DATO DEL DIA, arriba del todo: el numero mas raro de la tarde, que
+          es el de mayor z de todos los titulos. Una linea, antes que nada. */}
+      {dato && (
+        <p data-testid="dato-del-dia" style={{
+          marginTop: 10, marginBottom: 0, fontSize: 14, lineHeight: 1.45,
+        }}>
+          <b>{dato.quien}</b>: {dato.porque}
+          {dato.valor !== null && <> · <b>{dato.valor}</b></>}
+        </p>
+      )}
 
       <h2 className="sec">Títulos de la tarde</h2>
       <div className="tl">
@@ -705,25 +845,82 @@ function VistaInforme(
       </p>
 
       <h2 className="sec">Ranking</h2>
-      {datos.ranking.length ? (
-        <div className="tl">
-          {datos.ranking.map((r, i) => (
-            <div className="fila" key={r.id}>
-              <span className="n">
-                {i + 1}. {r.nombre}
-                <small>{r.rolls} rolls · {r.favor} a favor · {r.contra} en contra</small>
-              </span>
-              <span className="pill" style={{
-                color: r.media >= 0 ? 'var(--dato-yo-texto)' : 'var(--dato-neg)',
-              }}>
-                {r.media > 0 ? '+' : ''}{r.media}
-              </span>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="empty">Nadie llegó a dos rolls, que es el mínimo para entrar.</p>
+      {fallo && (
+        <PanelError error={fallo} que="el ranking" testid="informe-error"
+          onReintentar={() => setIntento((n) => n + 1)} />
       )}
+      {!fallo && filas === null && <Cargando que="el ranking" testid="ranking-cargando" />}
+
+      {!fallo && filas !== null && (
+        <>
+          {/* Las columnas son la mitad del diseno: se ensenan LOS NUMEROS QUE
+              DECIDEN EL ORDEN, al lado de cada persona. Un ranking que se puede
+              auditar de un vistazo no se discute; uno que da un numero magico,
+              si. Son tres y no cuatro porque el reloj de posesion no existe. */}
+          <div style={{
+            display: 'grid', gridTemplateColumns: COLS, gap: 6,
+            fontSize: 10.5, letterSpacing: '.04em', textTransform: 'uppercase',
+            color: 'var(--tenue)', padding: '0 10px 4px', textAlign: 'right',
+          }}>
+            <span /><span style={{ textAlign: 'left' }}>Quién</span>
+            <span>Sub</span><span>Pts</span><span>Log</span>
+          </div>
+          <div className="tl" data-testid="ranking-vivo">
+            {filas.map((f, i) => (
+              <div className="fila" key={f.practicante_id}
+                data-testid={`rank-${f.practicante_id}`}
+                style={{
+                  display: 'grid', gridTemplateColumns: COLS, gap: 6,
+                  alignItems: 'center', textAlign: 'right',
+                  opacity: f.sinRolls ? 0.62 : 1,
+                }}>
+                <span style={{ color: 'var(--tenue)', fontSize: 12 }}>{i + 1}</span>
+                <span style={{ textAlign: 'left', minWidth: 0 }}>
+                  {f.nombre}
+                  {f.sinRolls && (
+                    <small style={{ display: 'block', color: 'var(--aviso)' }}>
+                      sin rolls registrados
+                    </small>
+                  )}
+                </span>
+                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 640 }}>
+                  {f.sumisiones}
+                </span>
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{f.puntos}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{f.logros}</span>
+              </div>
+            ))}
+          </div>
+          <p className="hint">
+            Primero quién finalizó más. Si empatan, quién dominó más.
+          </p>
+          {huecos > 0 && (
+            <p className="hint" data-testid="aviso-sin-rolls"
+              style={{ color: 'var(--aviso)' }}>
+              {huecos === 1
+                ? 'Alguien vino y no le consta ningún roll'
+                : `${huecos} personas vinieron y no les consta ningún roll`}
+              . Si rodaron, es que su mitad del roll observado no se guardó:
+              mira que tengan puesto «guardarle sus rolls» en su ficha.
+            </p>
+          )}
+        </>
+      )}
+
+      {parejas.length > 0 && (
+        <>
+          <h2 className="sec">Quién con quién</h2>
+          <div className="tl" data-testid="cara-a-cara">
+            {parejas.map((p) => (
+              <div className="fila" key={`${p.a}-${p.b}`}>
+                <span className="n">{p.a} y {p.b}</span>
+                <span className="pill">{p.veces === 1 ? '1 vez' : `${p.veces} veces`}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
       <p className="hint">
         Puntos estimados por roll, no sumisiones: cuenta quién dominó aunque no
         finalizara.

@@ -8,6 +8,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test:puntos": "tsc --ignoreConfig src/lib/__tests__/puntos.test.ts --outDir .test-tmp --module node18 --target ES2022 --strict --skipLibCheck --esModuleInterop --types node && node .test-tmp/__tests__/puntos.test.js",
+    "test:informe": "tsc --ignoreConfig src/lib/__tests__/informe.test.ts --outDir .test-tmp --module node18 --target ES2022 --strict --skipLibCheck --esModuleInterop --types node && node .test-tmp/__tests__/informe.test.js",
     "test:contraste": "node scripts/contraste.mjs",
     "test:navegador": "node pruebas/todos.mjs"
   },
