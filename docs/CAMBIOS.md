@@ -18,6 +18,60 @@ Qué es obligatorio y qué no:
 
 ---
 
+## 2026-08-01 (tarde) · El espejo, el Open Mat visible, y los estados de error
+
+**Sin migraciones**, a propósito: es la víspera del primer Open Mat con gente.
+
+**EL ESPEJO — diagnóstico, no suposición.** `espejar_roll()` tiene una guarda:
+si el oponente no tiene `usa_sistema`, no crea el roll espejo. Y esa casilla se
+escribía en `false` al dar de alta y **no se podía cambiar desde ninguna
+pantalla**: solo se enseñaba como píldora «app». Así que todo contacto nacía sin
+espejo, para siempre y en silencio, y de cada roll observado suyo se guardaba un
+solo lado — con lo que no salía en el informe, porque `metricas_quedada` agrupa
+por el dueño de la sesión.
+
+**Es UNA causa, no dos, y no es regresión de `bjj_35`.** De los pares que la app
+ha producido de verdad la separación es perfecta: 6 de 6 con la casilla puesta
+tienen espejo, 57 de 57 sin ella son huérfanos. Los 93 «con espejo» que parecían
+contradecirlo se escribieron todos el 29 de julio en una sola tanda: son datos
+sembrados, metidos directos en las tablas, y nunca pasaron por `espejar_roll()`.
+
+**Decisiones:**
+- **La guarda se queda.** El fallo era el dato, no el código, y arreglarlo por
+  migración la víspera habría sido cambiar SQL desplegado para resolver algo que
+  se resuelve con una casilla.
+- **La casilla se llama por lo que hace**: «guardarle sus rolls», no «usa la
+  app». Ese nombre es lo que hacía invisible el efecto — lo que importa no es si
+  la tiene instalada, es si le guardas su mitad.
+- **Las altas nuevas entran en `true`**: a quien das de alta es con quien ruedas.
+- **El Open Mat, con palabras.** El diseño decía «automático pero nunca
+  silencioso» y era silencioso. Ahora la tarjeta de sesión abierta dice de qué
+  Open Mat es, y observando se lee a dónde va la tanda antes de empezar: un
+  borde de color no basta cuando registras para otras dos personas.
+
+**Los tres estados de carga.** Media app cogía `data` y tiraba el `error`, así
+que un fallo se pintaba como vacío: «todavía no ha pasado nada», «0 de 28
+conseguidos», «hacen falta dos fichas en el roster». La peor, en `Marco`: «sal y
+vuelve a entrar» — y salir **borra la cola de salida**. Ahora hay panel común
+con el motivo traducido, el código pegado y botón de reintentar.
+
+**Sabido roto:**
+- **`feed()` está CAÍDO en producción y lo lleva estando.** 10 547 ms contra el
+  `statement_timeout` de 8 s del rol `authenticated`: falla siempre con `57014`.
+  Medido con el rol y el claim puestos — como propietario tarda 14 ms.
+- **Paginar no lo salva, y por eso se paró**: el esqueleto de las ocho ramas sin
+  `datos` ya son 6 435 ms, y enriquecer las sesiones con sus logros suma otros
+  ~3 200. El suelo son tres vistas de logros que recalculan el histórico entero
+  —3 171, 3 203 y 3 240 ms— y **no bajan al filtrar**. El `CONTEXT` del error
+  señala a `puntos_roll()`, que se llama por cada roll del histórico.
+- **Hay que tocar la casilla de Goku, Vegeta, Freezer, Krilin y Piccolo** antes
+  del Open Mat, o su mitad se sigue perdiendo. Son los cinco sin cuenta.
+
+**Backlog:** añadidos el feed (con los números), `puntos_roll()` dentro de las
+vistas de logros, y que `analisis.js` y la semilla ya no cuadran en números.
+
+---
+
 ## 2026-08-01 · El observador sabe de qué Open Mat es, y el revoke de verdad
 
 **Migraciones:** `bjj_35_observador_con_quedada` y `bjj_36_el_revoke_de_verdad`,
