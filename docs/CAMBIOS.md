@@ -18,6 +18,71 @@ Qué es obligatorio y qué no:
 
 ---
 
+## 2026-08-02 (madrugada) · El espejo, siempre  ·  `bjj_38`
+
+**LA CAUSA RAÍZ.** `espejar_roll()` llevaba esta guarda:
+
+    if not (select usa_sistema from practicantes where id = r.oponente_id)
+    then return null; end if;
+
+**No es un error y nadie se lo tragaba**: ni `registrar_roll_observado` ni
+`espejar_roll` tienen un solo `exception when`. Era una salida temprana que no
+hacía nada y no decía nada, mientras la RPC devolvía `creado: true`.
+
+De los 63 rolls observados huérfanos, **62 son esa guarda** y 1 es un roll con
+`oponente_id` nulo. **Cero** caen fuera de esas dos. Repartidos en diez días
+entre el 6 de junio y el 1 de agosto: no es una ventana concreta, es la regla
+actuando siempre que el rival no tenía la casilla.
+
+**Descartado con datos, no con argumentos:** `espejar_roll` sí se llama; no hay
+`exception when others` en ningún punto del camino; no muere en ninguna clave
+foránea (nunca llega a insertar); y **no es regresión de `bjj_35`** — con la
+casilla puesta y `bjj_35` aplicado salen los dos rolls, las dos sesiones y las
+dos enganchadas al mismo Open Mat.
+
+**Decisiones:**
+- **Se quita la guarda, no se pide que alguien marque la casilla.** El 1 de
+  agosto se hizo lo segundo: sacar `usa_sistema` a la ficha para poder tocarlo.
+  Al día siguiente volvieron a salir ocho de ocho huérfanos porque nadie lo
+  marcó. **Un mecanismo no es un arreglo cuando el modo de fallo es
+  silencioso.** El invariante que se quiere es incondicional.
+- `usa_sistema` vuelve a significar solo «usa la app», y la casilla que duró un
+  día se va con ella.
+- **Se quedan** la salida por `oponente_id` nulo y la de idempotencia, y la
+  propia migración comprueba que siguen ahí después de operar.
+- **El invariante va a CI** (`db/pruebas/espejo.sql`): ningún par de roll
+  observado creado desde el corte puede tener distinto de dos filas. Estricto a
+  partir de hoy; ignora **en voz alta** los 59 pares anteriores. Probado
+  viéndolo fallar: reintroduciendo la guarda, se pone rojo.
+- **Se corta por `created_at`, no por `sesiones.fecha`**: lo que se fija es lo
+  que la app escriba de ahora en adelante, y hay rolls con fecha de junio
+  escritos en agosto.
+
+**Verificado en producción mirando las filas**, con Goku y Vegeta —los dos con
+`usa_sistema = false`, que es el caso que fallaba—: 2 rolls, 2 sesiones,
+`sumision_favor`/`sumision_contra`, eventos con `par_evento_id` compartido. La
+prueba corrió dentro de una transacción que revierte: no dejó ni una fila.
+
+**Sabido roto:**
+- **Entre las 00:00 y las 02:00 (hora de España) un roll observado de un Open
+  Mat SE RECHAZA.** La app calcula el día con `new Date().toISOString()`, que es
+  UTC, y manda `p_fecha` = ayer; la guarda de fecha de `bjj_35` lo rechaza con
+  `check_violation`. Medido esta madrugada: `p_fecha 2026-08-01` contra un Open
+  Mat del `2026-08-02`. No es silencioso —cae en la cola como «necesita
+  atención»— y no afecta a un Open Mat de mañana, pero está ahí. **No se toca
+  el camino de registro la víspera.**
+- Por eso mismo, **`espejo.js` y `observador-openmat.js` quedan en rojo esta
+  noche**: fallan por esa frontera de medianoche, no por `bjj_38`. Los otros 11
+  recorridos pasan, la batería SQL entera está verde (RLS 61/61 y las seis
+  suites) y CI también.
+- Los **59 pares huérfanos viejos** siguen ahí. Se pueden reconstruir el lunes:
+  el `par_id` y los eventos están.
+
+**Backlog:** tachado el espejo; añadidos la frontera UTC/local y la
+reconstrucción de los huérfanos.
+
+---
+
 ## 2026-08-01 (noche) · El informe del Open Mat, completo
 
 **Cero migraciones**, comprobado: `git diff db/` sale vacío. No se ha tocado
