@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Marco, type Sesion } from '@/components/Marco';
 import { supabase } from '@/lib/supabase';
+import type { PostgrestError } from '@supabase/supabase-js';
+import { PanelError } from '@/components/Estado';
 import { TEXTOS } from '@/lib/textos/es';
 import { SIGUE_SIENDO, VARIANTES } from '@/lib/textos/tecnicas.es';
 import { usarPantallaEncendida } from '@/lib/pantalla';
@@ -165,6 +167,20 @@ function Flujo({ sesion }: { sesion: Sesion }) {
    */
   const [quedadaObs, setQuedadaObs] = useState<string | null>(null);
 
+  /**
+   * Lo que NO se pudo preparar al abrir la pantalla.
+   *
+   * Aquí los fallos silenciosos son los peores de la app, porque cada uno tiene
+   * una mentira ya escrita esperándolo: sin roster, «hacen falta dos fichas en
+   * el roster»; sin `v_mi_quedada_hoy`, ningún Open Mat que elegir; sin
+   * `miembros_equipo`, sesiones sin equipo que no salen en el feed de nadie.
+   * Ninguna de las tres se parece a un error, y las tres pasan en el tatami.
+   */
+  const [falloPrep, setFalloPrep] = useState<PostgrestError | null>(null);
+  const [prepIntento, setPrepIntento] = useState(0);
+  /** Distinto de «el roster está vacío»: aquí ni siquiera se pudo preguntar. */
+  const [rosterListo, setRosterListo] = useState(false);
+
   useEffect(() => {
     const guardada = localStorage.getItem(CLAVE_SESION);
     if (guardada) {
@@ -179,31 +195,43 @@ function Flujo({ sesion }: { sesion: Sesion }) {
   useEffect(() => {
     void supabase().from('miembros_equipo').select('equipo_id')
       .eq('estado', 'activo').limit(1).maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        // Sin equipo, las sesiones se crean con `equipo_id` nulo y NO salen en
+        // el feed de nadie. El roll no se pierde, pero desaparece de la vida
+        // del equipo, y eso no se nota hasta que alguien pregunta.
+        if (error) { setFalloPrep(error); return; }
         if (data) setMiEquipo((data as { equipo_id: string }).equipo_id);
       });
-  }, []);
+  }, [prepIntento]);
 
   useEffect(() => {
     // TODAS las de hoy, no una. Con `.maybeSingle()` y dos Open Mats el mismo
     // dia la consulta fallaba y no se enganchaba NINGUNA — el caso raro se
     // llevaba por delante tambien el caso normal.
     void supabase().from('v_mi_quedada_hoy').select('id,equipo_id,titulo,lugar')
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) { setFalloPrep(error); return; }
         const qs = (data ?? []) as NonNullable<typeof quedadaHoy>[];
         setQuedadasHoy(qs);
         // Una sola: se engancha sola. Dos: se pregunta, porque adivinar aqui
         // es meter los rolls en el Open Mat equivocado.
         if (qs.length === 1) setQuedadaHoy(qs[0]);
       });
-  }, []);
+  }, [prepIntento]);
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase().from('practicantes').select('*').order('nombre');
-      if (data) setRoster(data as PracticanteRow[]);
-      const { data: t } = await supabase()
+      const { data, error: eRoster } = await supabase()
+        .from('practicantes').select('*').order('nombre');
+      if (eRoster) setFalloPrep(eRoster);
+      else { setRoster((data ?? []) as PracticanteRow[]); setRosterListo(true); }
+
+      const { data: t, error: eTec } = await supabase()
         .from('tecnicas').select('id,slug,nombre,variante_de');
+      // Las técnicas tienen caché en localStorage: si falla y hay caché, se
+      // sigue con la de antes y NO se avisa, porque el diccionario es el mismo
+      // para todos y no caduca. Si no hay caché, sí es un fallo de verdad.
+      if (eTec && Object.keys(tecnicas).length === 0) setFalloPrep(eTec);
       if (t) {
         const filas = t as { id: string; slug: string; nombre: string; variante_de: string | null }[];
         const m = Object.fromEntries(filas.map((x) => [x.slug, x.id]));
@@ -243,7 +271,7 @@ function Flujo({ sesion }: { sesion: Sesion }) {
         .is('hasta', null).limit(1).maybeSingle();
       if (enf) setEnEnfoque(new Set((enf as { tecnicas: string[] }).tecnicas ?? []));
     })();
-  }, []);
+  }, [prepIntento]);
 
   // Solo repinta. Si la pestaña se va a segundo plano y el intervalo se
   // ralentiza, al volver el primer tick ya muestra la hora real.
@@ -549,6 +577,16 @@ function Flujo({ sesion }: { sesion: Sesion }) {
       <>
         <h1>Nuevo entreno</h1>
         <p className="hint">Se abre una vez al llegar. Después, cada roll es un toque.</p>
+        {/* EL AVISO VA ARRIBA Y NO TAPA LA PANTALLA. Aquí se puede registrar
+            igual —la cola guarda en local—, así que bloquear sería peor que el
+            fallo. Pero tiene que verse, porque lo que se pierde en silencio es
+            el equipo de la sesión y el Open Mat. */}
+        {falloPrep && (
+          <PanelError error={falloPrep} que="los datos de la pantalla"
+            testid="entreno-error"
+            onReintentar={() => { setFalloPrep(null); setPrepIntento((n) => n + 1); }} />
+        )}
+
         {/* AUTOMATICO PERO NUNCA SILENCIOSO. Se ve a que Open Mat va a ir lo
             que registres, y se puede quitar o cambiar. Un enganche que no se
             ve es peor que no engancharlo: cuando esta mal, nadie lo sabe. */}
@@ -618,6 +656,16 @@ function Flujo({ sesion }: { sesion: Sesion }) {
           Tú solo miras. El roll se guarda para los dos: uno lo verá como ataque y el otro
           como defensa, sin que ninguno toque el móvil.
         </p>
+        {/* EL AVISO VA ARRIBA Y NO TAPA LA PANTALLA. Aquí se puede registrar
+            igual —la cola guarda en local—, así que bloquear sería peor que el
+            fallo. Pero tiene que verse, porque lo que se pierde en silencio es
+            el equipo de la sesión y el Open Mat. */}
+        {falloPrep && (
+          <PanelError error={falloPrep} que="los datos de la pantalla"
+            testid="entreno-error"
+            onReintentar={() => { setFalloPrep(null); setPrepIntento((n) => n + 1); }} />
+        )}
+
 
         <h2 className="sec">Modalidad del roll</h2>
         <div className="chips">
@@ -685,7 +733,7 @@ function Flujo({ sesion }: { sesion: Sesion }) {
             </button>
           ))}
         </div>
-        {roster.length < 2 && (
+        {rosterListo && roster.length < 2 && (
           <p className="hint">
             Hacen falta al menos dos fichas en el roster. Añádelas desde la pestaña Practicantes.
           </p>

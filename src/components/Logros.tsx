@@ -1,8 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import type { PostgrestError } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { Logro } from '@/components/Logro';
+import { Cargando, PanelError } from '@/components/Estado';
 import { FAMILIAS_ES, textoLogro } from '@/lib/textos/logros.es';
 
 /**
@@ -40,23 +42,47 @@ export function Coleccion({ practicanteId, nombre, esMio }: {
   const [catalogo, setCatalogo] = useState<FilaCatalogo[]>([]);
   const [mios, setMios] = useState<Record<string, FilaMia>>({});
   const [abierta, setAbierta] = useState(false);
+  const [fallo, setFallo] = useState<PostgrestError | null>(null);
+  const [listo, setListo] = useState(false);
+  const [intento, setIntento] = useState(0);
 
   useEffect(() => {
     void supabase().from('logros')
       .select('clave,familia,rareza,requiere_observador')
-      .then(({ data }) => { if (data) setCatalogo(data as FilaCatalogo[]); });
-  }, []);
+      .then(({ data, error }) => {
+        if (error) { setFallo(error); return; }
+        setCatalogo((data ?? []) as FilaCatalogo[]);
+      });
+  }, [intento]);
 
   useEffect(() => {
     void supabase().from('v_logros_practicante')
       .select('clave,veces,veces_verificadas')
       .eq('practicante_id', practicanteId)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        // SIN ESTE ERROR, «0 de 28 conseguidos» es lo que se pinta cuando el
+        // backend falla. Y esa frase no se lee como un fallo: se lee como que
+        // no has conseguido nada.
+        if (error) { setFallo(error); return; }
         setMios(Object.fromEntries(((data ?? []) as FilaMia[]).map((f) => [f.clave, f])));
+        setListo(true);
       });
-  }, [practicanteId]);
+  }, [practicanteId, intento]);
 
-  if (catalogo.length === 0) return null;
+  // Antes esto era `if (catalogo.length === 0) return null`, o sea que un fallo
+  // hacía DESAPARECER la sección entera. Es el peor de los tres estados malos:
+  // no hay nada que mirar, así que nadie lo reporta nunca.
+  if (fallo) {
+    return (
+      <section className="tarjeta" style={{ marginTop: 14 }}>
+        <PanelError error={fallo} que="la colección de logros" testid="coleccion-error"
+          onReintentar={() => { setFallo(null); setIntento((n) => n + 1); }} />
+      </section>
+    );
+  }
+  if (catalogo.length === 0 || !listo) {
+    return <Cargando que="la colección" testid="coleccion-cargando" />;
+  }
 
   const tengo = catalogo.filter((l) => (mios[l.clave]?.veces ?? 0) > 0).length;
   const total = catalogo.length;
@@ -112,12 +138,20 @@ export function RankingDelMes({ equipoId, practicanteId, roster }: {
    */
   const [soloVerificados, setSoloVerificados] = useState(true);
   const [cargando, setCargando] = useState(true);
+  const [fallo, setFallo] = useState<PostgrestError | null>(null);
 
+  /**
+   * Este es el que hay que vigilar. `v_logros_mes` tarda 3,2 s medido con el
+   * rol `authenticated`, contra un `statement_timeout` de 8 s: hoy cabe, pero
+   * con dos veces y media más de historia deja de caber. Y cuando deje, lo que
+   * se pintaría sin este error es «Este mes todavía no hay logros».
+   */
   const cargar = useCallback(async () => {
-    setCargando(true);
-    const { data } = await supabase().from('v_logros_mes')
+    setCargando(true); setFallo(null);
+    const { data, error } = await supabase().from('v_logros_mes')
       .select('clave,practicante_id,veces,veces_verificadas')
       .eq('equipo_id', equipoId).eq('mes', mesActual());
+    if (error) { setFallo(error); setCargando(false); return; }
     setFilas((data ?? []) as FilaRanking[]);
     setCargando(false);
   }, [equipoId]);
@@ -151,7 +185,14 @@ export function RankingDelMes({ equipoId, practicanteId, roster }: {
 
       {cargando && <p className="cap" style={{ marginTop: 10 }}>Contando…</p>}
 
-      {!cargando && claves.length === 0 && (
+      {/* Antes que el vacío, siempre: «este mes no hay logros» y «no pude
+          contarlos» son cosas distintas y solo una es culpa del equipo. */}
+      {!cargando && fallo && (
+        <PanelError error={fallo} que="el ranking del mes" testid="ranking-error"
+          onReintentar={() => void cargar()} />
+      )}
+
+      {!cargando && !fallo && claves.length === 0 && (
         <p className="cap" data-testid="ranking-vacio" style={{ marginTop: 10 }}>
           {soloVerificados
             ? 'Este mes no hay nada verificado todavía. Los logros verificados '
@@ -160,7 +201,7 @@ export function RankingDelMes({ equipoId, practicanteId, roster }: {
         </p>
       )}
 
-      {!cargando && claves.map((clave) => {
+      {!cargando && !fallo && claves.map((clave) => {
         const l = porLogro.get(clave)!.slice().sort((a, b) => cuenta(b) - cuenta(a));
         return (
           <div key={clave} style={{ marginTop: 14 }} data-testid={`rank-${clave}`}>

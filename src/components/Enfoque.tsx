@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import type { PostgrestError } from '@supabase/supabase-js';
+import { PanelError } from '@/components/Estado';
 import { DOMINANTES, GUARDIAS_TODAS, NOMBRE_POSICION } from '@/lib/bjj';
 import type { EnfoqueRow, Posicion, TecnicaRow } from '@/lib/database.types';
 
@@ -60,6 +62,8 @@ export function Enfoque({ practicanteId, esMio, nombre }: {
   const [verHistoria, setVerHistoria] = useState(false);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /** El fallo de la carga, distinto del de guardar: uno tapa, el otro avisa. */
+  const [falloCarga, setFalloCarga] = useState<PostgrestError | null>(null);
 
   const recargar = useCallback(async () => {
     setCargando(true);
@@ -70,6 +74,11 @@ export function Enfoque({ practicanteId, esMio, nombre }: {
         .order('desde', { ascending: false })
         .order('created_at', { ascending: false }),
     ]);
+    // Sin mirar el error, un fallo se pinta como «todavía no has escrito
+    // ningún enfoque» y ofrece crear uno — encima del que ya tienes.
+    const malo = c.error ?? h.error;
+    if (malo) { setFalloCarga(malo); setCargando(false); return; }
+    setFalloCarga(null);
     setContraste((c.data as Contraste | null) ?? null);
     setHistoria((h.data ?? []) as EnfoqueRow[]);
     setCargando(false);
@@ -81,7 +90,12 @@ export function Enfoque({ practicanteId, esMio, nombre }: {
     if (!esMio) return;
     void supabase().from('tecnicas').select('id,slug,nombre,tipo,objetivo_default')
       .order('nombre')
-      .then(({ data }) => { if (data) setTecnicas(data as TecnicaRow[]); });
+      .then(({ data, error: e }) => {
+        // El selector de técnicas vacío parece «no hay técnicas», que con 63 en
+        // el diccionario no se le ocurre a nadie que sea un fallo.
+        if (e) { setFalloCarga(e); return; }
+        setTecnicas((data ?? []) as TecnicaRow[]);
+      });
   }, [esMio]);
 
   const guardar = useCallback(async (
@@ -117,6 +131,14 @@ export function Enfoque({ practicanteId, esMio, nombre }: {
   }, [contraste, recargar]);
 
   if (cargando) return null;
+
+  // Antes de esto, un fallo caía en el mismo `return null` que «cargando» y el
+  // bloque de Enfoque simplemente no aparecía en Análisis. Desaparecer no es un
+  // estado: nadie reporta lo que no ve.
+  if (falloCarga) {
+    return <PanelError error={falloCarga} que="el enfoque" testid="enfoque-error"
+      onReintentar={() => void recargar()} />;
+  }
 
   // Sin enfoque y no es tuyo: no se enseña un hueco vacío de otro.
   if (!contraste && !esMio && historia.length === 0) return null;

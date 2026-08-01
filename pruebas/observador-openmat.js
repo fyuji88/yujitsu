@@ -168,6 +168,19 @@ function comprobar(cond, m) {
   const { execFileSync } = require('node:child_process');
   const PSQL = process.env.PSQL || 'psql';
   const PGURL = process.env.PGURL || 'postgresql://postgres@127.0.0.1:55432/bjj';
+  // Y si no está, se dice CÓMO. La primera vez esto salió como
+  // `spawnSync psql ENOENT` después de siete comprobaciones en verde, que no
+  // le cuenta a nadie que lo que falta es una variable de entorno.
+  try {
+    execFileSync(PSQL, [PGURL, '-Atq', '-c', 'select 1'], { encoding: 'utf8' });
+  } catch {
+    console.log('FALLO no encuentro psql para limpiar lo que ha escrito este recorrido.\n'
+      + `      PSQL="${PSQL}"  PGURL="${PGURL}"\n`
+      + '      Este recorrido escribe las sesiones de OTRAS DOS personas por la RPC del\n'
+      + '      observador, y la RLS no deja borrarlas desde el navegador. Exporta PSQL y\n'
+      + '      PGURL —los mismos con los que arrancas el stub— y vuelve a correrlo.');
+    process.exit(1);
+  }
   const sql = `
     delete from eventos where roll_id in (
       select r.id from rolls r join sesiones s on s.id = r.sesion_id

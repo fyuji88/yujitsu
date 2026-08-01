@@ -28,6 +28,7 @@ import { dirname, join } from 'node:path';
 const AQUI = dirname(fileURLToPath(import.meta.url));
 
 const RECORRIDOS = [
+  ['estados.js', 'que un backend caido nunca se parezca a «no hay nada»'],
   ['tema.js', 'el tema: arranque en claro, interruptor, 44px, cinturones'],
   ['analisis.js', 'el análisis contra la semilla: números, heatmap, filtros'],
   ['analisis-tema.js', 'el panel en los dos temas: rampa, verde fuera de los datos'],
@@ -56,6 +57,17 @@ if (!app || !stub) {
   console.error(`\n  Falta levantar ${!app && !stub ? 'la app y el stub'
     : !app ? 'la app (localhost:3000)' : 'el stub (127.0.0.1:54321)'}.`);
   console.error('  Cómo, en la cabecera de este fichero.\n');
+  process.exit(1);
+}
+
+// `observador-openmat.js` limpia por psql, porque escribe las sesiones de
+// OTRAS personas por la RPC del observador y la RLS no deja borrarlas desde el
+// navegador. Se avisa aquí y no veinte minutos después, cuando ese recorrido
+// llegue el último y muera con `spawnSync psql ENOENT`.
+if (!process.env.PSQL || !process.env.PGURL) {
+  console.error('\n  Faltan PSQL y/o PGURL en el entorno.');
+  console.error('  Son los mismos con los que arrancas el stub, y `observador-openmat.js`');
+  console.error('  los necesita para limpiar lo que escribe. Cómo, en la cabecera.\n');
   process.exit(1);
 }
 

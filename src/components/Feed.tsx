@@ -1,7 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import type { PostgrestError } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { Cargando, PanelError } from '@/components/Estado';
 import { TEXTOS } from '@/lib/textos/es';
 import { textoLogro } from '@/lib/textos/logros.es';
 
@@ -126,11 +128,31 @@ function texto(i: Item) {
 export function Feed({ practicanteId }: { practicanteId: string }) {
   const [items, setItems] = useState<Item[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [fallo, setFallo] = useState<PostgrestError | null>(null);
   const [masHay, setMasHay] = useState(true);
   const [ocupado, setOcupado] = useState(false);
 
+  /**
+   * SE MIRA EL ERROR. Antes no: se cogía `data` y ya, así que un fallo del
+   * backend llegaba como `null`, la lista salía vacía y la pantalla decía
+   * «todavía no ha pasado nada en el equipo» — una frase concreta y creíble
+   * sobre el equipo, y falsa.
+   *
+   * Aquí eso no era una posibilidad remota: `feed()` tarda 10,5 s contra el
+   * `statement_timeout` de 8 s del rol `authenticated`, así que **falla
+   * siempre** con `57014`. Lo que llevábamos viendo era el error.
+   */
   const traer = useCallback(async (antes: string | null) => {
-    const { data } = await supabase().rpc('feed', { p_antes: antes, p_limite: 20 });
+    if (antes === null) { setCargando(true); setFallo(null); }
+    const { data, error } = await supabase().rpc('feed', { p_antes: antes, p_limite: 20 });
+    if (error) {
+      // Si falla al pedir MÁS, se conserva lo que ya se leyó: tirar la página
+      // que la persona está mirando por un fallo de la siguiente es castigarla
+      // dos veces.
+      setFallo(error);
+      setCargando(false);
+      return;
+    }
     const nuevos = (data ?? []) as Item[];
     setItems((v) => (antes ? [...v, ...nuevos] : nuevos));
     setMasHay(nuevos.length === 20);
@@ -163,7 +185,16 @@ export function Feed({ practicanteId }: { practicanteId: string }) {
     void traer(null);
   }
 
-  if (cargando) return <p className="empty">Cargando el feed…</p>;
+  if (cargando) return <Cargando que="el feed" testid="feed-cargando" />;
+
+  // EL ORDEN IMPORTA, y es lo único que arregla el fallo: el error va ANTES
+  // que el vacío. Al revés —que era lo que había— un backend caído se pinta
+  // como «no ha pasado nada», que es la única de las dos frases que la gente
+  // se cree.
+  if (fallo && !items.length) {
+    return <PanelError error={fallo} que="el feed" testid="feed-error"
+                       onReintentar={() => void traer(null)} />;
+  }
 
   if (!items.length) {
     return (
@@ -206,7 +237,15 @@ export function Feed({ practicanteId }: { practicanteId: string }) {
         </div>
       ))}
 
-      {masHay && (
+      {/* Si lo que falló fue pedir MÁS, el error va aquí abajo y lo ya leído se
+          queda en pantalla. Tirarlo todo por un fallo de la página siguiente
+          castiga dos veces a quien estaba leyendo. */}
+      {fallo && (
+        <PanelError error={fallo} que="el resto del feed" testid="feed-error-mas"
+                    onReintentar={() => void traer(items[items.length - 1].cuando)} />
+      )}
+
+      {masHay && !fallo && (
         <div style={{ marginTop: 12 }}>
           <button className="ghost" data-testid="feed-mas" disabled={ocupado}
             onClick={() => void traer(items[items.length - 1].cuando)}>

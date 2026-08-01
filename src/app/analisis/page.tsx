@@ -8,6 +8,7 @@ import { Coleccion } from '@/components/Logros';
 import { useTema } from '@/components/Tema';
 import { contraste } from '@/lib/tema';
 import { supabase } from '@/lib/supabase';
+import { PanelError } from '@/components/Estado';
 import { NOMBRE_OBJETIVO } from '@/lib/bjj';
 import type { Objetivo, Posicion, PracticanteRow } from '@/lib/database.types';
 
@@ -127,13 +128,25 @@ function Panel({ sesion }: { sesion: Sesion }) {
   const [datos, setDatos] = useState<Datos | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /** Sube al pulsar «Reintentar»: es lo que vuelve a disparar la carga. */
+  const [intento, setIntento] = useState(0);
   const [celda, setCelda] = useState<
-    { actor: 'yo' | 'oponente'; c: Celda; rolls: RollCelda[] | null } | null
+    {
+      actor: 'yo' | 'oponente'; c: Celda; rolls: RollCelda[] | null;
+      /** Por qué no se pudieron traer. Distinto de «no hay ninguno». */
+      fallo: string | null;
+    } | null
   >(null);
 
   useEffect(() => {
     void supabase().from('practicantes').select('*').order('nombre')
-      .then(({ data }) => { if (data) setRoster(data as PracticanteRow[]); });
+      .then(({ data, error }) => {
+        // Sin esto, un fallo aquí deja el selector de practicante VACÍO y sin
+        // explicación: la pantalla parece funcionar, simplemente no puedes
+        // cambiar de persona y no hay nada que te diga por qué.
+        if (error) { setError(error.message); return; }
+        setRoster((data ?? []) as PracticanteRow[]);
+      });
   }, []);
 
   const desde = useMemo(() => {
@@ -160,17 +173,22 @@ function Panel({ sesion }: { sesion: Sesion }) {
         setCargando(false);
       });
     return () => { vivo = false; };
-  }, [autor, modalidad, desde]);
+  }, [autor, modalidad, desde, intento]);
 
   const abrirCelda = useCallback(async (actor: 'yo' | 'oponente', c: Celda) => {
-    setCelda({ actor, c, rolls: null });
-    const { data } = await supabase().rpc('analisis_rolls_celda', {
+    setCelda({ actor, c, rolls: null, fallo: null });
+    const { data, error: e } = await supabase().rpc('analisis_rolls_celda', {
       p_autor: autor, p_actor: actor,
       p_posicion: c.posicion, p_objetivo: c.objetivo,
       p_modalidad: modalidad === 'todo' ? null : modalidad,
       p_desde: desde,
     });
-    setCelda((v) => (v && v.c === c ? { ...v, rolls: (data ?? []) as RollCelda[] } : v));
+    // La celda dice «3 finalizadas» y la tabla saldría con cero filas: dos
+    // números del mismo panel contradiciéndose, y ninguno diciendo que hubo un
+    // fallo. Se prefiere decir que no se pudo.
+    setCelda((v) => (v && v.c === c
+      ? { ...v, rolls: e ? null : (data ?? []) as RollCelda[], fallo: e?.message ?? null }
+      : v));
   }, [autor, modalidad, desde]);
 
   const quien = roster.find((p) => p.id === autor);
@@ -203,10 +221,16 @@ function Panel({ sesion }: { sesion: Sesion }) {
         ))}
       </div>
 
-      {error && <p className="err">{error}</p>}
+      {/* Con botón, y no un `<p>` suelto: sin salida, el único arreglo es
+          recargar la página, y recargar en mitad de un entreno es justo lo que
+          no se le puede pedir a nadie. */}
+      {error && (
+        <PanelError error={new Error(error)} que="el análisis" testid="analisis-error"
+          onReintentar={() => setIntento((n) => n + 1)} />
+      )}
       {cargando && <p className="empty">Calculando…</p>}
 
-      {!cargando && k && k.rolls === 0 && (
+      {!cargando && !error && k && k.rolls === 0 && (
         <div className="tarjeta" data-testid="vacio">
           {esMio ? (
             <>
@@ -286,7 +310,7 @@ function Panel({ sesion }: { sesion: Sesion }) {
 
           {celda && (
             <DetalleCelda actor={celda.actor} c={celda.c} rolls={celda.rolls}
-              onCerrar={() => setCelda(null)} />
+              fallo={celda.fallo} onCerrar={() => setCelda(null)} />
           )}
 
           <Divergente titulo="Saldo por guardia"
@@ -442,8 +466,9 @@ function Heat(
 
 /** De la celda a los rolls que hay detrás. Es lo que la hace herramienta. */
 function DetalleCelda(
-  { actor, c, rolls, onCerrar }: {
-    actor: 'yo' | 'oponente'; c: Celda; rolls: RollCelda[] | null; onCerrar: () => void;
+  { actor, c, rolls, fallo, onCerrar }: {
+    actor: 'yo' | 'oponente'; c: Celda; rolls: RollCelda[] | null;
+    fallo: string | null; onCerrar: () => void;
   },
 ) {
   return (
@@ -455,7 +480,11 @@ function DetalleCelda(
         {c.n} {actor === 'yo' ? 'finalizadas' : 'recibidas'}
         {c.intentos > c.n && <> de {c.intentos} intentos</>}.
       </p>
-      {rolls === null ? <p className="nota">Buscando los rolls…</p> : (
+      {fallo ? (
+        <p className="err" data-testid="celda-error">
+          No se pudieron traer los rolls de esta celda. {fallo}
+        </p>
+      ) : rolls === null ? <p className="nota">Buscando los rolls…</p> : (
         <table className="tv">
           <thead><tr><th>Fecha</th><th>Rival</th><th>Qué pasó</th></tr></thead>
           <tbody>

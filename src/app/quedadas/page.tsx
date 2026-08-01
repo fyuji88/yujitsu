@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Marco, type Sesion } from '@/components/Marco';
 import { supabase } from '@/lib/supabase';
+import type { PostgrestError } from '@supabase/supabase-js';
+import { Cargando, PanelError } from '@/components/Estado';
 import { TEXTOS } from '@/lib/textos/es';
 import type {
   EquipoRow, InscripcionRow, MiembroRow, Modalidad, PracticanteRow, QuedadaRow,
@@ -56,9 +58,19 @@ function Panel({ sesion }: { sesion: Sesion }) {
   const [creando, setCreando] = useState(false);
   const [informe, setInforme] = useState<{ quedada: string; datos: Informe } | null>(null);
   const [editando, setEditando] = useState<string | null>(null);
+  /**
+   * El fallo de la CARGA, aparte del de las acciones (`error`).
+   *
+   * Son cosas distintas y por eso son dos estados: `error` es «tu clic no se
+   * pudo hacer» y va junto al botón; esto es «no sé qué hay», y tiene que tapar
+   * la lista entera, porque una lista vacía por un fallo se lee igual que una
+   * lista vacía de verdad.
+   */
+  const [falloCarga, setFalloCarga] = useState<PostgrestError | null>(null);
 
   const cargar = useCallback(async () => {
     const sb = supabase();
+    setFalloCarga(null);
     const [g, m, q, i, p] = await Promise.all([
       sb.from('equipos').select('*').order('nombre'),
       sb.from('miembros_equipo').select('*'),
@@ -66,6 +78,12 @@ function Panel({ sesion }: { sesion: Sesion }) {
       sb.from('inscripciones').select('*'),
       sb.from('practicantes').select('id,nombre,usa_sistema').order('nombre'),
     ]);
+    // SI FALLA UNA, FALLA LA PANTALLA. Antes se cogía `data ?? []` de las cinco,
+    // así que un fallo en `quedadas` pintaba «no hay ninguna quedada» y un fallo
+    // en `inscripciones` pintaba a todo el mundo sin apuntar. Media pantalla
+    // verdadera y media inventada es peor que una pantalla que dice que falló.
+    const malo = [g, m, q, i, p].find((r) => r.error)?.error;
+    if (malo) { setFalloCarga(malo); setCargando(false); return; }
     setEquipos((g.data ?? []) as EquipoRow[]);
     setMiembros((m.data ?? []) as MiembroRow[]);
     setQuedadas((q.data ?? []) as QuedadaRow[]);
@@ -81,7 +99,11 @@ function Panel({ sesion }: { sesion: Sesion }) {
   useEffect(() => {
     if (!invitacion) return;
     void supabase().rpc('quedada_por_token', { p_token: invitacion })
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        // Quien llega por invitación no tiene NADA más en esta pantalla: si
+        // esto falla en silencio ve una página en blanco y se va. Es la primera
+        // impresión de alguien de otro gimnasio.
+        if (error) { setFalloCarga(error); return; }
         const fila = Array.isArray(data) ? data[0] : data;
         setInvitada((fila ?? null) as Record<string, unknown> | null);
       });
@@ -279,15 +301,23 @@ function Panel({ sesion }: { sesion: Sesion }) {
 
   async function verInforme(qid: string) {
     setOcupado(true); setError(null);
-    const { data } = await supabase().from('quedada_informes')
+    const { data, error: e } = await supabase().from('quedada_informes')
       .select('datos').eq('quedada_id', qid);
     setOcupado(false);
+    // «No tiene informe» y «no pude leerlo» acaban en el mismo sitio si no se
+    // mira el error, y solo una de las dos frases es verdad.
+    if (e) { setError(`No se pudo leer el informe: ${e.message}`); return; }
     const fila = (data ?? [])[0] as { datos: Informe } | undefined;
     if (!fila) { setError(`Ese ${TEXTOS.quedada} todavía no tiene informe.`); return; }
     setInforme({ quedada: qid, datos: fila.datos });
   }
 
-  if (cargando) return <p className="empty">Cargando…</p>;
+  if (cargando) return <Cargando que={TEXTOS.quedadas.toLowerCase()} testid="quedadas-cargando" />;
+
+  if (falloCarga) {
+    return <PanelError error={falloCarga} que={TEXTOS.quedadas.toLowerCase()}
+      testid="quedadas-error" onReintentar={() => { setCargando(true); void cargar(); }} />;
+  }
 
   const hoy = new Date().toISOString().slice(0, 10);
   // UN OPEN MAT CANCELADO SIGUE EN LA LISTA, tachado. Antes se filtraba fuera

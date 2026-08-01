@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import type { PostgrestError } from '@supabase/supabase-js';
+import { PanelError } from '@/components/Estado';
 import {
   arrancarSync, observarSync, retenerCola, vaciarCola, type EstadoSync,
 } from '@/lib/sync';
@@ -40,6 +42,17 @@ export function Marco(
   const ruta = usePathname();
   const [s, setS] = useState<Sesion | null>(null);
   const [cargando, setCargando] = useState(true);
+  /**
+   * Por qué no hay ficha. «No existe» y «no pude preguntarlo» se pintaban igual.
+   *
+   * Y no era un matiz: el mensaje de «no tienes ficha» dice «sal y vuelve a
+   * entrar», y salir llama a `olvidarDatosDelUsuario()`, que **borra la cola de
+   * salida**. O sea que un fallo de red le pedía a la gente que tirara los rolls
+   * que aún no había subido. De todos los estados vacíos mal puestos, este era
+   * el único que además destruía datos.
+   */
+  const [falloFicha, setFalloFicha] = useState<PostgrestError | null>(null);
+  const [intentoFicha, setIntentoFicha] = useState(0);
   const [verCola, setVerCola] = useState(false);
   const [sync, setSync] = useState<EstadoSync>({ enCola: 0, enviando: false, error: null, conError: 0 });
   const [saliendo, setSaliendo] = useState(false);
@@ -54,14 +67,15 @@ export function Marco(
       if (!vivo) return;
       if (!data.user) { router.replace('/login'); return; }
 
-      const { data: p } = await supabase()
+      const { data: p, error } = await supabase()
         .from('practicantes').select('*').eq('user_id', data.user.id).maybeSingle();
       if (!vivo) return;
-      if (p) setS({ userId: data.user.id, practicante: p as PracticanteRow });
+      if (error) setFalloFicha(error);
+      else if (p) { setFalloFicha(null); setS({ userId: data.user.id, practicante: p as PracticanteRow }); }
       setCargando(false);
     })();
     return () => { vivo = false; };
-  }, [router]);
+  }, [router, intentoFicha]);
 
   useEffect(() => {
     // La PWA: sin esto la app no abre sin conexion ni se puede instalar.
@@ -207,8 +221,13 @@ export function Marco(
         )}
 
         {cargando && <p className="empty">Cargando…</p>}
-        {!cargando && !s && (
-          <p className="err">
+        {/* PRIMERO EL FALLO, y sin sugerir salir: salir borra la cola. */}
+        {!cargando && !s && falloFicha && (
+          <PanelError error={falloFicha} que="tu ficha" testid="marco-error"
+            onReintentar={() => { setCargando(true); setIntentoFicha((n) => n + 1); }} />
+        )}
+        {!cargando && !s && !falloFicha && (
+          <p className="err" data-testid="marco-sin-ficha">
             Tu cuenta existe pero no tiene ficha de practicante. Sal y vuelve a entrar.
           </p>
         )}
