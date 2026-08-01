@@ -21,12 +21,18 @@
  * Escribe de verdad contra Postgres y limpia lo suyo al acabar.
  */
 const { chromium } = require('playwright-core');
+const { execFileSync } = require('node:child_process');
 const path = require('node:path');
 const fs = require('node:fs');
 
 const APP = 'http://localhost:3000';
 const STUB = 'http://127.0.0.1:54321';
 const PERFIL = path.join('.pruebas', 'perfil-obs-openmat');
+const PSQL = process.env.PSQL || 'psql';
+const PGURL = process.env.PGURL || 'postgresql://postgres@127.0.0.1:55432/bjj';
+const sql = (q) =>
+  execFileSync(PSQL, [PGURL, '-Atq', '-v', 'ON_ERROR_STOP=1', '-c', q],
+               { encoding: 'utf8' }).trim();
 
 let n = 0;
 const ok = (m) => { n++; console.log(`PASS  ${m}`); };
@@ -54,9 +60,20 @@ function comprobar(cond, m) {
       { access_token: t.access_token, refresh_token: t.refresh_token });
   }, s);
 
+/**
+ * `hoy` LO DICE POSTGRES, no el navegador.
+ *
+ * `v_mi_quedada_hoy` filtra por `q.fecha = current_date` del servidor, y
+ * `new Date().toISOString()` da la fecha UTC. Entre medianoche y las dos de la
+ * madrugada en Espana no son el mismo dia: la quedada se creaba con la fecha de
+ * ayer, la vista no la traia, y el chip del Open Mat no aparecia nunca. Fallo a
+ * las 00:44 y el sintoma —un `waitFor` agotado— manda a mirar la pantalla, que
+ * estaba bien.
+ */
+  const HOY = sql('select current_date');
+
   // ---------- DOS Open Mats hoy, misma modalidad y mismo sitio ----------
-  const esc = await page.evaluate(async () => {
-    const hoy = new Date().toISOString().slice(0, 10);
+  const esc = await page.evaluate(async (hoy) => {
     const { data: me } = await window.__sb.auth.getUser();
     const { data: p } = await window.__sb.from('practicantes')
       .select('id').eq('user_id', me.user.id);
@@ -83,7 +100,7 @@ function comprobar(cond, m) {
       .select('id,nombre,usa_sistema');
     const otros = (todos ?? []).filter((x) => x.id !== yo && x.usa_sistema).slice(0, 2);
     return { q, otros, yo, hoy };
-  });
+  }, HOY);
   comprobar(esc.q.every((x) => !x.error) && esc.otros.length >= 2,
     `escenario: dos Open Mats hoy y ${esc.otros.length} companeros con cuenta`);
 
@@ -165,9 +182,6 @@ function comprobar(cond, m) {
   //
   // Las escribio `registrar_roll_observado`, que es SECURITY DEFINER: entran
   // por una puerta que no tiene vuelta desde el navegador.
-  const { execFileSync } = require('node:child_process');
-  const PSQL = process.env.PSQL || 'psql';
-  const PGURL = process.env.PGURL || 'postgresql://postgres@127.0.0.1:55432/bjj';
   // Y si no está, se dice CÓMO. La primera vez esto salió como
   // `spawnSync psql ENOENT` después de siete comprobaciones en verde, que no
   // le cuenta a nadie que lo que falta es una variable de entorno.
@@ -181,7 +195,10 @@ function comprobar(cond, m) {
       + '      PGURL —los mismos con los que arrancas el stub— y vuelve a correrlo.');
     process.exit(1);
   }
-  const sql = `
+  // Se llama `limpieza` y no `sql`: una variable con el nombre de la funcion
+  // de arriba la tapaba en TODO el ambito y el fallo salia arriba del todo,
+  // como «Cannot access 'sql' before initialization».
+  const limpieza = `
     delete from eventos where roll_id in (
       select r.id from rolls r join sesiones s on s.id = r.sesion_id
        where s.practicante_id in ('${A.id}','${B.id}') and s.fecha = '${esc.hoy}');

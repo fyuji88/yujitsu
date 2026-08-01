@@ -979,7 +979,15 @@ function Flujo({ sesion }: { sesion: Sesion }) {
         : res === 'sumision_contra' ? `Sumisión de ${nombreB}` : 'Sin sumisión')
       : (res === 'sumision_favor' ? 'Sumisión a favor'
         : res === 'sumision_contra' ? 'Sumisión en contra' : 'Sin sumisión');
-    const espeja = observando && oponente?.usa_sistema;
+    /**
+     * Observando se guardan SIEMPRE dos rolls (bjj_38).
+     *
+     * Esto miraba `oponente.usa_sistema`, que es lo que decidia si el
+     * companero recibia su mitad — y como esa casilla nacia en `false`, de 62
+     * rolls observados solo se guardo un lado. Ya no decide nada: la unica
+     * razon para no espejar es no tener rival.
+     */
+    const espeja = observando && !!oponente;
 
     /**
      * Qué se puede precisar de este roll: los eventos cuya técnica tiene
@@ -1042,8 +1050,8 @@ function Flujo({ sesion }: { sesion: Sesion }) {
                 ? <>Se guardan <b>dos rolls</b>, uno para {nombreA} y otro para {nombreB},
                     unidos por el mismo <code>par_id</code>. Lo que para uno es ataque
                     para el otro es defensa.</>
-                : <>Se guarda <b>un roll</b>, el de {nombreA}. {nombreB} no usa la app, así que
-                    no hay a quién espejárselo.</>}
+                : <>Se guarda <b>un roll</b>, el de {nombreA}: no hay rival al que
+                    espejárselo.</>}
               {' '}Sale hacia Supabase en cuanto salgas de esta pantalla.
             </p>
             <p className="hint">

@@ -138,6 +138,15 @@ jobs:
       - name: El observador y el Open Mat
         run: psql -v ON_ERROR_STOP=1 -f db/pruebas/observador-quedada.sql
 
+      # EL INVARIANTE DEL ESPEJO. Un roll observado deja DOS rolls: el par_id
+      # tiene que aparecer exactamente dos veces. Es estricto a partir de la
+      # fecha de corte de bjj_38 e ignora en voz alta los 63 huerfanos
+      # anteriores, que se pueden reconstruir porque el par_id y los eventos
+      # estan. Se probo viendola fallar: reintroduciendo la guarda de
+      # usa_sistema, se pone roja.
+      - name: El espejo, siempre
+        run: psql -v ON_ERROR_STOP=1 -f db/pruebas/espejo.sql
+
       - name: El marcador contra el fixture compartido
         run: psql -v ruta="$PWD/src/lib/__fixtures__/puntos.json" -f db/pruebas/puntos.sql
 

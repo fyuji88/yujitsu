@@ -1,28 +1,21 @@
 /**
- * El roll espejo, y por qué se perdía la mitad de cada roll observado.
+ * El roll espejo: dos rolls, siempre.
  *
- * EL ENSAYO EN PRODUCCIÓN. En «Battle for Namek» se registraron tres rolls
- * observados y salieron los tres huérfanos: Goku con sus 3 rolls, y Freezer y
- * Krilin sin sesión y sin nada. Con eso el informe del Open Mat cuenta un solo
- * lado, porque `metricas_quedada` agrupa por el DUEÑO de la sesión.
+ * LA CAUSA, medida. `espejar_roll()` tenia una guarda —si el oponente no tenia
+ * `usa_sistema`, salia devolviendo `null`— y `registrar_roll_observado`
+ * contestaba `creado: true` igual. No fallaba nada: no se hacia y no se decia.
+ * De los 63 rolls observados huerfanos de produccion, 62 salieron de ahi.
  *
- * LA CAUSA, medida y no supuesta: `espejar_roll()` tiene esta guarda —
+ * Y LO QUE DE VERDAD SE APRENDIO. El primer intento fue sacar esa casilla a la
+ * ficha para poder marcarla. Al dia siguiente volvieron a salir ocho de ocho
+ * huerfanos, porque nadie la marco. Un mecanismo no es un arreglo cuando el
+ * modo de fallo es silencioso: la guarda se fue entera en `bjj_38`.
  *
- *     if not (select usa_sistema from practicantes where id = r.oponente_id)
- *     then return null; end if;
+ * Este recorrido comprueba el liston con el caso que fallaba —el companero SIN
+ * `usa_sistema`—, de punta a punta y por la pantalla:
+ *   dos rolls · dos sesiones · las dos en el mismo Open Mat.
  *
- * — y `usa_sistema` se escribía en `false` al dar de alta a alguien y NO SE
- * PODÍA CAMBIAR DESDE NINGUNA PANTALLA. O sea que todo contacto nacía sin
- * espejo, para siempre, en silencio.
- *
- * No es regresión de bjj_35: los huérfanos empiezan el 6 de junio.
- *
- * Este recorrido comprueba LAS DOS DIRECCIONES, que es lo único que distingue
- * «lo he arreglado» de «he quitado la comprobación»:
- *   1. con la casilla quitada NO hay espejo (el fallo, reproducido);
- *   2. con la casilla puesta SÍ lo hay, y el oponente tiene su sesión.
- *
- * Y de paso, lo que pidió Felipe: que el Open Mat SE LEA.
+ * El invariante que lo vigila para siempre esta en `db/pruebas/espejo.sql`.
  */
 const { chromium } = require('playwright-core');
 const { execFileSync } = require('node:child_process');
@@ -69,9 +62,20 @@ const sql = (q) =>
       { access_token: t.access_token, refresh_token: t.refresh_token });
   }, s);
 
+  /**
+   * `hoy` LO DICE POSTGRES, no el navegador.
+   *
+   * `v_mi_quedada_hoy` filtra por `q.fecha = current_date` del servidor, y
+   * `new Date().toISOString()` da la fecha UTC. Entre medianoche y las dos de
+   * la madrugada en Espana no son el mismo dia: la quedada se creaba con la
+   * fecha de ayer, la vista no la traia y el chip del Open Mat no aparecia
+   * nunca. Fallo a las 00:44, y el sintoma —un `waitFor` agotado— manda a
+   * mirar la pantalla, que estaba bien.
+   */
+  const HOY = sql('select current_date');
+
   // ---------- escenario: un Open Mat hoy y dos compañeros ----------
-  const esc = await page.evaluate(async () => {
-    const hoy = new Date().toISOString().slice(0, 10);
+  const esc = await page.evaluate(async (hoy) => {
     const { data: me } = await window.__sb.auth.getUser();
     const { data: p } = await window.__sb.from('practicantes').select('id').eq('user_id', me.user.id);
     const yo = p?.[0]?.id;
@@ -88,10 +92,13 @@ const sql = (q) =>
       .select('id,nombre,usa_sistema');
     const otros = (todos ?? []).filter((x) => x.id !== yo).slice(0, 2);
     return { qid, otros, yo, hoy, userId: me.user.id };
-  });
+  }, HOY);
   const [A, B] = esc.otros;
   comprobar(!!esc.qid && !!A && !!B, `escenario: «Battle for Namek» y ${esc.otros.length} compañeros`);
 
+  // EL CASO QUE FALLABA: el companero sin `usa_sistema`. Antes de bjj_38 esto
+  // bastaba para perder su mitad del roll.
+  //
   // FOTO ANTES DE TOCAR NADA, y por psql. Este recorrido cambia `usa_sistema`
   // de dos fichas, y la primera versión restauraba desde lo que había leído el
   // navegador: se dejó a Vegeta en `false` y el recorrido siguiente se quedó
@@ -161,7 +168,7 @@ const sql = (q) =>
   comprobar(/Battle for Namek/.test(dice),
     `observando se lee a qué Open Mat va la tanda: "${dice.trim()}"`);
 
-  // ============================================ 2 · SIN LA CASILLA: SIN ESPEJO
+  // ============================================ 2 · EL LISTON
   sql(`update practicantes set usa_sistema = false where id in ('${A.id}','${B.id}')`);
   await page.getByTestId(`obsA-${A.nombre}`).click();
   await page.getByTestId(`op-${B.nombre}`).click();
@@ -170,33 +177,27 @@ const sql = (q) =>
   await page.goto(`${APP}/quedadas`);
   await page.waitForTimeout(2500);
 
-  comprobar(sesionesDe(B.id) === 0,
-    'sin «guardarle sus rolls», el compañero NO tiene sesión: el fallo del ensayo, reproducido');
-  comprobar(rollsDe(A.id) === 1,
-    `y solo hay un lado del roll (${rollsDe(A.id)}), que es medio roll perdido`);
+  comprobar(rollsDe(A.id) === 1 && rollsDe(B.id) === 1,
+    `un roll observado deja DOS rolls, uno por jugador (${rollsDe(A.id)} y ${rollsDe(B.id)})`);
+  comprobar(sesionesDe(A.id) === 1 && sesionesDe(B.id) === 1,
+    'y las dos sesiones, una de cada uno');
+  comprobar(sql(`select count(*) from sesiones where quedada_id='${esc.qid}'`) === '2',
+    'las dos colgadas del mismo Open Mat, o el informe contaria un solo lado');
+  comprobar(sql(`select count(*) from (select par_evento_id from eventos e
+      join rolls r on r.id = e.roll_id join sesiones s on s.id = r.sesion_id
+     where s.quedada_id='${esc.qid}' group by par_evento_id having count(*)=2) t`) !== '0',
+    'y los eventos van emparejados por par_evento_id');
 
-  // ============================================ 3 · CON LA CASILLA: SÍ HAY
-  await page.goto(`${APP}/practicantes`);
-  await page.getByRole('button', { name: `Editar ${B.nombre}` }).click();
-  await page.getByTestId('ed-guardar-rolls').check();
-  await page.getByRole('button', { name: 'Guardar' }).click();
-  await page.waitForTimeout(1500);
-  comprobar(sql(`select usa_sistema from practicantes where id='${B.id}'`) === 't',
-    'la casilla «guardarle sus rolls» se puede tocar desde la app — antes no existía');
+  // Y sin depender de la casilla: es el caso que fallaba, con ella apagada.
+  comprobar(sql(`select usa_sistema from practicantes where id='${B.id}'`) === 'f',
+    'con «usa la app» APAGADO en el compañero — que es exactamente lo que fallaba');
 
-  await observar();
-  await page.getByTestId(`obsA-${A.nombre}`).click();
-  await page.getByTestId(`op-${B.nombre}`).click();
-  await page.getByTestId('fin-roll').click();
-  await page.getByTestId('resumen-observado').waitFor({ timeout: 20000 });
-  await page.goto(`${APP}/quedadas`);
-  await page.waitForTimeout(2500);
-
-  comprobar(sesionesDe(B.id) === 1,
-    'con la casilla puesta, el compañero YA tiene su sesión');
-  comprobar(rollsDe(B.id) === 1, 'y su mitad del roll, espejada');
-  comprobar(sesionesDe(B.id) === 1,
-    'colgada del mismo Open Mat: sin eso no saldría en el informe (bjj_35)');
+  // ============================================ 3 · el invariante lo respalda
+  comprobar(sql(`select count(*) from (select r.par_id from rolls r
+      where r.origen='observador' and r.oponente_id is not null
+        and r.created_at >= '2026-08-02'
+      group by r.par_id having count(*) <> 2) x`) === '0',
+    'y el invariante de db/pruebas/espejo.sql no ve ningún par a medias');
 
   // ============================================ 4 · LA TARJETA LO DICE
   await page.goto(`${APP}/entreno`);

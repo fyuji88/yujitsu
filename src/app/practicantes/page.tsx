@@ -17,20 +17,9 @@ interface Borrador {
   cinturon: Cinturon;
   peso: string;
   academia: string;
-  /**
-   * `practicantes.usa_sistema`, con el nombre de lo que hace.
-   *
-   * Un alta nueva entra en `true`: alguien a quien das de alta es alguien con
-   * quien ruedas, y lo normal es querer su mitad del roll. Antes se creaba en
-   * `false` y no había forma de cambiarlo desde ninguna pantalla, así que todo
-   * contacto nacía sin espejo para siempre.
-   */
-  guardarRolls: boolean;
 }
 
-const vacio: Borrador = {
-  nombre: '', cinturon: 'blanca', peso: '', academia: '', guardarRolls: true,
-};
+const vacio: Borrador = { nombre: '', cinturon: 'blanca', peso: '', academia: '' };
 
 export default function Practicantes() {
   return (
@@ -69,12 +58,14 @@ function Lista({ sesion }: { sesion: Sesion }) {
       nombre: editando.nombre.trim(),
       cinturon: editando.cinturon,
       peso_kg: editando.peso ? Number(editando.peso) : null,
-      usa_sistema: editando.guardarRolls,
       academia: editando.academia.trim() || null,
     };
     const q = editando.id
       ? supabase().from('practicantes').update(fila).eq('id', editando.id)
-      : supabase().from('practicantes').insert(fila);
+      // `usa_sistema` en false: significa «usa la app», y un contacto que das
+      // de alta no la usa. Desde bjj_38 NO decide si se le guardan sus rolls —
+      // eso pasa siempre.
+      : supabase().from('practicantes').insert({ ...fila, usa_sistema: false });
     const { error } = await q;
     setGuardando(false);
     if (error) { setError(error.message); return; }
@@ -110,29 +101,14 @@ function Lista({ sesion }: { sesion: Sesion }) {
         <input id="a" value={editando.academia}
           onChange={(e) => setEditando({ ...editando, academia: e.target.value })} />
 
-        {/* LO QUE DECIDE SI SE LE GUARDA SU MITAD DEL ROLL.
-            Esta casilla existía en la base desde el principio y NO se podía
-            tocar desde ninguna pantalla: se creaba en `false` y ahí se quedaba.
-            Y `espejar_roll()` la mira: con `false` no crea el roll espejo, así
-            que de un roll observado solo se guarda un lado y esa persona no
-            aparece en el informe del Open Mat.
-            Se llamaba «usa la app», que es lo que hacía invisible el efecto:
-            lo que importa no es si la tiene instalada, es si le guardas sus
-            rolls. */}
-        <label style={{ display: 'flex', gap: 9, alignItems: 'flex-start', marginTop: 14 }}>
-          <input type="checkbox" data-testid="ed-guardar-rolls"
-            checked={editando.guardarRolls}
-            onChange={(e) => setEditando({ ...editando, guardarRolls: e.target.checked })}
-            style={{ width: 22, height: 22, marginTop: 2, flex: '0 0 auto' }} />
-          <span>
-            Guardarle sus rolls
-            <small style={{ display: 'block', color: 'var(--tenue)', fontWeight: 400 }}>
-              Cuando alguien observe un roll suyo, se le guarda su mitad y sale
-              en el informe del {'Open Mat'}. Sin esto solo se guarda el lado del
-              otro.
-            </small>
-          </span>
-        </label>
+        {/* Aqui hubo un dia una casilla «guardarle sus rolls». Duro un dia.
+            Era el interruptor de `usa_sistema`, que decidia si al companero se
+            le creaba su mitad del roll observado — y sacarlo a la pantalla no
+            arreglaba el fallo, solo lo convertia en algo que habia que
+            acordarse de marcar persona a persona antes de cada Open Mat. Al
+            dia siguiente volvieron a salir ocho de ocho rolls huerfanos porque
+            nadie lo marco. Desde `bjj_38` el espejo no depende de nada y la
+            casilla no tenia ya nada que controlar. */}
         {error && <p className="err">{error}</p>}
         <div style={{ display: 'flex', gap: 9, marginTop: 20 }}>
           <button className="primary" onClick={guardar}
@@ -172,7 +148,6 @@ function Lista({ sesion }: { sesion: Sesion }) {
                 onClick={() => setEditando({
                   id: p.id, nombre: p.nombre, cinturon: p.cinturon,
                   peso: p.peso_kg?.toString() ?? '', academia: p.academia ?? '',
-                  guardarRolls: p.usa_sistema,
                 })}>✎</button>
             )}
             {p.user_id === null && p.creado_por === sesion.userId && (
