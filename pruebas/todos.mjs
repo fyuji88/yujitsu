@@ -38,6 +38,7 @@ const RECORRIDOS = [
   ['precisar.js', 'precisar: el chip, y el invariante contra Postgres de verdad'],
   ['cola.js', 'la cola: modo avion, recarga, 4xx que no se reintenta, y el aviso al cerrar'],
   ['admin-quedadas.js', 'administrar un Open Mat: editar, plazas, apuntar a otro, cancelar'],
+  ['espejo.js', 'el roll espejo: sin el se pierde la mitad de cada roll observado'],
   ['observador-openmat.js', 'el domingo de Felipe: dos Open Mats, dos sesiones, y el espejo va al suyo'],
 ];
 

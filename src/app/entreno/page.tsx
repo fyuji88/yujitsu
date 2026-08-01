@@ -563,6 +563,19 @@ function Flujo({ sesion }: { sesion: Sesion }) {
      16:00 habría arrastrado los rolls de las 10:00. Sigue estando en Quedadas,
      que es donde sirve: arreglar el día que se te olvidó. */
 
+  /**
+   * El título del Open Mat de la sesión abierta.
+   *
+   * Sale de `quedadasHoy`, que ya está cargado, y no de una consulta nueva: la
+   * sesión guarda el id y la lista tiene el nombre. Si el id no está en la
+   * lista —te apuntaste desde otro sitio, o la quedada se cerró— se enseña algo
+   * genérico en vez de mentir diciendo «suelto».
+   */
+  const tituloAbierta = abierta?.quedadaId
+    ? (quedadasHoy.find((x) => x.id === abierta.quedadaId)?.titulo
+       ?? `un ${TEXTOS.quedada}`)
+    : null;
+
   /** Los Open Mats de hoy que no son el de la sesión abierta. */
   const otrosOpenMats = abierta
     ? quedadasHoy.filter((x) => x.id !== abierta.quedadaId)
@@ -701,6 +714,18 @@ function Flujo({ sesion }: { sesion: Sesion }) {
                 Suelto
               </button>
             </div>
+            {/* DICHO CON PALABRAS, no solo con el borde del chip. Observando se
+                registra para OTRAS DOS personas: si la tanda entera se cuelga
+                del Open Mat equivocado, lo descubre el que mire el informe, y
+                para entonces son veinte rolls. Un borde de color no es aviso
+                suficiente para eso. */}
+            <p className="hint" data-testid="obs-quedada-elegida"
+              style={{ marginTop: 8, fontWeight: 600, color: 'var(--texto)' }}>
+              {quedadaObs
+                ? <>Los rolls de esta tanda irán a{' '}
+                    <b>{quedadasHoy.find((x) => x.id === quedadaObs)?.titulo}</b>.</>
+                : <>Esta tanda no irá a ningún {TEXTOS.quedada}: no saldrá en su informe.</>}
+            </p>
           </>
         )}
 
@@ -1098,6 +1123,15 @@ function Flujo({ sesion }: { sesion: Sesion }) {
       <div className="state">
         <div className="lbl">Sesión abierta</div>
         <div className="pos">{abierta?.modalidad === 'gi' ? 'Gi' : 'No-gi'}</div>
+        {/* «AUTOMATICO PERO NUNCA SILENCIOSO» decía el diseño, y era silencioso:
+            la tarjeta ponía «Sesión abierta · No-gi» y nada más, así que el
+            enganche funcionaba y no había forma de verlo. Un enganche que no se
+            ve es peor que no engancharlo — cuando está mal, nadie lo sabe. */}
+        <div className="rol" data-testid="sesion-openmat">
+          {tituloAbierta
+            ? <>En <b>{tituloAbierta}</b></>
+            : <>Sin {TEXTOS.quedada} · suelto</>}
+        </div>
         <div className="rol">{abierta?.rolls ?? 0} rolls registrados hoy</div>
       </div>
       {/* EL DOMINGO DE FELIPE: dos Open Mats el mismo dia. Cada uno tiene su
